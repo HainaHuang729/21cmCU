@@ -1,0 +1,65 @@
+{
+  "job": "487951",
+  "point": 80000,
+  "node": "a6",
+  "scope": "Host arrays to synced HDF5 on shared NFS, excluding input load and readback checks",
+  "cases": {
+    "raw_ic_sequential": {
+      "ic": {
+        "seconds": 34.73246412537992,
+        "emit_seconds": 1.989787645637989,
+        "close_and_sync_seconds": 32.7426768001169,
+        "bytes": 3816834344,
+        "workers": 0,
+        "byte_equal_datasets": 14
+      },
+      "coeval": {
+        "seconds": 18.938926415517926,
+        "emit_seconds": 3.8340167328715324,
+        "close_and_sync_seconds": 15.104909865185618,
+        "bytes": 1747065260,
+        "workers": 8,
+        "byte_equal_datasets": 417
+      },
+      "seconds": 53.9699118770659
+    },
+    "lzf_ic_sequential": {
+      "ic": {
+        "seconds": 23.6032607331872,
+        "emit_seconds": 5.784422555938363,
+        "close_and_sync_seconds": 17.818838350474834,
+        "bytes": 2058088163,
+        "workers": 8,
+        "byte_equal_datasets": 14
+      },
+      "coeval": {
+        "seconds": 19.09506019577384,
+        "emit_seconds": 3.742723675444722,
+        "close_and_sync_seconds": 15.352336710318923,
+        "bytes": 1747065260,
+        "workers": 8,
+        "byte_equal_datasets": 417
+      },
+      "seconds": 42.96264145709574
+    },
+    "lzf_both_concurrent": {
+      "ic": {
+        "seconds": 40.05241755023599,
+        "emit_seconds": 9.364488359540701,
+        "close_and_sync_seconds": 30.687929343432188,
+        "bytes": 2058088099,
+        "workers": 4,
+        "byte_equal_datasets": 14
+      },
+      "coeval": {
+        "seconds": 35.243523016572,
+        "emit_seconds": 7.209415318444371,
+        "close_and_sync_seconds": 28.034107947722077,
+        "bytes": 1747066844,
+        "workers": 4,
+        "byte_equal_datasets": 417
+      },
+      "seconds": 40.36951286531985
+    }
+  }
+}

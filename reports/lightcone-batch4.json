@@ -1,0 +1,40 @@
+{
+  "concurrency": 4,
+  "completed": 4,
+  "wall_seconds": 99.82581921759993,
+  "estimated_scheduler_pauses_seconds": 0.0,
+  "peak_mib": 27559,
+  "card_total_mib": 49140,
+  "gpu_uuid": "GPU-e38f89fb-6933-ca04-89d9-de24bf668907",
+  "workers": [
+    {
+      "worker": "worker-1",
+      "ok": true,
+      "returncode": 0,
+      "coeval_and_projection_seconds": 85.69619160704315,
+      "hdf5_bytes": 257201536
+    },
+    {
+      "worker": "worker-2",
+      "ok": true,
+      "returncode": 0,
+      "coeval_and_projection_seconds": 85.82708034664392,
+      "hdf5_bytes": 257201536
+    },
+    {
+      "worker": "worker-3",
+      "ok": true,
+      "returncode": 0,
+      "coeval_and_projection_seconds": 85.82011483237147,
+      "hdf5_bytes": 257201536
+    },
+    {
+      "worker": "worker-4",
+      "ok": true,
+      "returncode": 0,
+      "coeval_and_projection_seconds": 83.87777373660356,
+      "hdf5_bytes": 257201536
+    }
+  ],
+  "lightcones_per_hour": 144.25125796975365
+}

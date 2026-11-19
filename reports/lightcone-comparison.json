@@ -1,0 +1,14 @@
+{
+  "brightness_temp": {
+    "voxels": 32145408,
+    "failed": 0,
+    "rms": 0.0,
+    "max_abs": 0.0
+  },
+  "xH_box": {
+    "voxels": 32145408,
+    "failed": 0,
+    "rms": 0.0,
+    "max_abs": 0.0
+  }
+}
