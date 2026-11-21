@@ -7,7 +7,12 @@ import shutil
 import subprocess
 import sys
 
+_HERE = str(Path(__file__).resolve().parent)
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
 from bt_config import resolve_bt_cosmo, split_bt_10d_params
+from env_detect import detect_cuda_path, detect_native_deps
 
 WAVE6_GPU_ENV = {
     "PS_FFTW_PERTURB_DENSITY": "1",
@@ -87,12 +92,18 @@ def build_arg_parser():
     p.add_argument("--ic-threads", type=int, default=8, help="GSL IC thread count (use 16 to match 16-thread production RNG)")
     p.add_argument("--control-ic", type=Path, help="Pre-existing InitialConditions HDF5 path; generated if omitted")
     p.add_argument("--skip-build", action="store_true", help="Reuse existing <work>/build/package if present")
+    p.add_argument("--gsl-prefix", help="Explicit GSL installation prefix (sets PS_GSL_PREFIX)")
+    p.add_argument("--fftw-prefix", help="Explicit FFTW3f installation prefix (sets PS_FFTW_PREFIX)")
+    p.add_argument("--cuda-path", help="Explicit CUDA toolkit path (sets CUDA_PATH)")
     return p
 
 
 def _prepend_env_path(env, key, value):
     cur = env.get(key, "")
-    env[key] = f"{value}:{cur}" if cur else str(value)
+    parts = [p for p in cur.split(os.pathsep) if p] if cur else []
+    val = str(value)
+    if val not in parts:
+        env[key] = f"{val}{os.pathsep}{cur}" if cur else val
 
 
 def main():
@@ -119,13 +130,43 @@ def main():
     build_dir = work / "build"
     pkg_dir = build_dir / "package"
     base_env = os.environ.copy()
+    if args.gsl_prefix:
+        base_env["PS_GSL_PREFIX"] = str(Path(args.gsl_prefix).expanduser().resolve())
+    if args.fftw_prefix:
+        base_env["PS_FFTW_PREFIX"] = str(Path(args.fftw_prefix).expanduser().resolve())
+
+    deps = detect_native_deps(
+        root=root,
+        gsl_prefix=args.gsl_prefix,
+        fftw_prefix=args.fftw_prefix,
+    )
+    missing = []
+    if not deps["gsl_found"]:
+        missing.append("GSL (gsl/gsl_integration.h)")
+    if not deps["fftw_found"]:
+        missing.append("FFTW3f (fftw3.h)")
+    if missing:
+        raise RuntimeError(
+            "Missing native dependencies: "
+            + ", ".join(missing)
+            + ". Install via `conda env create -f environment.yml` or pass --gsl-prefix / --fftw-prefix."
+        )
+
+    sys_lib_dirs = {"/usr/local/lib", "/usr/lib/x86_64-linux-gnu", "/usr/lib64", "/usr/lib"}
+    for lib_dir in reversed([d for d in deps["library_dirs"] if d not in sys_lib_dirs]):
+        _prepend_env_path(base_env, "LD_LIBRARY_PATH", lib_dir)
+
+    cuda_path, cuda_inc = detect_cuda_path(args.cuda_path)
+    if cuda_path:
+        base_env["CUDA_PATH"] = cuda_path
+        if cuda_inc:
+            _prepend_env_path(base_env, "CPATH", cuda_inc)
+
     base_env["PS_GPU_ROOT"] = str(root)
     base_env["PYTHONUNBUFFERED"] = "1"
     base_env["OPENBLAS_NUM_THREADS"] = "1"
     base_env["MKL_NUM_THREADS"] = "1"
     base_env["NUMEXPR_NUM_THREADS"] = "1"
-    if (root / "lib").is_dir():
-        _prepend_env_path(base_env, "LD_LIBRARY_PATH", root / "lib")
 
     if not (args.skip_build and pkg_dir.is_dir()):
         if build_dir.exists():

@@ -49,7 +49,10 @@ The repository provides two validated pipelines:
 
 ## Repository Layout
 
-- [lightcone/](lightcone): Complete Wave 6 GPU lightcone source, CUDA kernels, C patchers, and Slurm verification scripts (60 files)
+- [environment.yml](environment.yml): Conda specification (`python=3.10`, `gsl`, `fftw`, `c-compiler`, `openmp`, and Python dependencies)
+- [lightcone/](lightcone): Complete Wave 6 GPU lightcone source, CUDA kernels, C patchers, and Slurm verification scripts
+  - [lightcone/run_bt_lightcone.py](lightcone/run_bt_lightcone.py): One-command BT runner that auto-detects `GSL`/`FFTW3f`/`CUDA`, compiles `c_21cmfast`, generates `gk61.json` and ICs, converts `KP_h_Mpc -> KP`, and exports all validated `PS_*` flags
+  - [lightcone/env_detect.py](lightcone/env_detect.py): Toolchain auto-detection for GSL, single-precision FFTW3 (`fftw3f`), and CUDA paths across Conda, system, and custom prefixes
   - [lightcone/build.py](lightcone/build.py): Patches and compiles the private `c_21cmfast` CFFI extension
   - [lightcone/run_large_lightcone.py](lightcone/run_large_lightcone.py): Unified CPU / GPU 6-field lightcone entrypoint (supports `PS_ASTRO_JSON`, `PS_COSMO_JSON`, `PS_SEED`, `PS_DIM`/`PS_HII_DIM`/`PS_BOX_LEN`)
   - [lightcone/phase3d_holdout_verify.sbatch](lightcone/phase3d_holdout_verify.sbatch), [lightcone/phase3e_multiparam_spotcheck.sbatch](lightcone/phase3e_multiparam_spotcheck.sbatch): Self-contained Slurm verification scripts that generate ICs and CPU references on the fly
@@ -64,7 +67,15 @@ The repository provides two validated pipelines:
 
 ## Quickstart (Wave 6 GPU Lightcone)
 
-On a Linux CUDA host, prepare Python 3.10+ (NumPy, SciPy, Astropy, h5py with LZF, cffi, CuPy, PyYAML), an OpenMP-capable C compiler, GSL, and single-precision FFTW3 (`libfftw3f`, `libfftw3f_omp`). Ensure `include/` (`gsl/`, `fftw3.h`) and `lib/` (`libgsl`, `libfftw3f`, `libfftw3f_omp`) exist or are symlinked under the repository root.
+On a Linux CUDA host, create the Conda environment (or point `--gsl-prefix` / `--fftw-prefix` to existing system installs):
+
+```bash
+git clone -b bt https://github.com/HainaHuang729/21cmFAST-GPU.git
+cd 21cmFAST-GPU
+conda env create -f environment.yml
+conda activate 21cmfast-gpu
+pip install cupy-cuda12x   # or cupy-cuda11x for CUDA 11.x
+```
 
 ### 1. Build Private `c_21cmfast` and Generate GK61 Quadrature Rule
 
