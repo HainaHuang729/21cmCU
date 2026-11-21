@@ -111,22 +111,22 @@ python lightcone/run_large_lightcone.py gpu-density out_gpu work_gpu
 
 ---
 
-## BT / IC2 Specialized Branch (`bt-ic2`)
+## BT Specialized Branch (`bt`)
 
-This branch adds native **BT / IC2 production parameter ergonomics** on top of the validated Wave 6 GPU pipeline:
+This branch adds native **BT broken-power-law parameter ergonomics** on top of the validated Wave 6 GPU pipeline:
 
 1. **Physics & CUDA Kernel Parity Confirmed**:
    - The underlying C/Python source tree (`resident_filter_20261118/fix/package/py21cmfast/src/`, including `21cmFAST.h` and [ps.c](resident_filter_20261118/fix/package/py21cmfast/src/ps.c)) already implements the exact BT broken-power-law `POWER_SPECTRUM=6` formula (`P(k) ~ k^POWER_INDEX * T_EH(k)^2` for `k <= KP`, and `k^MS * KP^(POWER_INDEX - MS) * T_EH(k)^2` for `k > KP`), matching the frozen BT native `c_21cmfast` build.
    - Both CUDA kernels ([ic_seed.cu](lightcone/ic_seed.cu) and [sigma.cu](lightcone/sigma.cu)) also implement the identical `POWER_SPECTRUM=6` piecewise spectrum with `KP` in `1/Mpc` and `MS`.
 2. **Automatic `KP_h_Mpc` Unit Conversion ([bt_config.py](lightcone/bt_config.py))**:
-   - BT / IC2 workflows specify the break scale as **`KP_h_Mpc`** (in `h/Mpc`), whereas `CosmoParams` in 21cmFAST expects `KP` in **`1/Mpc`**:
+   - BT workflows specify the break scale as **`KP_h_Mpc`** (in `h/Mpc`), whereas `CosmoParams` in 21cmFAST expects `KP` in **`1/Mpc`**:
      ```text
      KP [1/Mpc] = KP_h_Mpc [h/Mpc] * hlittle
      ```
    - [run_large_lightcone.py](lightcone/run_large_lightcone.py) now accepts `KP_h_Mpc` directly inside `PS_COSMO_JSON`, or via `PS_KP_H_MPC` / `PS_MS` environment variables, enforces `POWER_SPECTRUM=6`, rejects contradictory `KP` vs `KP_h_Mpc` settings, and records both `kp_h_mpc` and `kp_mpc_inv` in `lightcone.h5` attributes and `timing.json`.
-3. **One-Command BT / IC2 Runner & GSL Thread Parity ([run_bt_lightcone.py](lightcone/run_bt_lightcone.py))**:
+3. **One-Command BT Runner & GSL Thread Parity ([run_bt_lightcone.py](lightcone/run_bt_lightcone.py))**:
    - Wraps extension build, `gk61_rule.py`, CPU GSL IC generation (with configurable `--ic-threads`), and all validated Wave 6 GPU flags into one CLI command.
-   - Because native 21cmFAST allocates GSL random streams per `N_THREADS`, pass **`--ic-threads 16`** when matching IC2 production 16-thread initial-condition realizations:
+   - Because native 21cmFAST allocates GSL random streams per `N_THREADS`, pass **`--ic-threads 16`** when matching 16-thread BT production initial-condition realizations:
 
 ```bash
 export PS_GPU_ROOT="$PWD"

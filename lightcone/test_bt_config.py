@@ -1,4 +1,4 @@
-"""Unit tests for BT / IC2 parameter parsing and KP_h_Mpc -> KP conversion."""
+"""Unit tests for BT parameter parsing and KP_h_Mpc -> KP conversion."""
 import json
 import math
 from pathlib import Path

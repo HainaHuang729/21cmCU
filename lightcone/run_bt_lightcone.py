@@ -1,4 +1,4 @@
-"""One-command CLI wrapper for BT / IC2 21cmFAST GPU and CPU lightcone runs."""
+"""One-command CLI wrapper for BT 21cmFAST GPU and CPU lightcone runs."""
 import argparse
 import json
 import os
@@ -84,7 +84,7 @@ def build_arg_parser():
     p.add_argument("--box-len", type=float, default=375.0)
     p.add_argument("--max-z", type=float, default=14.0)
     p.add_argument("--window-max-z", default="none")
-    p.add_argument("--ic-threads", type=int, default=8, help="GSL IC thread count (use 16 to match IC2 production RNG)")
+    p.add_argument("--ic-threads", type=int, default=8, help="GSL IC thread count (use 16 to match 16-thread production RNG)")
     p.add_argument("--control-ic", type=Path, help="Pre-existing InitialConditions HDF5 path; generated if omitted")
     p.add_argument("--skip-build", action="store_true", help="Reuse existing <work>/build/package if present")
     return p

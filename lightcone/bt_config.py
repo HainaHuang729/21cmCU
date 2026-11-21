@@ -1,4 +1,4 @@
-"""Parameter and unit resolver for the BT / IC2 broken-power-law 21cmFAST branch."""
+"""Parameter and unit resolver for the BT broken-power-law 21cmFAST branch."""
 from copy import deepcopy
 
 BT_ASTRO_KEYS = (
