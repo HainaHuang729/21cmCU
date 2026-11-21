@@ -20,16 +20,14 @@ python lightcone/run_bt_lightcone.py --out runs/bt_out --work runs/bt_work --kp-
 
 ## Benchmarks
 
-CPU (AMD Ryzen Threadripper PRO 5975WX, 8 threads) vs. 1x RTX A6000 + 8 CPU threads:
+Host: AMD Ryzen Threadripper PRO 5975WX (32 cores) + 1x RTX A6000 (GPU runs use 8 CPU threads):
 
-| Grid / Box / Slices | CPU | GPU (`phys`) | Speedup | Failed Fields |
-|---|---:|---:|:---:|:---:|
-| `256 -> 64`, 200 Mpc, 1227 | 107.93 s | 13.98 s (9.59 s) | 7.72x | 0 / 6 |
-| `384 -> 96`, 300 Mpc, 761 | 266.33 s | 23.29 s (18.20 s) | 11.44x | 0 / 6 |
-| `384 -> 96`, 375 Mpc, 609 | 278.18 s | 21.02 s (16.21 s) | 13.23x | 0 / 6 |
-| `1024 -> 256`, 250 Mpc, 3922 | 6462.85 s | 371.37 s (336.33 s) | 17.40x | 0 / 6 |
-
-CPU OpenMP scaling on the same 5975WX host (16 threads / 32 threads): `256 -> 64` takes 72.99 s / 71.18 s (5.22x / 5.09x GPU speedup); `384 -> 96` (375 Mpc) takes 163.98 s / 160.13 s (7.80x / 7.62x GPU speedup).
+| Grid / Box / Slices | CPU 8T | CPU 16T | CPU 32T | GPU (`phys`) | Speedup (8T / 16T / 32T) | Failed |
+|---|---:|---:|---:|---:|:---:|:---:|
+| `256 -> 64`, 200 Mpc, 1227 | 107.93 s | 72.99 s | 71.18 s | 13.98 s (9.59 s) | 7.72x / 5.22x / 5.09x | 0 / 6 |
+| `384 -> 96`, 300 Mpc, 761 | 266.33 s | - | - | 23.29 s (18.20 s) | 11.44x | 0 / 6 |
+| `384 -> 96`, 375 Mpc, 609 | 278.18 s | 163.98 s | 160.13 s | 21.02 s (16.21 s) | 13.23x / 7.80x / 7.62x | 0 / 6 |
+| `1024 -> 256`, 250 Mpc, 3922 | 6462.85 s | - | - | 371.37 s (336.33 s) | 17.40x | 0 / 6 |
 
 Implementation notes, unit tests, and 5 additional parameter spot-checks are in [docs/GPU_vs_CPU_comparison.md](docs/GPU_vs_CPU_comparison.md) and [reports/wave6-lightcone/summary.json](reports/wave6-lightcone/summary.json).
 
