@@ -1,6 +1,6 @@
 # Wave 6 GPU Lightcone vs. CPU Reference Comparison
 
-This document details the architectural, algorithmic, and numerical differences between the **Wave 6 GPU Lightcone pipeline** ([lightcone/](../lightcone)) and the **CPU 21cmFAST reference implementation** ([resident_filter_20261118/fix/package/py21cmfast/src](../resident_filter_20261118/fix/package/py21cmfast/src), derived from standard $\Lambda$CDM [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), `POWER_SPECTRUM=0`). For the blue-tilted broken-power-law (`POWER_SPECTRUM=6`) specialized variant, see the `bt-ic2` branch.
+This document details the architectural, algorithmic, and numerical differences between the **Wave 6 GPU Lightcone pipeline** ([lightcone/](../lightcone)) and the **CPU 21cmFAST reference implementation** ([resident_filter_20261118/fix/package/py21cmfast/src](../resident_filter_20261118/fix/package/py21cmfast/src), derived from standard $\Lambda$CDM [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), `POWER_SPECTRUM=0`). For the blue-tilted broken-power-law (`POWER_SPECTRUM=6`) specialized variant, see the [`bt`](https://github.com/HainaHuang729/21cmFAST-GPU/tree/bt) branch.
 
 ---
 
