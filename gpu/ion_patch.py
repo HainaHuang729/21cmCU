@@ -104,6 +104,10 @@ def patch_ion(source):
     insert(rng,"    if (!gpu_ion) "+rng.lstrip())
     cleanup="    for (i=0; i<user_params->N_THREADS; i++) {\n        gsl_rng_free (r[i]);"
     insert(cleanup,"    if (!gpu_ion) "+cleanup.lstrip())
+    table_call = "initialise_Nion_General_spline(redshift,"
+    assert source.count(table_call) == 1
+    call_end = source.index(");", source.index(table_call))
+    source = source[:call_end] + ", gpu_ion" + source[call_end:]
     quadrature="                    initialiseGL_Nion(NGL_SFR, M_MIN,massofscaleR);"
     insert(quadrature,
         "                    if (!gpu_ion || !conditional_hook || !(conditional_modes & (1 << 0)) ||\n"

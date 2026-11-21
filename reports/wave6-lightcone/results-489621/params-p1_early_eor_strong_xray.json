@@ -1,0 +1,43 @@
+{
+  "tag": "p1_early_eor_strong_xray",
+  "dim": 256,
+  "hii_dim": 64,
+  "box_len": 200.0,
+  "max_z": 20.0,
+  "win_z": "none",
+  "seed": 111111,
+  "point_idx": 91001,
+  "astro_overrides": {
+    "F_STAR10": -0.6,
+    "ALPHA_STAR": 0.25,
+    "F_ESC10": -0.45,
+    "ALPHA_ESC": -0.5,
+    "M_TURN": 8.3,
+    "t_STAR": 0.15,
+    "L_X": 41.6,
+    "NU_X_THRESH": 200.0
+  },
+  "cosmo_overrides": {
+    "KP": 6.78,
+    "MS": 1.2
+  },
+  "effective_astro": {
+    "F_STAR10": -0.6,
+    "ALPHA_STAR": 0.25,
+    "F_ESC10": -0.45,
+    "ALPHA_ESC": -0.5,
+    "M_TURN": 8.3,
+    "t_STAR": 0.15,
+    "L_X": 41.6,
+    "NU_X_THRESH": 200.0
+  },
+  "effective_cosmo": {
+    "OMm": 0.308,
+    "OMb": 0.0484,
+    "hlittle": 0.678,
+    "SIGMA_8": 0.815,
+    "POWER_INDEX": 0.968,
+    "KP": 6.78,
+    "MS": 1.2
+  }
+}

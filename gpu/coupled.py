@@ -1,9 +1,11 @@
 """Pass perturbation density directly to the resident heat filter."""
 import ctypes as C
 import os
+import traceback
 import cupy as cp
 import numpy as np
 
+from gpu_heat_runtime import F, arr
 from gpu_perturb import PerturbRuntime
 from guarded_resident import ResidentRuntime
 from ion_runtime import IonRuntime
@@ -16,6 +18,8 @@ from sigma_runtime import SigmaMoments
 from xray_runtime import XRayTables
 from mhr_runtime import MHRTable
 from hmf_runtime import GlobalCollapse
+
+HeatObserver = C.CFUNCTYPE(C.c_int, C.c_double, C.c_double, C.c_long, F, F, F)
 
 class Perturbation(PerturbRuntime):
     def __init__(self, native):
@@ -86,6 +90,13 @@ class CoupledRuntime(ResidentRuntime):
         self.resident_filter_inputs = 0
         self.ionization = IonRuntime(self)
         self.spin_fields={}
+        self.native_heat_snapshots = 0
+        self._native_heat_retry = None
+        self._native_heat_observer = HeatObserver(self.capture_native_heat)
+        set_heat_observer = self.lib.SetHeatObserver
+        set_heat_observer.argtypes = [C.c_void_p]
+        set_heat_observer.restype = None
+        set_heat_observer(C.cast(self._native_heat_observer, C.c_void_p))
         self.lib.SetGPUHeatTableCache.argtypes=[C.c_int]
         self.lib.SetGPUHeatTableCache.restype=None
         self.lib.SetGPUHeatTableCache(1)
@@ -115,11 +126,33 @@ class CoupledRuntime(ResidentRuntime):
         self.perturbation.ic=self.ic
         self.brightness=BrightnessRuntime(self)
 
+    def capture_native_heat(self, redshift, _previous_redshift, size, xe, tk, ts):
+        key = (C.cast(xe, C.c_void_p).value, float(redshift))
+        if key != self._native_heat_retry:
+            return 0
+        try:
+            fields = tuple(self.upload(arr(ptr, size)) for ptr in (xe, tk, ts))
+            self.states[key] = fields
+            self.spin_fields[C.cast(ts, C.c_void_p).value] = fields[2]
+            self._native_heat_retry = None
+            self.native_heat_snapshots += 1
+            return 0
+        except Exception:
+            self.error = traceback.format_exc()
+            print(self.error, flush=True)
+            return 1
+
     def compute(self,a):
         status=super().compute(a)
+        key = (C.cast(a.out_x, C.c_void_p).value, float(a.scalars[0]))
+        spin_address = C.cast(a.out_ts, C.c_void_p).value
         if status==0:
-            k=(C.cast(a.out_x,C.c_void_p).value,float(a.scalars[0]))
-            self.spin_fields[C.cast(a.out_ts,C.c_void_p).value]=self.states[k][2]
+            self.spin_fields[spin_address] = self.states[key][2]
+        elif status==2:
+            # The native replay replaces this attempted GPU step.
+            self.states.pop(key, None)
+            self.spin_fields.pop(spin_address, None)
+            self._native_heat_retry = key
         return status
 
     def filter_input(self, density, size):
@@ -153,6 +186,7 @@ class CoupledRuntime(ResidentRuntime):
                 "gpu_ic_rng":self.ic_rng,
                 "ic_native_sigma_normalization":getattr(self.ic,"used_native_normalization",False),
                 "initial_gpu_heat_steps":self.heat_seed.calls,
+                "native_heat_snapshots":self.native_heat_snapshots,
                 "gpu_brightness_steps":len(self.brightness.seconds),
                 "gpu_brightness_seconds":sum(self.brightness.seconds),
                 "brightness_seed_uploads":self.brightness.seed_uploads}

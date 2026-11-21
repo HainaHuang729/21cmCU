@@ -124,7 +124,8 @@ ip.write_text(ion)
 from heat_seed_patch import patch_heat
 sp=src / "SpinTemperatureBox.c"
 from xray_patch import patch_xray
-spin=patch_xray(patch_heat(sp.read_text()))
+from conditional_patch import patch_condition, patch_heat_table_consumer
+spin=patch_heat_table_consumer(patch_xray(patch_heat(sp.read_text())))
 anchor="/* The GPU filter cache belongs"
 assert spin.count(anchor)==1
 spin=spin.replace(anchor,
@@ -148,7 +149,6 @@ bp.write_text(patch_brightness(bp.read_text()))
 from ic_seed_patch import patch_seed
 ic_path=src / "GenerateICs.c"
 ic_path.write_text(patch_seed(ic_path.read_text()))
-from conditional_patch import patch_condition
 ps=src/"ps.c"
 from sigma_patch import patch_sigma
 from hmf_patch import patch_hmf

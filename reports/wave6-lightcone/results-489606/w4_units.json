@@ -1,0 +1,74 @@
+{
+  "W4_cic_pertile_v2": {
+    "max_abs": 0.0,
+    "bitwise_equal": true,
+    "mass_repeat_diffs": 0,
+    "max_ulp": 0,
+    "orig_ms": 23.73664639890194,
+    "pertile_ms": 7.036216557025909,
+    "speedup": 3.373495714142008
+  },
+  "W4_init_mhr_omp": {
+    "max_abs": 0.0,
+    "bitwise_equal": true,
+    "seq_ms": 1641.8117973953485,
+    "omp_ms": 316.3137324154377,
+    "speedup": 5.190453746216236
+  },
+  "W4_heat_preplanned": {
+    "max_abs": 0.0,
+    "bitwise_equal": true,
+    "minima_max_abs": 0.0,
+    "maxima_max_abs": 0.0,
+    "warm_ms_8t": 61.03917956352234,
+    "warm_ms_7t": 59.42920222878456
+  },
+  "W4_ion_prefetch": {
+    "z": 19.079885482788086,
+    "scales": 32,
+    "max_abs": 0.0,
+    "bitwise_equal": true,
+    "sync_ms": 62.6401100307703,
+    "prefetch_ms": 72.46268726885319
+  },
+  "W5_heat_padded_gpu_unpack": {
+    "max_abs": 0.0,
+    "bitwise_equal": true,
+    "padded_cpu_ms_7t": 63.1671492010355
+  },
+  "W5_ion_filter_sparse": {
+    "bitwise_equal": true,
+    "bit_diffs_by_radius": {
+      "50.0": 0,
+      "10.0": 0,
+      "3.0": 0,
+      "1.0": 0,
+      "unfiltered": 0
+    }
+  },
+  "W5_lightcone_fill": {
+    "bitwise_equal": true,
+    "max_abs": 0.0,
+    "last_ref": 26,
+    "last_fast": 26
+  },
+  "W5_heat_update_opt": {
+    "bitwise_equal": true,
+    "rate_bw": true,
+    "upd_bw": true,
+    "bad_u1": 0
+  },
+  "W6_ion_pruned_c2r": {
+    "bitwise_equal": true,
+    "max_abs": 0.0,
+    "bit_diffs_by_radius": {
+      "50.0": 0,
+      "35.0": 0,
+      "20.0": 0,
+      "10.0": 0,
+      "6.5": 0,
+      "5.0": 0,
+      "2.0": 0
+    }
+  }
+}

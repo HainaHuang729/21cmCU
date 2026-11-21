@@ -1,18 +1,15 @@
 """Isolated resident-grid thermal backend. CPU table setup and other phases remain CPU."""
-import ctypes as C, json, ast, traceback, time
+import ctypes as C, json, os, traceback, time
 from pathlib import Path
 import numpy as np
 import cupy as cp
-D=Path('/home/user/hnhuang/ps_gpu_fulltest_20261118')
+REPO_ROOT = Path(os.environ["PS_GPU_ROOT"]) if os.environ.get("PS_GPU_ROOT") else Path(__file__).resolve().parent.parent
 F=C.POINTER(C.c_float);DD=C.POINTER(C.c_double)
 class Args(C.Structure):
  _fields_=[('n',C.c_long),('nr',C.c_int),('init',C.c_int),('use_cmb',C.c_int),('use_lya',C.c_int),('prev_z',C.c_double),('density',C.POINTER(F)),('min_density',F),('max_density',F),('growth',F),('sfr',F),('low',C.POINTER(F)),('high',C.POINTER(F)),('st',DD),('pref',DD),('cont_pref',DD),('inj_pref',DD),('heat',C.POINTER(DD)),('heat_diff',C.POINTER(DD)),('ion',C.POINTER(DD)),('ion_diff',C.POINTER(DD)),('lya',C.POINTER(DD)),('lya_diff',C.POINTER(DD)),('xgrid',F),('prev_x',F),('prev_t',F),('prev_ts',F),('out_x',F),('out_t',F),('out_ts',F),('scalars',C.c_double*24),('electron_sum',C.c_double)]
 def arr(p,n):return np.ctypeslib.as_array(p,shape=(n,))
 def mat(p,n,m):return np.stack([arr(p[i],m) for i in range(n)])
-def source_var(name):
- tree=ast.parse((D/name).read_text())
- return next(ast.literal_eval(t.value) for t in tree.body if isinstance(t,ast.Assign) and any(isinstance(x,ast.Name) and x.id=='source' for x in t.targets))
-lookup_source=source_var('lookup_bench.py')
+lookup_source=r'''extern "C" __global__ void lookup(const float*den,const float*lo,const float*hi,float*out,double*vals,int*bad,long n,int nl,int nh,float growth,float low_min,float low_inv,float high_min,float high_inv,float crit,double delta){long i=(long)blockDim.x*blockIdx.x+threadIdx.x;if(i>=n)return;float d=den[i]*growth,f=0,v;int k;if(d<crit){if(d<=-1.)f=0;else{v=(log10f(d+1.)-low_min)*low_inv;k=(int)floorf(v);if(k<0||k+1>nl-1){if(k==nl-1){if(fabs(d-crit)<1e-4){v=(d-high_min)*high_inv;k=(int)floorf(v);if(k<0||k+1>=nh){atomicExch(bad,1);return;}f=hi[k]*(1.+(float)k-v)+hi[k+1]*(v-(float)k);}else f=expf(lo[k]);}else{atomicExch(bad,1);return;}}else f=expf(lo[k]*(1+(float)k-v)+lo[k+1]*(v-(float)k));}}else if(d<.99*delta){v=(d-high_min)*high_inv;k=(int)floorf(v);if(k<0||k+1>=nh){atomicExch(bad,1);return;}f=hi[k]*(1.+(float)k-v)+hi[k+1]*(v-(float)k);}else f=pow(10.,10.);out[i]=(1.+d)*f;vals[i]=(double)f;}'''
 # At the low-table upper endpoint, float log rounding can select the
 # transition fallback while d remains just below high_min. Use the valid
 # low-table endpoint only in this narrowly identified roundoff case.
@@ -34,7 +31,7 @@ class Runtime:
  def __init__(self):
   for k in (lookup,accum,prep,update,electron_sum,finish_sum):
    print('KERNEL_READY',k.name,k.attributes,flush=True)
-  table=np.loadtxt(D/'production_package/py21cmfast/_data/Lyman_alpha_heating_table.dat');self.tc=cp.asarray(table[:,0]);self.ti=cp.asarray(table[:,1]);self.states={};self.density=None;self.records=[];self.error=None;self.previous_mean_calls=0;self.previous_mean_host_fallbacks=0;self.upload_bytes=table.nbytes;self.download_bytes=0
+  table=np.loadtxt(REPO_ROOT/'resident_filter_20261118/fix/package/py21cmfast/_data/Lyman_alpha_heating_table.dat');self.tc=cp.asarray(table[:,0]);self.ti=cp.asarray(table[:,1]);self.states={};self.density=None;self.records=[];self.error=None;self.previous_mean_calls=0;self.previous_mean_host_fallbacks=0;self.upload_bytes=table.nbytes;self.download_bytes=0
  def upload(self,a):self.upload_bytes+=a.nbytes;return cp.asarray(a)
  def run(self,p):
   try:return self.compute(p.contents)

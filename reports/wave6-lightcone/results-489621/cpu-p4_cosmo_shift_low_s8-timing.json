@@ -1,0 +1,22 @@
+{
+  "mode": "cpu",
+  "dim": 256,
+  "hii_dim": 64,
+  "box_len": 220.0,
+  "seed": 444444,
+  "point": 91004,
+  "max_redshift": 20.0,
+  "ic_preparation_seconds": 0.002496505156159401,
+  "physics_seconds": 97.25185916386545,
+  "slice_count": 1113,
+  "seconds_to_sync": 100.26755632460117,
+  "fields": [
+    "brightness_temp",
+    "xH_box",
+    "x_e_box",
+    "Tk_box",
+    "Ts_box",
+    "dNrec_box"
+  ],
+  "bytes": 66417031
+}
