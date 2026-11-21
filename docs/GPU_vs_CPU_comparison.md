@@ -58,7 +58,7 @@ The reference CPU C/Python source tree under `resident_filter_20261118/fix/packa
 
 ## 4. End-to-End Performance & Accuracy Benchmarks
 
-All runs below were executed on the same hardware specification (`1× NVIDIA RTX A6000 48 GB`, `OMP_NUM_THREADS=8`). Every voxel of all 6 fields (`brightness_temp`, `xH_box`, `x_e_box`, `Tk_box`, `Ts_box`, `dNrec_box`) must satisfy `abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU)`.
+All runs below were executed on the same hardware specification (`AMD Ryzen Threadripper PRO 5975WX 32-Cores`, `1× NVIDIA RTX A6000 48 GB`, `OMP_NUM_THREADS=8` for both CPU and GPU unless otherwise noted). Every voxel of all 6 fields (`brightness_temp`, `xH_box`, `x_e_box`, `Tk_box`, `Ts_box`, `dNrec_box`) must satisfy `abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU)`.
 
 ### 4.1 Four Standard Benchmarks ([summary.json](../reports/wave6-lightcone/summary.json))
 
@@ -86,6 +86,17 @@ All runs below were executed on the same hardware specification (`1× NVIDIA RTX
 | `p3_cosmo_shift_lcdm_low_kp` | Shifted LCDM (`OMm=0.325, OMb=0.0505, h=0.665, s8=0.840, ns=0.955`) | `256->64`, 180 Mpc, 1,353, `333333` | `114.76 s` | **`13.79 s`** (`9.14 s`) | **`8.32×`** | `0 / 6`, `0.0` |
 | `p4_cosmo_shift_low_s8` | Low `SIGMA_8` + high star-forming threshold (`OMm=0.290, OMb=0.0465, h=0.700, s8=0.785, ns=0.980, F_STAR10=-0.15, M_TURN=10.60`) | `256->64`, 220 Mpc, 1,113, `444444` | `101.19 s` | **`13.34 s`** (`9.17 s`) | **`7.59×`** | `0 / 6`, `0.0` |
 | `p5_384_96_mid_eor_cosmo` | High-resolution mixed shift (`OMm=0.315, OMb=0.0492, h=0.672, s8=0.828, ns=0.962`) | `384->96`, 300 Mpc, 839, `555555` | `266.65 s` | **`21.59 s`** (`16.43 s`) | **`12.35×`** | `0 / 6`, `0.0` |
+
+### 4.3 CPU OpenMP Thread Scaling (8 / 16 / 32 Threads vs. 1× RTX A6000)
+
+Measured in pure `cpu` mode via [run.py](../lightcone/run.py) inside a 32-CPU Slurm allocation on the same `AMD Ryzen Threadripper PRO 5975WX 32-Cores` host (`Cpus_allowed_list: 16-31,48-63`, matching `N_THREADS` per run):
+
+| Case | CPU 8T (`sync` / `phys`) | CPU 16T (`sync` / `phys`) | CPU 32T (`sync` / `phys`) | GPU (`8T`, `sync`) | GPU Speedup vs. 16T / 32T CPU |
+|---|---:|---:|---:|---:|:---:|
+| `256 -> 64`, 200 Mpc, 1,227 (`seed=424242`) | `90.40 s` (`86.98 s`) | `72.99 s` (`69.55 s`) | `71.18 s` (`67.80 s`) | `13.98 s` | **`5.22×` / `5.09×`** |
+| `384 -> 96`, 375 Mpc, 609 (`seed=1850877074`) | `278.18 s` *(8-CPU alloc)* | `163.98 s` (`160.97 s`) | `160.13 s` (`157.13 s`) | `21.02 s` | **`7.80×` / `7.62×`** |
+
+CPU throughput improves substantially from 8 to 16 threads, then flattens between 16 and 32 threads (~2.4%–2.5% gain) as FFTW / OpenMP barriers and memory bandwidth saturate; a single RTX A6000 still delivers **`7.62×`–`7.80×`** end-to-end speedup over 16–32 CPU threads at `384/96`.
 
 ---
 
