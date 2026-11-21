@@ -100,15 +100,16 @@ CPU throughput improves substantially from 8 to 16 threads, then flattens betwee
 
 ### 4.4 Single-GPU Multi-Worker Concurrency (`384 -> 96`, `lightcone/run_batch.py`)
 
-Measured on `1× NVIDIA RTX A6000` (48 GB, `49,140 MiB`) + `16` CPU cores running independent `384 -> 96`, `375 Mpc`, `z = 5..14` (609-slice) tasks concurrently via [run_batch.py](../lightcone/run_batch.py) (reusing a shared compiled `c_21cmfast`, including per-worker `384³` CPU IC generation, `gk61.json`, GPU lightcone evolution, and HDF5 LZF fsync):
+Measured on `1× NVIDIA RTX A6000` (48 GB, `49,140 MiB`) + `16` CPU cores (`1–4×`) / `32` CPU cores (`8×`) running independent `384 -> 96`, `375 Mpc`, `z = 5..14` (609-slice) tasks concurrently via [run_batch.py](../lightcone/run_batch.py) (reusing a shared compiled `c_21cmfast`, including per-worker `384³` CPU IC generation, `gk61.json`, GPU lightcone evolution, and HDF5 LZF fsync):
 
 | Concurrency (`threads/worker`) | Batch Wall (`completed/total`) | Per-Worker Lightcone `sync` (`phys`) | End-to-End Throughput (incl. IC) | Peak VRAM (`nvidia-smi`) |
 |---|---:|---:|---:|---:|
 | `1` (`8` threads, warm CuPy) | `43.76 s` (`1 / 1`) | `16.97 s` (`14.67 s`) | `82.3 / hour` | `2,342 MiB` (`4.8%`) |
 | `2` (`8` threads/worker) | `46.08 s` (`2 / 2`) | `31.78–31.91 s` (`29.38–29.51 s`) | `156.2 / hour` | `3,852 MiB` (`7.8%`) |
-| `4` (`4` threads/worker) | `59.41 s` (`4 / 4`) | `41.24–41.93 s` (`38.26–39.53 s`) | **`242.4 / hour`** | `6,851 MiB` (`13.9%`) |
+| `4` (`4` threads/worker) | `59.41 s` (`4 / 4`) | `41.24–41.93 s` (`38.26–39.53 s`) | `242.4 / hour` | `6,851 MiB` (`13.9%`) |
+| `8` (`4` threads/worker) | `74.05 s` (`8 / 8`) | `55.51–56.48 s` (`52.99–53.97 s`) | **`388.9 / hour`** | `13,013 MiB` (`26.5%`) |
 
-At `384 -> 96`, packing 4 concurrent workers onto a single RTX A6000 increases end-to-end throughput by **2.95×** (`82.3 -> 242.4` lightcones/hour) while using under 14% of device memory (`6.85 GB / 48 GB`). For large `1024 -> 256` runs, keep 1 worker per GPU and scale across GPUs with `--gpus`.
+At `384 -> 96`, scaling from 1 to 8 concurrent workers on a single RTX A6000 increases end-to-end throughput by **4.7×** (`82.3 -> 388.9` lightcones/hour) while using just 26.5% of device memory (`12.7 GB / 48 GB`). For large `1024 -> 256` runs, keep 1 worker per GPU and scale across GPUs with `--gpus`.
 
 ---
 

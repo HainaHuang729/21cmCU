@@ -29,13 +29,14 @@ Host: AMD Ryzen Threadripper PRO 5975WX (32 cores) + 1x RTX A6000 (GPU runs use 
 | `384 -> 96`, 375 Mpc, 609 | 278.18 s | 163.98 s | 160.13 s | 21.02 s (16.21 s) | 13.23x / 7.80x / 7.62x | 0 / 6 |
 | `1024 -> 256`, 250 Mpc, 3922 | 6462.85 s | - | - | 371.37 s (336.33 s) | 17.40x | 0 / 6 |
 
-Single-GPU concurrency at `384 -> 96` (375 Mpc, 609 slices, 1x RTX A6000 + 16 CPU cores, via [lightcone/run_batch.py](lightcone/run_batch.py), including per-worker `384³` IC generation):
+Single-GPU concurrency at `384 -> 96` (375 Mpc, 609 slices, 1x RTX A6000 + 16 CPU cores for 1-4x / 32 CPU cores for 8x, via [lightcone/run_batch.py](lightcone/run_batch.py), including per-worker `384³` IC generation):
 
 | Concurrency (`threads/worker`) | Batch Wall | Throughput | Peak VRAM |
 |---|---:|---:|---:|
 | 1 (`8` threads) | 43.76 s | 82.3 / h | 2.3 GB |
 | 2 (`8` threads) | 46.08 s | 156.2 / h | 3.8 GB |
 | 4 (`4` threads) | 59.41 s | 242.4 / h | 6.7 GB |
+| 8 (`4` threads) | 74.05 s | 388.9 / h | 12.7 GB |
 
 Implementation notes, unit tests, and 5 additional parameter spot-checks are in [docs/GPU_vs_CPU_comparison.md](docs/GPU_vs_CPU_comparison.md) and [reports/wave6-lightcone/summary.json](reports/wave6-lightcone/summary.json).
 
