@@ -1,6 +1,6 @@
 # 21cmFAST-GPU
 
-CUDA / mixed-precision-faithful GPU acceleration for standard $\Lambda$CDM 21cmFAST (`POWER_SPECTRUM=0`, Eisenstein & Hu), along with strict voxel-level regression verification against CPU. Built on top of [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
+CUDA / mixed-precision-faithful GPU acceleration for **21cmFAST v3** (standard $\Lambda$CDM, `POWER_SPECTRUM=0`, Eisenstein & Hu), along with strict voxel-level regression verification against CPU. Built on top of **21cmFAST v3** (upstream commit [aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), v3.3.x–v3.4 dev snapshot), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
 
 > **Need the blue-tilted / broken-power-law primordial spectrum (`KP_h_Mpc`, `MS`, `POWER_SPECTRUM=6`) specialized version?** Use the dedicated [`bt`](https://github.com/HainaHuang729/21cmFAST-GPU/tree/bt) branch, which preserves `BTPS` / `POWER_SPECTRUM=6` and provides automatic `KP_h_Mpc -> KP = KP_h_Mpc * hlittle` conversion plus 16-thread GSL IC parity. The `main` branch targets standard $\Lambda$CDM (`POWER_SPECTRUM=0`) without `KP`/`MS` extensions.
 
@@ -126,3 +126,9 @@ python gpu/launch_ps.py runs/point-80000 --cache runs/cache \
 ```
 
 Earlier 2-field lightcone batch-throughput tests (4 concurrent workers on 1 GPU in `99.83 s`, ~144 lightcones/hour) are archived in [lightcone-batch4.json](reports/lightcone-batch4.json) · [lightcone-comparison.json](reports/lightcone-comparison.json).
+
+---
+
+## Roadmap
+
+- [ ] **Port GPU acceleration to 21cmFAST v4 (`v4.3+`)**: Adapt the build-time patches and CUDA hooks to the v4 C backend and Python API overhaul (`InputParameters` / TOML templates, unified Lagrangian/Eulerian radiation-field framework) and add support for v4 physics features (stochastic halo sampling `HALO_STOCHASTICITY`, Lyman-$\alpha$ multiple scattering, and native CLASS transfer functions) while preserving strict voxel-level CPU regression verification.
