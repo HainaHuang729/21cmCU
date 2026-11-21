@@ -303,6 +303,7 @@ def main():
 
     common_env = {
         "OMP_NUM_THREADS": str(args.threads),
+        "PS_N_THREADS": str(args.threads),
         "PS_GK61_RULE": str(gk61_path),
         "PS_CONTROL_IC": str(control_ic),
         "PS_DIM": str(args.dim),

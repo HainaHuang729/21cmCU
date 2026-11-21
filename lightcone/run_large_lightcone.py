@@ -32,6 +32,8 @@ if os.environ.get("PS_ASTRO_JSON"):
 if os.environ.get("PS_COSMO_JSON"):
     config["cosmo"].update(json.loads(os.environ["PS_COSMO_JSON"]))
 config["user"].update(DIM=dim, HII_DIM=hii_dim, BOX_LEN=box_len)
+if os.environ.get("PS_N_THREADS"):
+    config["user"]["N_THREADS"] = int(os.environ["PS_N_THREADS"])
 if mode not in ("cpu","gpu","gpu-last","gpu-guard","gpu-all","gpu-density"):
     raise ValueError(mode)
 gpu = mode!="cpu"
