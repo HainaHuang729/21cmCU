@@ -12,6 +12,8 @@ import numpy as np
 import py21cmfast
 import py21cmfast.c_21cmfast as native
 
+from bt_config import resolve_bt_cosmo
+
 FIELDS = ("brightness_temp","xH_box","x_e_box","Tk_box","Ts_box","dNrec_box")
 config = json.loads((Path(os.environ["PS_GPU_ROOT"])/"point_config.json").read_text())
 mode, destination, scratch = sys.argv[1:]
@@ -29,9 +31,18 @@ if os.environ.get("PS_POINT_INDEX"):
     config["index"] = int(os.environ["PS_POINT_INDEX"])
 if os.environ.get("PS_ASTRO_JSON"):
     config["astro"].update(json.loads(os.environ["PS_ASTRO_JSON"]))
-if os.environ.get("PS_COSMO_JSON"):
-    config["cosmo"].update(json.loads(os.environ["PS_COSMO_JSON"]))
+cosmo_overrides = json.loads(os.environ["PS_COSMO_JSON"]) if os.environ.get("PS_COSMO_JSON") else None
+kp_h_mpc_env = float(os.environ["PS_KP_H_MPC"]) if os.environ.get("PS_KP_H_MPC") else None
+ms_env = float(os.environ["PS_MS"]) if os.environ.get("PS_MS") else None
+config["cosmo"], kp_h_mpc_eff = resolve_bt_cosmo(
+    config["cosmo"], cosmo_overrides, kp_h_mpc=kp_h_mpc_env, ms=ms_env
+)
+if cosmo_overrides is not None or kp_h_mpc_env is not None or ms_env is not None:
+    config["user"]["POWER_SPECTRUM"] = 6
 config["user"].update(DIM=dim, HII_DIM=hii_dim, BOX_LEN=box_len)
+n_threads_env = os.environ.get("PS_N_THREADS") or os.environ.get("PS_IC_THREADS")
+if n_threads_env:
+    config["user"]["N_THREADS"] = int(n_threads_env)
 if mode not in ("cpu","gpu","gpu-last","gpu-guard","gpu-all","gpu-density"):
     raise ValueError(mode)
 gpu = mode!="cpu"
@@ -557,7 +568,18 @@ else:
 depth = len(z)
 t_write_start = perf_counter()
 with h5py.File(destination/"lightcone.h5","w") as out:
-    out.attrs.update(point=config["index"], seed=config["seed"], dim=config["user"]["DIM"], hii_dim=config["user"]["HII_DIM"], box_len=config["user"]["BOX_LEN"])
+    out.attrs.update(
+        point=config["index"],
+        seed=config["seed"],
+        dim=config["user"]["DIM"],
+        hii_dim=config["user"]["HII_DIM"],
+        box_len=config["user"]["BOX_LEN"],
+        power_spectrum=int(config["user"]["POWER_SPECTRUM"]),
+        kp_h_mpc=float(kp_h_mpc_eff),
+        kp_mpc_inv=float(config["cosmo"]["KP"]),
+        ms=float(config["cosmo"]["MS"]),
+        n_threads=int(config["user"]["N_THREADS"]),
+    )
     out.create_dataset("redshift",data=z)
     out.create_dataset("distance_Mpc",data=distance)
     out.create_dataset("node_redshift",data=np.asarray(lc.node_redshifts))
@@ -598,7 +620,9 @@ t_fsync_start = perf_counter()
 with (destination/"lightcone.h5").open("rb") as f:
     os.fsync(f.fileno())
 fsync_seconds = perf_counter() - t_fsync_start
-report={"mode":mode, "dim":dim, "hii_dim":hii_dim, "box_len":config["user"]["BOX_LEN"], "seed":config["seed"], "point":config["index"], "max_redshift":max_z, "ic_preparation_seconds":ic_seconds, "physics_seconds":physics, "slice_count":depth,
+report={"mode":mode, "dim":dim, "hii_dim":hii_dim, "box_len":config["user"]["BOX_LEN"], "seed":config["seed"], "point":config["index"], "max_redshift":max_z,
+        "bt_params":{"power_spectrum":int(config["user"]["POWER_SPECTRUM"]), "kp_h_mpc":float(kp_h_mpc_eff), "kp_mpc_inv":float(config["cosmo"]["KP"]), "ms":float(config["cosmo"]["MS"]), "n_threads":int(config["user"]["N_THREADS"])},
+        "ic_preparation_seconds":ic_seconds, "physics_seconds":physics, "slice_count":depth,
         "seconds_to_sync":perf_counter()-begin,"fields":FIELDS,"bytes":(destination/"lightcone.h5").stat().st_size}
 if gpu:
     report["ic_read_and_upload_seconds"]=ic_seconds
