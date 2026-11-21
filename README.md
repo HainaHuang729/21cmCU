@@ -1,6 +1,6 @@
 # 21cmFAST-GPU
 
-CUDA / mixed-precision-faithful GPU acceleration for 21cmFAST, along with strict voxel-level regression verification against CPU. Built on top of [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273) (including broken-power-law primordial spectrum `POWER_SPECTRUM=6` parameters `KP` and `MS`), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
+CUDA / mixed-precision-faithful GPU acceleration for **21cmFAST v3** (including broken-power-law primordial spectrum `POWER_SPECTRUM=6` parameters `KP` and `MS`), along with strict voxel-level regression verification against CPU. Built on top of **21cmFAST v3** (upstream commit [aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), v3.3.x–v3.4 dev snapshot), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
 
 The repository provides two validated pipelines:
 1. **Wave 6 Full 6-Field Lightcone Pipeline ([lightcone/](lightcone))** — Primary release: passes **`0 / 6` out-of-tolerance voxels** (`abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU)`) and cold/warm deterministic repeatability (**`repeat_equal = true`, `max_diff = 0.0`**) across **all 4 standard benchmarks (up to `1024³ -> 256³`, 3,922 slices) plus 5 multi-parameter / multi-cosmology / multi-seed spot-checks**, achieving **`17.40×` end-to-end speedup** at production scale (`6,462.85 s -> 371.37 s`).
@@ -157,3 +157,9 @@ python gpu/launch_ps.py runs/point-80000 --cache runs/cache \
 ```
 
 Earlier 2-field lightcone batch-throughput tests (4 concurrent workers on 1 GPU in `99.83 s`, ~144 lightcones/hour) are archived in [lightcone-batch4.json](reports/lightcone-batch4.json) · [lightcone-comparison.json](reports/lightcone-comparison.json).
+
+---
+
+## Roadmap
+
+- [ ] **Port GPU acceleration to 21cmFAST v4 (`v4.3+`)**: Adapt the build-time patches and CUDA hooks to the v4 C backend and Python API overhaul (`InputParameters` / TOML templates, unified Lagrangian/Eulerian radiation-field framework) and add support for v4 physics features (stochastic halo sampling `HALO_STOCHASTICITY`, Lyman-$\alpha$ multiple scattering, and native CLASS transfer functions) while preserving strict voxel-level CPU regression verification.
