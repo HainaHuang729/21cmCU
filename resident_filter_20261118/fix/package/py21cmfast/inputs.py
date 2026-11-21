@@ -387,8 +387,6 @@ class CosmoParams(StructWithDefaults):
         "OMm": Planck18.Om0,
         "OMb": Planck18.Ob0,
         "POWER_INDEX": 0.9665,
-        "KP":1,
-        "MS":1,
     }
 
     @property
@@ -508,7 +506,7 @@ class UserParams(StructWithDefaults):
     }
 
     _hmf_models = ["PS", "ST", "WATSON", "WATSON-Z"]
-    _power_models = ["EH", "BBKS", "EFSTATHIOU", "PEEBLES", "WHITE", "CLASS","BTPS"]
+    _power_models = ["EH", "BBKS", "EFSTATHIOU", "PEEBLES", "WHITE", "CLASS"]
 
     @property
     def USE_INTERPOLATION_TABLES(self):

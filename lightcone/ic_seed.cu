@@ -10,7 +10,7 @@ extern "C" __global__ void scale_initial_modes(float2 *modes, int n, double dk,
     const double k=sqrtf(kx*kx+ky*ky+kz*kz);
     if (i==0) { modes[i]=make_float2(0,0); return; }
 
-    // Eisenstein-Hu transfer function, matching POWER_SPECTRUM=6.
+    // Eisenstein-Hu transfer function, matching POWER_SPECTRUM=0.
     const double root_alpha=sqrt(p[2]);
     const double q=k*p[0]*p[0]/p[1];
     const double qeff=q/(root_alpha+(1.-root_alpha)/(1.+pow(.43*k*p[3],4.)));
@@ -19,7 +19,7 @@ extern "C" __global__ void scale_initial_modes(float2 *modes, int n, double dk,
     const double qnu=3.92*q/sqrt(p[5]/p[6]);
     transfer *= 1. + (1.2*pow(p[5],.64)*pow(p[6],.3+.6*p[5]))/
                     (pow(qnu,-1.6)+pow(qnu,.8));
-    const double pk=(k<=p[9]?pow(k,p[8]):pow(k,p[10])*pow(p[9],p[8]-p[10]));
+    const double pk=pow(k,p[8]);
     const float power=(float)(pk*transfer*transfer*p[7]);
     const double amplitude=sqrt(volume*power*0.5);
     const float2 value=modes[i];

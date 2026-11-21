@@ -11,12 +11,12 @@ typedef int (*GPUSigmaMoments)(int,const double *,const double *,const double *,
 static GPUSigmaMoments sigma_hook;
 void SetGPUSigmaMoments(void *ptr) { sigma_hook=(GPUSigmaMoments)ptr; }
 static bool UseGPUSigmaMoments(void) {
-    return sigma_hook && user_params_ps->POWER_SPECTRUM==6 && global_params.FILTER==0;
+    return sigma_hook && user_params_ps->POWER_SPECTRUM==0 && !global_params.P_CUTOFF && global_params.FILTER==0;
 }
 static void GPUSigmaEvaluate(int n,const double *radius,const double *mass,
                              double *variance,double *derivative) {
     const double params[]={theta_cmb,omhh,alpha_nu,sound_horizon,beta_c,f_nu,N_nu,
-        1.,cosmo_params_ps->POWER_INDEX,cosmo_params_ps->KP,cosmo_params_ps->MS};
+        1.,cosmo_params_ps->POWER_INDEX};
     if (sigma_hook(n,params,radius,mass,variance,derivative)) Throw(ValueError);
 }
 """+a+"""

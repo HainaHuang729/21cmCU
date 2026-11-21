@@ -383,17 +383,10 @@ double dsigma_dk(double k, void *params){
     }
     else if (user_params_ps->POWER_SPECTRUM == 5){ // output of CLASS
         T = TF_CLASS(k, 1, 0); //read from z=0 output of CLASS. Note, flag_int = 1 here always, since now we have to have initialized the interpolator for CLASS
-        if (k <= cosmo_params_ps->KP) {p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;}
-        else {p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;}
+        p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
         if(user_params_ps->USE_RELATIVE_VELOCITIES) { //jbm:Add average relvel suppression
           p *= 1.0 - A_VCB_PM*exp( -pow(log(k/KP_VCB_PM),2.0)/(2.0*SIGMAK_VCB_PM*SIGMAK_VCB_PM)); //for v=vrms
         }
-    }
-    else if(user_params_ps->POWER_SPECTRUM == 6){ // Eisenstein & Hu
-        T = TFmdm(k);
-        if (k <= cosmo_params_ps->KP) p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
-        else p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;
-        // check if we should cuttoff power spectrum according to Bode et al. 2000 transfer function
     }
     else{
         LOG_ERROR("No such power spectrum defined: %i. Output is bogus.", user_params_ps->POWER_SPECTRUM);
@@ -560,17 +553,10 @@ double power_in_k(double k){
     }
     else if (user_params_ps->POWER_SPECTRUM == 5){ // output of CLASS
         T = TF_CLASS(k, 1, 0); //read from z=0 output of CLASS. Note, flag_int = 1 here always, since now we have to have initialized the interpolator for CLASS
-        if (k <= cosmo_params_ps->KP) {p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;}
-        else {p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;}
+        p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
         if(user_params_ps->USE_RELATIVE_VELOCITIES) { //jbm:Add average relvel suppression
           p *= 1.0 - A_VCB_PM*exp( -pow(log(k/KP_VCB_PM),2.0)/(2.0*SIGMAK_VCB_PM*SIGMAK_VCB_PM)); //for v=vrms
         }
-    }
-    else if(user_params_ps->POWER_SPECTRUM == 6){ // Eisenstein & Hu
-        T = TFmdm(k);
-        if (k <= cosmo_params_ps->KP) p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
-        else p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;
-        // check if we should cuttoff power spectrum according to Bode et al. 2000 transfer function
     }
     else{
         LOG_ERROR("No such power spectrum defined: %i. Output is bogus.", user_params_ps->POWER_SPECTRUM);
@@ -593,8 +579,7 @@ double power_in_vcb(double k){
     //only works if using CLASS
     if (user_params_ps->POWER_SPECTRUM == 5){ // CLASS
         T = TF_CLASS(k, 1, 1); //read from CLASS file. flag_int=1 since we have initialized before, flag_vcb=1 for velocity
-        if (k <= cosmo_params_ps->KP) {p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;}
-        else {p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;}
+        p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
     }
     else{
         LOG_ERROR("Cannot get P_cb unless using CLASS: %i\n Set USE_RELATIVE_VELOCITIES 0 or use CLASS.\n", user_params_ps->POWER_SPECTRUM);
@@ -735,18 +720,11 @@ double dsigmasq_dm(double k, void *params){
     }
     else if (user_params_ps->POWER_SPECTRUM == 5){ // JBM: CLASS
       T = TF_CLASS(k, 1, 0); //read from z=0 output of CLASS
-        if (k <= cosmo_params_ps->KP) {p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;}
-        else {p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;}
-        if(user_params_ps->USE_RELATIVE_VELOCITIES) { //jbm:Add average relvel suppression
-          p *= 1.0 - A_VCB_PM*exp( -pow(log(k/KP_VCB_PM),2.0)/(2.0*SIGMAK_VCB_PM*SIGMAK_VCB_PM)); //for v=vrms
-        }
+      p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
+      if(user_params_ps->USE_RELATIVE_VELOCITIES) { //jbm:Add average relvel suppression
+        p *= 1.0 - A_VCB_PM*exp( -pow(log(k/KP_VCB_PM),2.0)/(2.0*SIGMAK_VCB_PM*SIGMAK_VCB_PM)); //for v=vrms
       }
-    else if(user_params_ps->POWER_SPECTRUM == 6){ // Eisenstein & Hu
-        T = TFmdm(k);
-        if (k <= cosmo_params_ps->KP) p = pow(k, cosmo_params_ps->POWER_INDEX) * T * T;
-        else p = pow(k,cosmo_params_ps->MS) * pow(cosmo_params_ps->KP,cosmo_params_ps->POWER_INDEX-cosmo_params_ps->MS)* T* T;
-        // check if we should cuttoff power spectrum according to Bode et al. 2000 transfer function
-    } 
+    }
     else{
         LOG_ERROR("No such power spectrum defined: %i. Output is bogus.", user_params_ps->POWER_SPECTRUM);
         Throw(ValueError);

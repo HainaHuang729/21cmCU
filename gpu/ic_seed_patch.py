@@ -17,11 +17,11 @@ void SetICSeedGPUHook(void *ptr) { ic_seed_gpu_hook=(ICSeedGPUHook)ptr; }
     if (ic_seed_gpu_hook) {
         if (user_params->PERTURB_ON_HIGH_RES || user_params->NON_CUBIC_FACTOR != 1.0
             || !user_params->USE_2LPT || user_params->USE_RELATIVE_VELOCITIES
-            || user_params->POWER_SPECTRUM != 6 || user_params->DIM % user_params->HII_DIM)
+            || user_params->POWER_SPECTRUM != 0 || global_params.P_CUTOFF || user_params->DIM % user_params->HII_DIM)
             Throw(ValueError);
         init_ps();
         const double params[]={theta_cmb,omhh,alpha_nu,sound_horizon,beta_c,f_nu,N_nu,
-            TWOPI*PI*sigma_norm*sigma_norm,cosmo_params->POWER_INDEX,cosmo_params->KP,cosmo_params->MS};
+            TWOPI*PI*sigma_norm*sigma_norm,cosmo_params->POWER_INDEX};
         float *outputs[]={boxes->hires_density,boxes->lowres_density,
             boxes->lowres_vx,boxes->lowres_vy,boxes->lowres_vz,
             boxes->lowres_vx_2LPT,boxes->lowres_vy_2LPT,boxes->lowres_vz_2LPT};

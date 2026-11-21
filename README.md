@@ -1,6 +1,8 @@
 # 21cmFAST-GPU
 
-CUDA / mixed-precision-faithful GPU acceleration for 21cmFAST, along with strict voxel-level regression verification against CPU. Built on top of [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273) (including broken-power-law primordial spectrum `POWER_SPECTRUM=6` parameters `KP` and `MS`), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
+CUDA / mixed-precision-faithful GPU acceleration for standard $\Lambda$CDM 21cmFAST (`POWER_SPECTRUM=0`, Eisenstein & Hu), along with strict voxel-level regression verification against CPU. Built on top of [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), this implementation operates via non-invasive build-time patches and C function-pointer hooks. Upstream licensing is documented in [LICENSE.upstream](LICENSE.upstream).
+
+> **Need the blue-tilted / broken-power-law primordial spectrum (`KP_h_Mpc`, `MS`, `POWER_SPECTRUM=6`) specialized version?** Use the dedicated [`bt-ic2`](https://github.com/HainaHuang729/21cmFAST-GPU/tree/bt-ic2) branch, which preserves `BTPS` / `POWER_SPECTRUM=6` and provides automatic `KP_h_Mpc -> KP = KP_h_Mpc * hlittle` conversion plus 16-thread GSL IC parity. The `main` branch targets standard $\Lambda$CDM (`POWER_SPECTRUM=0`) without `KP`/`MS` extensions.
 
 The repository provides two validated pipelines:
 1. **Wave 6 Full 6-Field Lightcone Pipeline ([lightcone/](lightcone))** — Primary release: passes **`0 / 6` out-of-tolerance voxels** (`abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU)`) and cold/warm deterministic repeatability (**`repeat_equal = true`, `max_diff = 0.0`**) across **all 4 standard benchmarks (up to `1024³ -> 256³`, 3,922 slices) plus 5 multi-parameter / multi-cosmology / multi-seed spot-checks**, achieving **`17.40×` end-to-end speedup** at production scale (`6,462.85 s -> 371.37 s`).
@@ -39,7 +41,7 @@ The repository provides two validated pipelines:
 |---|---|---|---:|---:|:---:|---|
 | `p1_early_eor_strong_xray` | Early EoR + strong soft X-rays | `256->64`, 200 Mpc, 1,227, `111111` | `111.69 s` | **`13.24 s`** (`8.83 s`) | **`8.44×`** | [p1](reports/wave6-lightcone/results-489621/warm-p1_early_eor_strong_xray-comparison.json) |
 | `p2_late_eor_weak_hard_xray` | Late EoR + weak hard X-rays | `256->64`, 250 Mpc, 982, `222222` | `96.61 s` | **`11.82 s`** (`7.94 s`) | **`8.17×`** | [p2](reports/wave6-lightcone/results-489621/warm-p2_late_eor_weak_hard_xray-comparison.json) |
-| `p3_cosmo_shift_lcdm_low_kp` | Shifted LCDM + low `KP` (`1.33`) | `256->64`, 180 Mpc, 1,353, `333333` | `114.76 s` | **`13.79 s`** (`9.14 s`) | **`8.32×`** | [p3](reports/wave6-lightcone/results-489621/warm-p3_cosmo_shift_lcdm_low_kp-comparison.json) |
+| `p3_cosmo_shift_lcdm_low_kp` | Shifted LCDM cosmology | `256->64`, 180 Mpc, 1,353, `333333` | `114.76 s` | **`13.79 s`** (`9.14 s`) | **`8.32×`** | [p3](reports/wave6-lightcone/results-489621/warm-p3_cosmo_shift_lcdm_low_kp-comparison.json) |
 | `p4_cosmo_shift_low_s8` | Low `SIGMA_8` (`0.785`) + high turnover mass | `256->64`, 220 Mpc, 1,113, `444444` | `101.19 s` | **`13.34 s`** (`9.17 s`) | **`7.59×`** | [p4](reports/wave6-lightcone/results-489621/warm-p4_cosmo_shift_low_s8-comparison.json) |
 | `p5_384_96_mid_eor_cosmo` | Mid EoR + mixed cosmology shift | `384->96`, 300 Mpc, 839, `555555` | `266.65 s` | **`21.59 s`** (`16.43 s`) | **`12.35×`** | [p5](reports/wave6-lightcone/results-489621/warm-p5_384_96_mid_eor_cosmo-comparison.json) |
 

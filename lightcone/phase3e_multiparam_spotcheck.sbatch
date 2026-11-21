@@ -132,22 +132,22 @@ INNER_PY
 
 run_spotcheck p1_early_eor_strong_xray 256 64 200.0 20.0 none 111111 91001 \
     '{"F_STAR10": -0.60, "ALPHA_STAR": 0.25, "F_ESC10": -0.45, "ALPHA_ESC": -0.50, "M_TURN": 8.30, "t_STAR": 0.15, "L_X": 41.60, "NU_X_THRESH": 200.0}' \
-    '{"KP": 6.78, "MS": 1.20}'
+    '{}'
 
 run_spotcheck p2_late_eor_weak_hard_xray 256 64 250.0 25.0 none 222222 91002 \
     '{"F_STAR10": -1.65, "ALPHA_STAR": 0.80, "F_ESC10": -1.40, "ALPHA_ESC": 0.20, "M_TURN": 10.20, "t_STAR": 0.80, "L_X": 38.20, "NU_X_THRESH": 1400.0}' \
-    '{"KP": 19.662, "MS": 3.85}'
+    '{}'
 
-run_spotcheck p3_cosmo_shift_lcdm_low_kp 256 64 180.0 20.0 none 333333 91003 \
+run_spotcheck p3_cosmo_shift_lcdm 256 64 180.0 20.0 none 333333 91003 \
     '{"F_STAR10": -1.10, "ALPHA_STAR": -0.35, "F_ESC10": -0.90, "ALPHA_ESC": -0.10, "M_TURN": 8.80, "t_STAR": 0.40, "L_X": 40.50, "NU_X_THRESH": 500.0}' \
-    '{"OMm": 0.325, "OMb": 0.0505, "hlittle": 0.665, "SIGMA_8": 0.840, "POWER_INDEX": 0.955, "KP": 1.33, "MS": 2.10}'
+    '{"OMm": 0.325, "OMb": 0.0505, "hlittle": 0.665, "SIGMA_8": 0.840, "POWER_INDEX": 0.955}'
 
 run_spotcheck p4_cosmo_shift_low_s8 256 64 220.0 20.0 none 444444 91004 \
     '{"F_STAR10": -0.15, "ALPHA_STAR": -0.30, "F_ESC10": -1.35, "ALPHA_ESC": -0.22, "M_TURN": 10.60, "t_STAR": 0.90, "L_X": 41.70, "NU_X_THRESH": 180.0}' \
-    '{"OMm": 0.290, "OMb": 0.0465, "hlittle": 0.700, "SIGMA_8": 0.785, "POWER_INDEX": 0.980, "KP": 18.06, "MS": 3.80}'
+    '{"OMm": 0.290, "OMb": 0.0465, "hlittle": 0.700, "SIGMA_8": 0.785, "POWER_INDEX": 0.980}'
 
 run_spotcheck p5_384_96_mid_eor_cosmo 384 96 300.0 16.0 16.0 555555 91005 \
     '{"F_STAR10": -0.95, "ALPHA_STAR": 0.60, "F_ESC10": -0.80, "ALPHA_ESC": 0.35, "M_TURN": 8.65, "t_STAR": 0.12, "L_X": 40.80, "NU_X_THRESH": 350.0}' \
-    '{"OMm": 0.315, "OMb": 0.0492, "hlittle": 0.672, "SIGMA_8": 0.828, "POWER_INDEX": 0.962, "KP": 10.50, "MS": 0.90}'
+    '{"OMm": 0.315, "OMb": 0.0492, "hlittle": 0.672, "SIGMA_8": 0.828, "POWER_INDEX": 0.962}'
 
 echo "PHASE3E_SPOTCHECK_DONE $out"

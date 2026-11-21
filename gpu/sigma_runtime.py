@@ -30,7 +30,7 @@ class SigmaMoments:
     def compute(self,n,p,r,m,out,derivative):
         try:
             start=time.perf_counter()
-            params=np.ctypeslib.as_array(p,shape=(11,))
+            params=np.ctypeslib.as_array(p,shape=(9,))
             radius=np.ctypeslib.as_array(r,shape=(n,))
             mass=np.ctypeslib.as_array(m,shape=(n,))
             key=(params.tobytes(),radius.tobytes(),mass.tobytes())

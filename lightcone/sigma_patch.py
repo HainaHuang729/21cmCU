@@ -11,12 +11,12 @@ typedef int (*GPUSigmaMoments)(int,const double *,const double *,const double *,
 static GPUSigmaMoments sigma_hook;
 void SetGPUSigmaMoments(void *ptr) { sigma_hook=(GPUSigmaMoments)ptr; }
 static bool UseGPUSigmaMoments(void) {
-    return sigma_hook && user_params_ps->POWER_SPECTRUM==6 && global_params.FILTER==0;
+    return sigma_hook && user_params_ps->POWER_SPECTRUM==0 && !global_params.P_CUTOFF && global_params.FILTER==0;
 }
 static void GPUSigmaEvaluate(int n,const double *radius,const double *mass,
                              double *variance,double *derivative) {
     const double params[]={theta_cmb,omhh,alpha_nu,sound_horizon,beta_c,f_nu,N_nu,
-        1.,cosmo_params_ps->POWER_INDEX,cosmo_params_ps->KP,cosmo_params_ps->MS};
+        1.,cosmo_params_ps->POWER_INDEX};
     if (sigma_hook(n,params,radius,mass,variance,derivative)) Throw(ValueError);
 }
 """+a+"""
@@ -68,7 +68,7 @@ static void GPUSigmaEvaluate(int n,const double *radius,const double *mass,
 typedef struct {
     int valid;
     int power_spectrum;
-    double vals[11];
+    double vals[9];
     double r_cutoff;
     double omhh;
     double theta_cmb;
@@ -82,14 +82,12 @@ static PSInitCache ps_init_cache = {0};
     patch(a, a + '''
     const char *ps_cache_env = getenv("PS_CACHE_INIT_PS");
     const int use_ps_cache = (!ps_cache_env || ps_cache_env[0] != '0') && (user_params_ps->POWER_SPECTRUM != 5);
-    double ps_key_vals[11] = {
+    double ps_key_vals[9] = {
         (double)cosmo_params_ps->OMm,
         (double)cosmo_params_ps->OMb,
         (double)cosmo_params_ps->hlittle,
         (double)cosmo_params_ps->SIGMA_8,
         (double)cosmo_params_ps->POWER_INDEX,
-        (double)cosmo_params_ps->KP,
-        (double)cosmo_params_ps->MS,
         (double)global_params.OMn,
         (double)global_params.M_WDM,
         (double)global_params.g_x,

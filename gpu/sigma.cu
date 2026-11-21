@@ -7,7 +7,7 @@ __device__ double raw_power(double k,const double *p) {
     const double qnu=3.92*q/sqrt(p[5]/p[6]);
     transfer *= 1. + (1.2*pow(p[5],.64)*pow(p[6],.3+.6*p[5]))/
                     (pow(qnu,-1.6)+pow(qnu,.8));
-    const double pk=(k<=p[9]?pow(k,p[8]):pow(k,p[10])*pow(p[9],p[8]-p[10]));
+    const double pk=pow(k,p[8]);
     return pk*transfer*transfer;
 
 }

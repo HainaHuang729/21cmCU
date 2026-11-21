@@ -39,7 +39,7 @@ class SeededIC(ICRuntime):
             else:
                 noise=cp.random.RandomState(seed).standard_normal(shape,dtype=cp.float32)
             modes=noise.view(cp.complex64).reshape(shape[:-1])
-            device_params=cp.asarray(np.ctypeslib.as_array(params,shape=(11,)))
+            device_params=cp.asarray(np.ctypeslib.as_array(params,shape=(9,)))
             self.launch(self.scale_modes,modes.size,(modes,np.int32(side),np.float64(dk),
                                                        np.float64(volume),device_params))
             self.launch(self.project_modes,2*side**2,(modes,np.int32(side)))

@@ -46,7 +46,7 @@ int ComputeInitialConditions(""")
     old=source[seed_start:seed_end]
     splice(old,"""    const int num_int = INT_MAX/16;
     const bool cache_gsl_power = getenv("PS_GSL_EXACT_POWER") != NULL &&
-        user_params->NON_CUBIC_FACTOR == 1.f && user_params->POWER_SPECTRUM == 6;
+        user_params->NON_CUBIC_FACTOR == 1.f && user_params->POWER_SPECTRUM == 0;
     unsigned int *many_ints = NULL;
     if (cache_gsl_power) {
         // The input population is exactly the integer interval [0,num_int).

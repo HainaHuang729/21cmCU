@@ -1,6 +1,6 @@
 # Wave 6 GPU Lightcone vs. CPU Reference Comparison
 
-This document details the architectural, algorithmic, and numerical differences between the **Wave 6 GPU Lightcone pipeline** ([lightcone/](../lightcone)) and the **CPU 21cmFAST reference implementation** ([resident_filter_20261118/fix/package/py21cmfast/src](../resident_filter_20261118/fix/package/py21cmfast/src), derived from [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273) with broken-power-law primordial spectrum extensions `POWER_SPECTRUM=6`, `KP`, and `MS`).
+This document details the architectural, algorithmic, and numerical differences between the **Wave 6 GPU Lightcone pipeline** ([lightcone/](../lightcone)) and the **CPU 21cmFAST reference implementation** ([resident_filter_20261118/fix/package/py21cmfast/src](../resident_filter_20261118/fix/package/py21cmfast/src), derived from standard $\Lambda$CDM [21cmFAST aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), `POWER_SPECTRUM=0`). For the blue-tilted broken-power-law (`POWER_SPECTRUM=6`) specialized variant, see the `bt-ic2` branch.
 
 ---
 
@@ -81,11 +81,11 @@ All runs below were executed on the same hardware specification (`1× NVIDIA RTX
 
 | Point ID | Regime & Parameter Shifts | Grid / Box / Slices / Seed | CPU Wall | **GPU Warm (`phys`)** | Speedup | Parity / Repeat |
 |---|---|---|---:|---:|:---:|:---:|
-| `p1_early_eor_strong_xray` | Early EoR + strong soft X-rays (`M_TURN=8.30, L_X=41.60, NU_X_THRESH=200, KP=6.78, MS=1.20`) | `256->64`, 200 Mpc, 1,227, `111111` | `111.69 s` | **`13.24 s`** (`8.83 s`) | **`8.44×`** | `0 / 6`, `0.0` |
-| `p2_late_eor_weak_hard_xray` | Late EoR + weak hard X-rays (`F_STAR10=-1.65, M_TURN=10.20, L_X=38.20, NU_X_THRESH=1400, KP=19.662, MS=3.85`) | `256->64`, 250 Mpc, 982, `222222` | `96.61 s` | **`11.82 s`** (`7.94 s`) | **`8.17×`** | `0 / 6`, `0.0` |
-| `p3_cosmo_shift_lcdm_low_kp` | Shifted LCDM + low `KP` (`OMm=0.325, OMb=0.0505, h=0.665, s8=0.840, ns=0.955, KP=1.33`) | `256->64`, 180 Mpc, 1,353, `333333` | `114.76 s` | **`13.79 s`** (`9.14 s`) | **`8.32×`** | `0 / 6`, `0.0` |
+| `p1_early_eor_strong_xray` | Early EoR + strong soft X-rays (`M_TURN=8.30, L_X=41.60, NU_X_THRESH=200`) | `256->64`, 200 Mpc, 1,227, `111111` | `111.69 s` | **`13.24 s`** (`8.83 s`) | **`8.44×`** | `0 / 6`, `0.0` |
+| `p2_late_eor_weak_hard_xray` | Late EoR + weak hard X-rays (`F_STAR10=-1.65, M_TURN=10.20, L_X=38.20, NU_X_THRESH=1400`) | `256->64`, 250 Mpc, 982, `222222` | `96.61 s` | **`11.82 s`** (`7.94 s`) | **`8.17×`** | `0 / 6`, `0.0` |
+| `p3_cosmo_shift_lcdm_low_kp` | Shifted LCDM (`OMm=0.325, OMb=0.0505, h=0.665, s8=0.840, ns=0.955`) | `256->64`, 180 Mpc, 1,353, `333333` | `114.76 s` | **`13.79 s`** (`9.14 s`) | **`8.32×`** | `0 / 6`, `0.0` |
 | `p4_cosmo_shift_low_s8` | Low `SIGMA_8` + high star-forming threshold (`OMm=0.290, OMb=0.0465, h=0.700, s8=0.785, ns=0.980, F_STAR10=-0.15, M_TURN=10.60`) | `256->64`, 220 Mpc, 1,113, `444444` | `101.19 s` | **`13.34 s`** (`9.17 s`) | **`7.59×`** | `0 / 6`, `0.0` |
-| `p5_384_96_mid_eor_cosmo` | High-resolution mixed shift (`OMm=0.315, OMb=0.0492, h=0.672, s8=0.828, ns=0.962, KP=10.50, MS=0.90`) | `384->96`, 300 Mpc, 839, `555555` | `266.65 s` | **`21.59 s`** (`16.43 s`) | **`12.35×`** | `0 / 6`, `0.0` |
+| `p5_384_96_mid_eor_cosmo` | High-resolution mixed shift (`OMm=0.315, OMb=0.0492, h=0.672, s8=0.828, ns=0.962`) | `384->96`, 300 Mpc, 839, `555555` | `266.65 s` | **`21.59 s`** (`16.43 s`) | **`12.35×`** | `0 / 6`, `0.0` |
 
 ---
 
