@@ -98,6 +98,18 @@ Measured in pure `cpu` mode via [run.py](../lightcone/run.py) inside a 32-CPU Sl
 
 CPU throughput improves substantially from 8 to 16 threads, then flattens between 16 and 32 threads (~2.4%–2.5% gain) as FFTW / OpenMP barriers and memory bandwidth saturate; a single RTX A6000 still delivers **`7.62×`–`7.80×`** end-to-end speedup over 16–32 CPU threads at `384/96`.
 
+### 4.4 Single-GPU Multi-Worker Concurrency (`384 -> 96`, `lightcone/run_batch.py`)
+
+Measured on `1× NVIDIA RTX A6000` (48 GB, `49,140 MiB`) + `16` CPU cores running independent `384 -> 96`, `375 Mpc`, `z = 5..14` (609-slice) tasks concurrently via [run_batch.py](../lightcone/run_batch.py) (reusing a shared compiled `c_21cmfast`, including per-worker `384³` CPU IC generation, `gk61.json`, GPU lightcone evolution, and HDF5 LZF fsync):
+
+| Concurrency (`threads/worker`) | Batch Wall (`completed/total`) | Per-Worker Lightcone `sync` (`phys`) | End-to-End Throughput (incl. IC) | Peak VRAM (`nvidia-smi`) |
+|---|---:|---:|---:|---:|
+| `1` (`8` threads, warm CuPy) | `43.76 s` (`1 / 1`) | `16.97 s` (`14.67 s`) | `82.3 / hour` | `2,342 MiB` (`4.8%`) |
+| `2` (`8` threads/worker) | `46.08 s` (`2 / 2`) | `31.78–31.91 s` (`29.38–29.51 s`) | `156.2 / hour` | `3,852 MiB` (`7.8%`) |
+| `4` (`4` threads/worker) | `59.41 s` (`4 / 4`) | `41.24–41.93 s` (`38.26–39.53 s`) | **`242.4 / hour`** | `6,851 MiB` (`13.9%`) |
+
+At `384 -> 96`, packing 4 concurrent workers onto a single RTX A6000 increases end-to-end throughput by **2.95×** (`82.3 -> 242.4` lightcones/hour) while using under 14% of device memory (`6.85 GB / 48 GB`). For large `1024 -> 256` runs, keep 1 worker per GPU and scale across GPUs with `--gpus`.
+
 ---
 
 ## 5. Relationship to the Earlier `gpu/` Coeval Pipeline

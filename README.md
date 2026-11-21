@@ -16,7 +16,7 @@ pip install cupy-cuda12x   # or cupy-cuda11x for CUDA 11.x
 python lightcone/run.py --dim 384 --hii-dim 96 --box-len 375.0 --max-z 14.0 --out runs/lc_gpu --work runs/work
 ```
 
-[lightcone/run.py](lightcone/run.py) automatically locates GSL, `fftw3f`, and CUDA, compiles the private CFFI library, and generates ICs on the first run; pass `--gsl-prefix` / `--fftw-prefix` for custom system installs, `--mode verify` to compare GPU vs. CPU (`256/64` runs in ~15 s GPU / ~105 s CPU), or see [gpu/launch_ps.py](gpu/launch_ps.py) for coeval power-spectrum archives.
+[lightcone/run.py](lightcone/run.py) automatically locates GSL, `fftw3f`, and CUDA, compiles the private CFFI library, and generates ICs on the first run; pass `--gsl-prefix` / `--fftw-prefix` for custom system installs, `--mode verify` to compare GPU vs. CPU (`256/64` runs in ~15 s GPU / ~105 s CPU), use [lightcone/run_batch.py](lightcone/run_batch.py) for concurrent single/multi-GPU batches (up to 242 lightcones/hour on 1x RTX A6000 at `384/96`), or see [gpu/launch_ps.py](gpu/launch_ps.py) for coeval power-spectrum archives.
 
 ## Benchmarks
 
