@@ -97,7 +97,7 @@ def build_arg_parser():
     p.add_argument("--astro-json", help="Astrophysics parameter overrides (JSON string or .json file path)")
     p.add_argument("--cosmo-json", help="Cosmology parameter overrides (JSON string or .json file path)")
     p.add_argument("--threads", type=int, default=8, help="OpenMP/FFTW thread count for lightcone evolution")
-    p.add_argument("--ic-threads", type=int, default=8, help="GSL IC thread count")
+    p.add_argument("--ic-threads", type=int, default=None, help="GSL IC thread count (defaults to --threads)")
     p.add_argument("--control-ic", type=Path, help="Existing InitialConditions HDF5 file; generated if omitted")
     p.add_argument("--skip-build", action="store_true", help="Reuse existing <work>/build/package if present")
     p.add_argument("--gsl-prefix", help="Explicit GSL installation prefix (sets PS_GSL_PREFIX)")
@@ -291,6 +291,7 @@ def main():
         if not control_ic.is_file():
             raise FileNotFoundError(f"Control IC not found: {control_ic}")
     else:
+        ic_threads = args.ic_threads if args.ic_threads is not None else args.threads
         control_ic = _generate_ic(
             base_env,
             work / "ic",
@@ -298,7 +299,7 @@ def main():
             args.dim,
             args.hii_dim,
             args.box_len,
-            args.ic_threads,
+            ic_threads,
         )
 
     common_env = {
