@@ -51,10 +51,13 @@ The repository provides two validated pipelines:
 
 ## Repository Layout
 
-- [lightcone/](lightcone): Complete Wave 6 GPU lightcone source, CUDA kernels, C patchers, and Slurm verification scripts (60 files)
+- [environment.yml](environment.yml): Conda specification (`python=3.10`, `gsl`, `fftw`, `c-compiler`, `openmp`, and Python dependencies)
+- [lightcone/](lightcone): Complete Wave 6 GPU lightcone source, CUDA kernels, C patchers, and Slurm verification scripts
+  - [lightcone/run.py](lightcone/run.py): One-command Wave 6 runner (`gpu-density`, `cpu`, and `verify` modes) that auto-detects `GSL`/`FFTW3f`/`CUDA`, compiles `c_21cmfast`, generates `gk61.json` and ICs, and exports all validated `PS_*` flags
+  - [lightcone/env_detect.py](lightcone/env_detect.py): Toolchain auto-detection for GSL, single-precision FFTW3 (`fftw3f`), and CUDA paths across Conda, system, and custom prefixes
   - [lightcone/build.py](lightcone/build.py): Patches and compiles the private `c_21cmfast` CFFI extension
-  - [lightcone/run_large_lightcone.py](lightcone/run_large_lightcone.py): Unified CPU / GPU 6-field lightcone entrypoint (supports `PS_ASTRO_JSON`, `PS_COSMO_JSON`, `PS_SEED`, `PS_DIM`/`PS_HII_DIM`/`PS_BOX_LEN`)
-  - [lightcone/phase3d_holdout_verify.sbatch](lightcone/phase3d_holdout_verify.sbatch), [lightcone/phase3e_multiparam_spotcheck.sbatch](lightcone/phase3e_multiparam_spotcheck.sbatch): Self-contained Slurm verification scripts that generate ICs and CPU references on the fly
+  - [lightcone/run_large_lightcone.py](lightcone/run_large_lightcone.py): Low-level CPU / GPU 6-field lightcone entrypoint (supports `PS_ASTRO_JSON`, `PS_COSMO_JSON`, `PS_SEED`, `PS_DIM`/`PS_HII_DIM`/`PS_BOX_LEN`)
+  - [lightcone/phase3d_holdout_verify.sbatch](lightcone/phase3d_holdout_verify.sbatch), [lightcone/phase3e_multiparam_spotcheck.sbatch](lightcone/phase3e_multiparam_spotcheck.sbatch): Self-contained Slurm verification templates that generate ICs and CPU references on the fly
   - [lightcone/phase3c_w4_verify.sbatch](lightcone/phase3c_w4_verify.sbatch), [lightcone/phase3d_1024_verify.sbatch](lightcone/phase3d_1024_verify.sbatch): Archival Slurm scripts configured for `/var/tmp`-cached `384/96` and `1024/256` CPU references on the benchmark node
 - [gpu/](gpu): Validated Coeval + power spectrum pipeline ([gpu/launch_ps.py](gpu/launch_ps.py), [gpu/integrated-lzf.sbatch](gpu/integrated-lzf.sbatch))
 - `resident_filter_20261118/fix/package/py21cmfast`: Unmodified base C/Python 21cmFAST tree
@@ -66,13 +69,43 @@ The repository provides two validated pipelines:
 
 ## Quickstart (Wave 6 GPU Lightcone)
 
-On a Linux CUDA host, prepare Python 3.10+ (NumPy, SciPy, Astropy, h5py with LZF, cffi, CuPy, PyYAML), an OpenMP-capable C compiler, GSL, and single-precision FFTW3 (`libfftw3f`, `libfftw3f_omp`). Ensure `include/` (`gsl/`, `fftw3.h`) and `lib/` (`libgsl`, `libfftw3f`, `libfftw3f_omp`) exist or are symlinked under the repository root.
+### 1. Clone and Create Environment
 
-### 1. Build Private `c_21cmfast` and Generate GK61 Quadrature Rule
+On a Linux CUDA host:
+
+```bash
+git clone https://github.com/HainaHuang729/21cmFAST-GPU.git
+cd 21cmFAST-GPU
+conda env create -f environment.yml
+conda activate 21cmfast-gpu
+pip install cupy-cuda12x   # or cupy-cuda11x for CUDA 11.x
+```
+
+> Using system or custom module installs instead of Conda? Export `PS_GSL_PREFIX` / `PS_FFTW_PREFIX` (or pass `--gsl-prefix` / `--fftw-prefix` to [lightcone/run.py](lightcone/run.py)). Both GSL (`gsl/gsl_integration.h`), single-precision FFTW3 (`fftw3.h`, `libfftw3f`, `libfftw3f_omp`), and CUDA are auto-detected across Conda, `pkg-config`, and standard system locations.
+
+### 2. Run GPU Lightcone or Full CPU/GPU `0 / 6` Self-Test
+
+A single command builds the private `c_21cmfast` extension, generates `gk61.json` and the GSL initial conditions, sets all validated Wave 6 flags, and runs:
+
+```bash
+# GPU Wave 6 lightcone run (384 -> 96, 375 Mpc, z = 5..14)
+python lightcone/run.py \
+  --dim 384 --hii-dim 96 --box-len 375.0 --max-z 14.0 \
+  --out runs/lc_gpu --work runs/work
+
+# End-to-end 256 -> 64 CPU vs GPU parity self-test (verifies 0 / 6 failed fields)
+python lightcone/run.py --mode verify \
+  --dim 256 --hii-dim 64 --box-len 200.0 --max-z 20.0 --seed 424242 \
+  --out runs/verify_256 --work runs/work
+```
+
+Pass `--skip-build` on subsequent runs to reuse `<work>/build/package`, `--control-ic /path/to/InitialConditions.h5` to reuse pre-computed ICs, or `--astro-json` / `--cosmo-json` for parameter overrides.
+
+<details>
+<summary>Manual / Low-Level Wave 6 Environment Invocation (without <code>lightcone/run.py</code>)</summary>
 
 ```bash
 export PS_GPU_ROOT="$PWD"
-export LD_LIBRARY_PATH="$PS_GPU_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export CUDA_PATH=/path/to/cuda
 export CPATH="$CUDA_PATH/include${CPATH:+:$CPATH}"
 export OMP_NUM_THREADS=8 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
@@ -83,18 +116,12 @@ export PYTHONPATH="$PWD/build_work/package:$PWD/lightcone"
 
 export PS_GK61_RULE="$PWD/build_work/gk61.json"
 python lightcone/gk61_rule.py "$PS_GK61_RULE"
-```
 
-### 2. Run `gpu-density` Mode with Validated Wave 6 Flags
-
-Provide a matching CPU-generated GSL initial conditions file via `PS_CONTROL_IC`:
-
-```bash
-export PS_FFTW_PERTURB_DENSITY=1 PS_FFTW_HEAT_FILTER=1 PS_GSL_EXACT_POWER=1
+export PS_FFTW_PERTURB_DENSITY=1 PS_FFTW_HEAT_FILTER=1 PS_FFTW_BRIGHTNESS=1 PS_GSL_EXACT_POWER=1
 export PS_CONDITIONAL_MODE=3 PS_BATCH_FILTER=1
 export PS_XRAY_NATIVE_MODE=4 PS_NATIVE_SIGMA=1 PS_NATIVE_MHR=1 PS_NATIVE_COLLAPSE=1 PS_NATIVE_XRAY=0
 export PS_QAG_MODE=deferred PS_GK61_COMPARE=0 PS_QAG_PROFILE=0
-export PS_CONDITIONAL_FULL_HIGH=0 PS_CONDITIONAL_NAN_SENTINEL=1 PS_GUARD_EPS_MULT=32
+export PS_CONDITIONAL_FULL_HIGH=0 PS_CONDITIONAL_NAN_SENTINEL=1 PS_GUARD_EPS_MULT=32 PS_XEREC_AMP_MULT=0
 export PS_LAZY_COEVAL_IC=1 PS_PARALLEL_LZF=1 PS_VERBOSE_HEAT=0
 export PS_REUSE_PREV_PERTURB=1 PS_FAST_LIGHTCONE=1 PS_CIC_PERTILE=1
 export PS_OMP_MHR=1 PS_CACHE_INIT_PS=1 PS_ASYNC_FFTW_PREFETCH=1
@@ -108,6 +135,8 @@ export PS_CONTROL_IC=/path/to/InitialConditions.h5
 
 python lightcone/run_large_lightcone.py gpu-density out_gpu work_gpu
 ```
+
+</details>
 
 > Note: [phase3d_holdout_verify.sbatch](lightcone/phase3d_holdout_verify.sbatch) and [phase3e_multiparam_spotcheck.sbatch](lightcone/phase3e_multiparam_spotcheck.sbatch) are self-contained Slurm verification templates; adapt `#SBATCH` headers and environment paths (`python`, `CUDA_PATH`) for other clusters.
 

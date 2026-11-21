@@ -3,7 +3,12 @@ from pathlib import Path
 import shutil
 import sys
 
+_LC_DIR = str(Path(__file__).resolve().parent.parent / "lightcone")
+if _LC_DIR not in sys.path:
+    sys.path.insert(0, _LC_DIR)
+
 from cffi import FFI
+from env_detect import detect_native_deps
 
 root, work = (Path(arg).resolve() for arg in sys.argv[1:])
 package = work / "package"
@@ -161,15 +166,28 @@ heat_helpers=src/"heating_helper_progs.c"
 heat_helpers.write_text(patch_heat_table_cache(heat_helpers.read_text()))
 from native_profile import patch_profile
 patch_profile(src)
+deps = detect_native_deps(root=root)
+missing = []
+if not deps["gsl_found"]:
+    missing.append("GSL (gsl/gsl_integration.h)")
+if not deps["fftw_found"]:
+    missing.append("FFTW3f (fftw3.h)")
+if missing:
+    raise RuntimeError(
+        "Missing native build dependencies: "
+        + ", ".join(missing)
+        + ". Install them via `conda env create -f environment.yml` or pass "
+        + "PS_GSL_PREFIX / PS_FFTW_PREFIX."
+    )
 ffi = FFI()
 ffi.set_source(
     "py21cmfast.c_21cmfast",
     '#define LOG_LEVEL 1\n#include "GenerateICs.c"',
-    include_dirs=[str(src), str(root/"include")],
-    library_dirs=[str(root/"lib")],
+    include_dirs=[str(src), *deps["include_dirs"]],
+    library_dirs=deps["library_dirs"],
     libraries=["m","gsl","gslcblas","fftw3f_omp","fftw3f"],
     extra_compile_args=["-fopenmp","-O3","-fno-fast-math","-fno-finite-math-only"],
-    extra_link_args=["-fopenmp",f"-Wl,-rpath,{root/'lib'}"],
+    extra_link_args=["-fopenmp", *[f"-Wl,-rpath,{d}" for d in deps["library_dirs"]]],
 )
 for name in ("21cmFAST.h","Globals.h"):
     ffi.cdef((src/name).read_text())
