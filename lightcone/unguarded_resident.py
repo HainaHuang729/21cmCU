@@ -30,9 +30,10 @@ class ResidentRuntime(Runtime):
         self.unpack_pass2 = module.get_function("unpack_extrapolate_bounds_pass2")
         self.filter_steps = []
         self.fallback_downloads = 0
-        self.use_fftw_heat_filter = os.environ.get("PS_FFTW_HEAT_FILTER", "1") == "1"
+        self.device_heat = os.environ.get("PS_DEVICE_HEAT") == "1"
+        self.use_fftw_heat_filter = not self.device_heat and os.environ.get("PS_FFTW_HEAT_FILTER", "1") == "1"
         self.heat_gpu_unpack = self.use_fftw_heat_filter and (os.environ.get("PS_HEAT_GPU_UNPACK", "1") == "1")
-        self.prefetch_enabled = os.environ.get("PS_ASYNC_FFTW_PREFETCH", "1") == "1"
+        self.prefetch_enabled = not self.device_heat and os.environ.get("PS_ASYNC_FFTW_PREFETCH", "1") == "1"
         self.nt_heat = max(1, min(8, int(os.environ.get("OMP_NUM_THREADS", "8"))))
         self.pinned_heat_mem = [None, None]
         self.pinned_heat_density = [None, None]
@@ -376,7 +377,8 @@ class ResidentRuntime(Runtime):
             return
         shape = (side,) * 3
         size = side**3
-        spectrum = cp.fft.rfftn(self.filter_input(density, size).reshape(shape))
+        field = self.filter_input(density, size).reshape(shape)
+        spectrum = self.perturbation.plan_fft(field, side) if self.device_heat else cp.fft.rfftn(field)
         scratch = cp.empty_like(spectrum)
         if self.density is None or self.density.shape != (count, size):
             self.density = cp.empty((count, size), dtype=cp.float32)
@@ -386,7 +388,8 @@ class ResidentRuntime(Runtime):
                 (spectrum, scratch, np.int32(side), np.float64(dk),
                  radius, np.int32(j != 0)),
             )
-            smooth = cp.fft.irfftn(scratch, s=shape, norm="forward")
+            smooth = (self.perturbation.plan_fft(scratch, side, True) if self.device_heat
+                      else cp.fft.irfftn(scratch, s=shape, norm="forward"))
             self.extrapolate_density(
                 ((size + 255) // 256,), (256,),
                 (smooth, self.density[j], np.int64(size),

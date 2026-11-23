@@ -1,6 +1,6 @@
 // Inputs use the reference code's half-complex layout and float wavevectors.
 extern "C" __global__ void ic_modes(const float2 *source, float2 *output,
-    int side, double dk, double volume, float radius, int operation, int a, int b) {
+    int side, double dk, double volume, float radius, int operation, int a, int b, int native_plan) {
     const long index = (long)blockIdx.x * blockDim.x + threadIdx.x;
     const int half = side / 2;
     const int stride = half + 1;
@@ -19,16 +19,16 @@ extern "C" __global__ void ic_modes(const float2 *source, float2 *output,
             return;
         }
         if (operation == 1) {
-            const double scale = (double)(k[a]/square) / volume;
+            const double scale = native_plan ? (double)((k[a]/square)/(float)volume) : (double)(k[a]/square) / volume;
             // A self-conjugate derivative vanishes on the real transform planes.
-            if ((side % 2) == 0 && (z == 0 || z == half) && mode[a] == half) {
+            if (!native_plan && (side % 2) == 0 && (z == 0 || z == half) && mode[a] == half) {
                 value = make_float2(0, 0);
             } else {
                 value = make_float2(-value.y * scale, value.x * scale);
             }
         } else {
             const float scale = -k[a] * k[b];
-            if ((side % 2) == 0 && (z == 0 || z == half) && a != b &&
+            if (!native_plan && (side % 2) == 0 && (z == 0 || z == half) && a != b &&
                 ((mode[a] == half) != (mode[b] == half))) {
                 value = make_float2(0, 0);
             } else {

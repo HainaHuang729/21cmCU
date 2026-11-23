@@ -300,6 +300,12 @@ lc_rect_new = """    def fill_lightcone_slices(self, c1: Coeval, c2: Coeval, lc_
                 return last_idx
             c_arrays.append((a1, a2, lco, 1 if self.interp_kinds.get(q, "mean") == "mean_max" else 0))
 
+        import sys
+        device_fill = getattr(sys.modules["py21cmfast"], "_ps_device_fill", None)
+        if device_fill is not None:
+            device_fill(self.quantities, c_arrays, lc_indices, k_indices, w1_arr, w2_arr, denom)
+            return int(lcidx[-1])
+
         from .c_21cmfast import ffi, lib
         nt = max(1, min(8, int(c1.user_params.N_THREADS)))
         lc_ptr = ffi.cast("const int *", lc_indices.ctypes.data)

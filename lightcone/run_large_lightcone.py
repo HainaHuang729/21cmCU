@@ -42,18 +42,32 @@ from py21cmfast.outputs import InitialConditions
 ic_start=perf_counter()
 path=os.environ["PS_CONTROL_IC"]
 if gpu:
+    if os.environ.get("PS_DEVICE_SLICES") == "1":
+        from py21cmfast.lightcones import RectilinearLightconer
+        if "_ps_device_fill" not in RectilinearLightconer.fill_lightcone_slices.__code__.co_consts:
+            raise RuntimeError("Rebuild the v3 package without --skip-build to enable CUDA slices.")
     from coupled import CoupledRuntime
     runtime=CoupledRuntime()
-    runtime.install(native,cached_ic=True,same_gsl=True)
+    runtime.install(native,cached_ic=bool(path),same_gsl=True)
     fields=["hires_density","lowres_density"] + [
       "lowres_v"+axis+suffix for suffix in ("","_2LPT") for axis in "xyz"
     ]
-    init_box=InitialConditions.from_file(path,arrays_to_load=fields)
+    if path:
+        init_box=InitialConditions.from_file(path,arrays_to_load=fields)
+        runtime.perturbation.load_cpu_ic(init_box)
+    else:
+        ic_user = dict(config["user"], N_THREADS=int(os.environ["PS_IC_THREADS"]))
+        init_box = py21cmfast.initial_conditions(
+            user_params=ic_user, cosmo_params=config["cosmo"], random_seed=config["seed"],
+            direc=scratch, write=False, regenerate=True, EVOLVE_DENSITY_LINEARLY=False, Z_HEAT_MAX=35.)
+    if os.environ.get("PS_DEVICE_SLICES") == "1":
+        from device_slices import DeviceSlices
+        device_slices = DeviceSlices(runtime)
+        py21cmfast._ps_device_fill = device_slices.fill
     def keep_loaded_ic(flag_options,force=False):
         if init_box.user_params.USE_RELATIVE_VELOCITIES or flag_options.USE_HALO_FIELD:
             raise ValueError("Unsupported IC features for the GPU control")
     init_box.prepare_for_spin_temp=keep_loaded_ic
-    runtime.perturbation.load_cpu_ic(init_box)
 else:
     init_box=InitialConditions.from_file(path)
 ic_seconds=perf_counter()-ic_start
@@ -114,12 +128,14 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
         xerec_box_opt = library.IonReferenceXeRecBoxOpt
         xerec_box_opt.argtypes = [args_ptr, float_ptr, float_ptr, C.c_int]; xerec_box_opt.restype = C.c_int
         ion_vox = hii_dim ** 3
-        pinned_delta_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
-        pinned_xe_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
-        pinned_rec_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
-        pinned_delta = np.frombuffer(pinned_delta_mem, dtype=np.float32, count=ion_vox)
-        pinned_xe = np.frombuffer(pinned_xe_mem, dtype=np.float32, count=ion_vox)
-        pinned_rec = np.frombuffer(pinned_rec_mem, dtype=np.float32, count=ion_vox)
+        device_ion = os.environ.get("PS_DEVICE_ION") == "1"
+        if not device_ion:
+            pinned_delta_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
+            pinned_xe_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
+            pinned_rec_mem = cp.cuda.alloc_pinned_memory(ion_vox * 4)
+            pinned_delta = np.frombuffer(pinned_delta_mem, dtype=np.float32, count=ion_vox)
+            pinned_xe = np.frombuffer(pinned_xe_mem, dtype=np.float32, count=ion_vox)
+            pinned_rec = np.frombuffer(pinned_rec_mem, dtype=np.float32, count=ion_vox)
         scale_replayed_density = False
         scale_is_noop = False
         amp_mult = float(os.environ.get("PS_XEREC_AMP_MULT", "0"))
@@ -153,18 +169,12 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
             py21cmfast._ps_set_lightcone_schedule = set_lc_schedule
             py21cmfast._ps_clear_lightcone_schedule = clear_lc_schedule
 
-        def native_scale_filter(a):
-            global prepared_node, native_seconds, batch_density_seconds, delta_upload_seconds
-            global scale_replayed_density, scale_is_noop
-            start = perf_counter()
-            scale_replayed_density = False
-            scale_is_noop = False
-            if prepared_node != a.z:
-                reset()
-                prepared_node = a.z
-            if a.last:
-                runtime.wait_heat_prefetch()
-                t0 = perf_counter()
+        def replay_density(a):
+            global batch_density_seconds, delta_upload_seconds
+            t0 = perf_counter()
+            if device_ion:
+                ion.exact_field(a, 0)
+            else:
                 if single_density_mt(C.byref(a), pinned_delta.ctypes.data_as(float_ptr)):
                     raise RuntimeError("Native single density FFTW failed")
                 batch_density_seconds += perf_counter() - t0
@@ -177,6 +187,35 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
                     cp.cuda.get_current_stream().ptr,
                 )
                 delta_upload_seconds += perf_counter() - tu
+
+        def replay_xe_rec(a):
+            global xerec_replay_seconds
+            tx = perf_counter()
+            skip_rec = 1 if ion.rec_is_zero else 0
+            if device_ion:
+                ion.exact_field(a, 1)
+                if skip_rec:
+                    ion.rec.fill(0)
+                else:
+                    ion.exact_field(a, 2)
+            else:
+                if xerec_box_opt(C.byref(a), pinned_xe.ctypes.data_as(float_ptr), pinned_rec.ctypes.data_as(float_ptr), skip_rec):
+                    raise RuntimeError("Native xe/rec FFTW replay failed")
+                _upload_pinned_xerec(skip_rec)
+            xerec_replay_seconds += perf_counter() - tx
+
+        def native_scale_filter(a):
+            global prepared_node, native_seconds, batch_density_seconds, delta_upload_seconds
+            global scale_replayed_density, scale_is_noop
+            start = perf_counter()
+            scale_replayed_density = False
+            scale_is_noop = False
+            if prepared_node != a.z:
+                reset()
+                prepared_node = a.z
+            if a.last:
+                runtime.wait_heat_prefetch()
+                replay_density(a)
                 scale_replayed_density = True
             else:
                 actual_filter(a)
@@ -204,12 +243,7 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
             start = perf_counter()
             if a.last:
                 runtime.wait_heat_prefetch()
-                tx = perf_counter()
-                skip_rec = 1 if ion.rec_is_zero else 0
-                if xerec_box_opt(C.byref(a), pinned_xe.ctypes.data_as(float_ptr), pinned_rec.ctypes.data_as(float_ptr), skip_rec):
-                    raise RuntimeError("Native xe/rec FFTW replay failed")
-                _upload_pinned_xerec(skip_rec)
-                xerec_replay_seconds += perf_counter() - tx
+                replay_xe_rec(a)
                 rec_replay_scales += 1
                 native_scales += 1
                 native_seconds += perf_counter() - start
@@ -222,19 +256,7 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
                     native_seconds += perf_counter() - start
                     return 0
                 runtime.wait_heat_prefetch()
-                t0 = perf_counter()
-                if single_density_mt(C.byref(a), pinned_delta.ctypes.data_as(float_ptr)):
-                    raise RuntimeError("Native single density FFTW failed")
-                batch_density_seconds += perf_counter() - t0
-                tu = perf_counter()
-                cp.cuda.runtime.memcpyAsync(
-                    ion.delta.data.ptr,
-                    pinned_delta.ctypes.data,
-                    pinned_delta.nbytes,
-                    cp.cuda.runtime.memcpyHostToDevice,
-                    cp.cuda.get_current_stream().ptr,
-                )
-                delta_upload_seconds += perf_counter() - tu
+                replay_density(a)
                 scale_replayed_density = True
                 active_density_replays += 1
                 native_seconds += perf_counter() - start
@@ -249,12 +271,7 @@ if mode in ("gpu-last","gpu-guard","gpu-all","gpu-density"):
             if need_xerec:
                 guard_scales.append([a.z, a.radius, float(distance)])
                 runtime.wait_heat_prefetch()
-                tx = perf_counter()
-                skip_rec = 1 if ion.rec_is_zero else 0
-                if xerec_box_opt(C.byref(a), pinned_xe.ctypes.data_as(float_ptr), pinned_rec.ctypes.data_as(float_ptr), skip_rec):
-                    raise RuntimeError("Native xe/rec FFTW replay failed")
-                _upload_pinned_xerec(skip_rec)
-                xerec_replay_seconds += perf_counter() - tx
+                replay_xe_rec(a)
                 rec_replay_scales += 1
             native_scales += 1
             native_seconds += perf_counter() - start
@@ -583,18 +600,24 @@ with h5py.File(destination/"lightcone.h5","w") as out:
         all_finite.restype = C.c_int
         nt_fin = min(8, max(1, int(os.environ.get("OMP_NUM_THREADS", "8"))))
     if gpu and os.environ.get("PS_PARALLEL_LZF") == "1":
-        from parallel_lzf import ParallelLZFWriter
+        device_lzf = os.environ.get("PS_DEVICE_LZF") == "1"
+        if device_lzf:
+            from device_lzf import DeviceLZFWriter as Writer
+        else:
+            from parallel_lzf import ParallelLZFWriter as Writer
         def iter_fields():
             for field in FIELDS:
                 arr = np.asarray(lc.lightcones[field],dtype=np.float32)[...,window_sel]
                 assert arr.shape == (config["user"]["HII_DIM"],)*2+(depth,)
-                if arr.flags.c_contiguous:
+                if device_lzf:
+                    pass  # DeviceLZFWriter checks every element after upload.
+                elif arr.flags.c_contiguous:
                     assert all_finite(arr.ctypes.data_as(C.POINTER(C.c_float)), np.uint64(arr.size), nt_fin) == 1, field
                 else:
                     for k in range(0,depth,16):
                         assert np.isfinite(arr[:,:,k:k+16]).all(),field
                 yield (out,field,arr,(min(64,arr.shape[0]),min(64,arr.shape[1]),min(16,depth)))
-        with ParallelLZFWriter(workers=min(8, os.cpu_count() or 8)) as writer:
+        with Writer(workers=min(8, os.cpu_count() or 8)) as writer:
             writer.write(iter_fields())
     else:
         for field in FIELDS:
@@ -616,7 +639,14 @@ fsync_seconds = perf_counter() - t_fsync_start
 report={"mode":mode, "dim":dim, "hii_dim":hii_dim, "box_len":config["user"]["BOX_LEN"], "seed":config["seed"], "point":config["index"], "max_redshift":max_z, "ic_preparation_seconds":ic_seconds, "physics_seconds":physics, "slice_count":depth,
         "seconds_to_sync":perf_counter()-begin,"fields":FIELDS,"bytes":(destination/"lightcone.h5").stat().st_size}
 if gpu:
-    report["ic_read_and_upload_seconds"]=ic_seconds
+    report["ic_source"] = runtime.ic_rng
+    report["ic_cuda_callback_seconds"] = sum(runtime.ic.seconds) if runtime.ic else 0.0
+    if path:
+        report["ic_read_and_upload_seconds"] = ic_seconds
+    report["cuda_slicing_calls"] = device_slices.calls if os.environ.get("PS_DEVICE_SLICES") == "1" else 0
+    if os.environ.get("PS_DEVICE_SLICES") == "1" and depth and not device_slices.calls:
+        raise RuntimeError("CUDA lightcone slices were not invoked. Rebuild without --skip-build.")
+    report["compression_backend"] = "cuda" if os.environ.get("PS_DEVICE_LZF") == "1" and os.environ.get("PS_PARALLEL_LZF") == "1" else "cpu"
     report["evicted_snapshots"]=runtime.report()["evicted_snapshots"]
     report["native_first_heat_rows"]=runtime.tables.native_first_heat_rows
     report["qag_profile"]=qag_profile

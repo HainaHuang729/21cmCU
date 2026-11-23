@@ -1,33 +1,31 @@
-extern "C" __global__ void mhr_rates(const double *rows,const double *gammas,
-    const double *nodes,const double *weights,int nz,int ng,int nq,double alpha,double helium,
-    double *rates) {
-    const int i=blockIdx.x, lane=threadIdx.x;
-    if(i>=nz*ng)return;
-    const double *p=rows+5*(i/ng);
-    const double g=(float)exp(gammas[i%ng]);
-    const double self_shield=26.7*pow((1.+p[0])/10.,-3.)*pow(g,2./3.);
-    const double lo=log(.01),hi=log(200.);
-    double sum=0.;
-    for(int j=lane;j<nq;j+=blockDim.x) {
-        const double del=exp(.5*(hi-lo)*nodes[j]+.5*(hi+lo));
+struct RecombinationRate {
+    const double *p;
+    double g,self_shield,alpha,helium;
+    __device__ double operator()(double log_density) const {
+        const double del=exp(log_density);
         const double x=del/self_shield;
         const double gamma=g*(.98*pow(1.+pow(x,1.64),-2.28)+.02*pow(1.+x,-.84))*1.e-12;
         const double density=p[4]*del;
         const double y=gamma/(density*helium*alpha);
-        const double chi=y>1.e5?1./y:2./(2.+y+sqrt(y*(y+4.)));
+        const double approx=helium*density*alpha/gamma;
+        const double b=-2.-y;
+        const double chi=approx<1.e-30 ? 0. : (approx<1.e-5 ? approx : (-b-sqrt(b*b-4.))/2.);
         const double frac=1.-chi;
         const double h=(pow(del,-2./3.)-p[2])/(2.*7.61/(3.*(1.+p[0])));
         const double pdf=p[1]*exp(-.5*h*h)*pow(del,p[3]);
-        sum+=weights[j]*1.e15*density*pdf*alpha*frac*frac*del*del;
+        return 1.e15*density*pdf*alpha*frac*frac*del*del;
     }
-    __shared__ double partial[64];
-    partial[lane]=sum;
-    __syncthreads();
-    for(int step=blockDim.x/2;step;step/=2){
-        if(lane<step)partial[lane]+=partial[lane+step];
-        __syncthreads();
-    }
-    if(!lane)rates[i]=partial[0]*.5*(hi-lo);
+};
+
+extern "C" __global__ void mhr_rates(const double *rows,const double *gammas,
+    const double *rule,int nz,int ng,double alpha,double helium,double *rates) {
+    const int i=blockIdx.x;
+    if(i>=nz*ng)return;
+    const double *p=rows+5*(i/ng);
+    const double g=(float)exp(gammas[i%ng]);
+    const double shield=26.7*pow((1.+p[0])/10.,-3.)*pow(g,2./3.);
+    double value=table_integral(log(.01),log(200.),.01,RecombinationRate{p,g,shield,alpha,helium},rule);
+    if (!threadIdx.x) rates[i]=value;
 }
 
 extern "C" __global__ void natural_derivatives(const double *x,const double *values,
@@ -55,28 +53,21 @@ extern "C" __global__ void natural_derivatives(const double *x,const double *val
     out[n-1]=(y[n-1]-y[n-2])/h+h*(second[n-2]+2.*second[n-1])/6.;
 }
 
-extern "C" __global__ void mhr_pdf_normalization(const double *params,
-    const double *nodes,const double *weights,double *norm) {
-    const int row=blockIdx.x,lane=threadIdx.x;
-    const double *p=params+3*row;
-    const double spread=2.*7.61/(3.*(1.+p[0]));
-    const int intervals=116, order=32;
-    const double extent=25.*log(10.), width=2.*extent/intervals;
-    double sum=0.;
-    for (int j=lane;j<intervals*order;j+=blockDim.x) {
-        const int interval=j/order,k=j%order;
-        const double log_density=-extent+(interval+.5*(1.+nodes[k]))*width;
-        const double diff=(exp(-2./3.*log_density)-p[1])/spread;
-        sum+=weights[k]*exp(-.5*diff*diff+(1.+p[2])*log_density);
+struct DensityPDF {
+    const double *p;
+    __device__ double operator()(double density) const {
+        const double spread=2.*7.61/(3.*(1.+p[0]));
+        const double diff=pow(density,-2./3.)-p[1];
+        return exp(-diff*diff/(2.*spread*spread))*pow(density,p[2]);
     }
-    __shared__ double partial[128];
-    partial[lane]=sum;
-    __syncthreads();
-    for (int step=blockDim.x/2;step;step/=2) {
-        if (lane<step) partial[lane]+=partial[lane+step];
-        __syncthreads();
-    }
-    if (!lane) norm[row]=1./(.5*width*partial[0]);
+};
+
+extern "C" __global__ void mhr_pdf_normalization(const double *params,const double *rule,
+    int count,double *norm) {
+    const int row=blockIdx.x;
+    if(row>=count)return;
+    double value=table_integral(1.e-25,1.e25,.001,DensityPDF{params+3*row},rule);
+    if(!threadIdx.x) norm[row]=1./value;
 }
 
 extern "C" __global__ void mhr_pdf_interpolate(double *rows,const double *z,

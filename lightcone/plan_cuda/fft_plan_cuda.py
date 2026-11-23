@@ -682,11 +682,11 @@ def plans(n, threads):
     # FFTW wisdom/thread settings are process-global. Inspect a clean ESTIMATE
     # reference in a separate process without mutating the simulation's state.
     script = Path(__file__).resolve().with_name("inspect_fft_plans.py")
-    return json.loads(
-        subprocess.check_output(
-            [sys.executable, str(script), str(n), "--threads", str(threads)], text=True
-        )
-    )
+    args = [sys.executable, str(script), str(n), "--threads", str(threads)]
+    native = sys.modules.get("py21cmfast.c_21cmfast")
+    if native is not None:
+        args.extend(["--library", native.__file__])
+    return json.loads(subprocess.check_output(args, text=True))
 
 
 @cp.memoize(for_each_device=True)

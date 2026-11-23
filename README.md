@@ -18,6 +18,16 @@ python lightcone/run.py --dim 384 --hii-dim 96 --box-len 375.0 --max-z 14.0 --ou
 
 [lightcone/run.py](lightcone/run.py) automatically locates GSL, `fftw3f`, and CUDA, compiles the private CFFI library, and generates ICs on the first run; pass `--gsl-prefix` / `--fftw-prefix` for custom system installs, `--mode verify` to compare GPU vs. CPU (`256/64` runs in ~15 s GPU / ~105 s CPU), use [lightcone/run_batch.py](lightcone/run_batch.py) for concurrent single/multi-GPU batches, or see [gpu/launch_ps.py](gpu/launch_ps.py) for coeval power-spectrum archives.
 
+### Single v3 lightcone from a seed
+
+```bash
+python lightcone/run.py --single-box --threads 8 --dim 384 --hii-dim 96 --box-len 375 --max-z 14 --window-max-z 14 --out runs/single --work runs/single-work
+```
+
+This path keeps the production GSL Fourier realization and computes the IC density and displacements in the evolution process. CUDA handles perturbations, heat filtering, ionization and recombination replay, the auxiliary mass and recombination integrals, brightness, rectilinear slice interpolation, and shuffle/LZF compression. The host generates the initial GSL modes, inspects FFTW plans, drives redshift and scale iteration, exchanges host snapshots required by v3, and commits the HDF5 chunks to disk. The supported branch uses cubic low-resolution 2LPT, the standard Eisenstein–Hu spectrum and supported FFTW ESTIMATE plans.
+
+Use `--skip-build` with the same work directory after the first build. Use `--control-ic FILE` to reuse an existing IC. With `--mode verify --single-box` and no supplied IC, both solvers start from the specified seed. The [single-box acceptance report](reports/v3-single-box-acceptance.json) records full launcher timings and comparisons at the original per-voxel tolerances.
+
 ### GPU perturbation FFTs on the v3 lightcone
 
 Select `--perturb-fft cuda-plan` on `lightcone/run.py` or `lightcone/run_batch.py` to execute the v3 perturbation density and line-of-sight velocity FFTs on CUDA. The v3 native library supplies its actual in-place FFTW plans. The converter compiles their supported scalar/SSE2 arithmetic for the GPU and reports the number of completed transforms in `timing.json` under `runtime_summary.cuda_plan_transforms`. The current implementation targets the cubic low-resolution 2LPT path with FFTW wisdom disabled. An unsupported plan in this path raises an error. The existing `fftw` default uses native FFTW for these transforms. The [v3 paired acceptance report](reports/v3-perturb-cuda-plan-acceptance.json) includes six-field comparisons and launcher wall times for both backends.

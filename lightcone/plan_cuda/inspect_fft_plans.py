@@ -4,11 +4,12 @@ import ctypes as C
 import json
 import re
 
-import py21cmfast.c_21cmfast as native
 
-
-def inspect(sizes, threads):
-    lib = C.CDLL(native.__file__)
+def inspect(sizes, threads, library=None):
+    if library is None:
+        import py21cmfast.c_21cmfast as native
+        library = native.__file__
+    lib = C.CDLL(library)
     ptr = C.c_void_p
     lib.fftwf_malloc.argtypes = [C.c_size_t]
     lib.fftwf_malloc.restype = lib.fftwf_sprint_plan.restype = ptr
@@ -50,7 +51,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sizes", nargs="+", type=int)
     parser.add_argument("--threads", nargs="+", type=int, default=[2])
+    parser.add_argument("--library", help="Path to the loaded v3 native extension")
     args = parser.parse_args()
     if min(args.sizes + args.threads) < 1:
         parser.error("sizes and thread counts must be positive")
-    print(json.dumps(inspect(args.sizes, args.threads), indent=2))
+    print(json.dumps(inspect(args.sizes, args.threads, args.library), indent=2))

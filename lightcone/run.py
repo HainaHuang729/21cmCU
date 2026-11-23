@@ -98,6 +98,7 @@ def build_arg_parser():
     p.add_argument("--astro-json", help="Astrophysics parameter checks (JSON string or .json file path)")
     p.add_argument("--cosmo-json", help="Cosmology parameter checks (JSON string or .json file path)")
     p.add_argument("--threads", type=int, default=8, help="OpenMP/FFTW thread count for lightcone evolution")
+    p.add_argument("--single-box", action="store_true", help="Use resident CUDA evolution for a single complete lightcone")
     p.add_argument("--perturb-fft", choices=("fftw", "cuda-plan"), default="fftw",
                    help="Wave 6 perturbation FFT backend")
     p.add_argument("--ic-threads", type=int, default=None, help="GSL IC thread count (defaults to --threads)")
@@ -170,6 +171,11 @@ def _generate_ic(base_env, ic_dir, cfg, dim, hii_dim, box_len, ic_threads):
 def _run_lightcone(stage, base_env, sub_mode, out_dir, scratch_dir, common_env):
     run_env = dict(base_env)
     run_env.update(WAVE6_GPU_ENV if sub_mode != "cpu" else CPU_BASELINE_ENV)
+    if sub_mode != "cpu":
+        tables = base_env.get("PS_DEVICE_TABLES", "")
+        for name in ("sigma", "collapse", "mhr"):
+            if tables == "1" or name in tables.split(","):
+                run_env["PS_NATIVE_" + name.upper()] = "0"
     if sub_mode == "cpu":
         run_env["CUDA_VISIBLE_DEVICES"] = ""
     run_env.update(common_env)
@@ -218,6 +224,10 @@ def main():
                 raise ValueError(f"{group}.{key} conflicts with registered point {cfg['index']}")
 
     base_env = os.environ.copy()
+    if args.single_box and args.mode != "cpu":
+        args.perturb_fft = "cuda-plan"
+        for stage_name in ("HEAT", "ION", "BRIGHTNESS", "SLICES", "IC", "LZF", "TABLES"):
+            base_env.setdefault("PS_DEVICE_" + stage_name, "1")
     if args.gsl_prefix:
         base_env["PS_GSL_PREFIX"] = str(Path(args.gsl_prefix).expanduser().resolve())
     if args.fftw_prefix:
@@ -289,6 +299,8 @@ def main():
         control_ic = args.control_ic.resolve()
         if not control_ic.is_file():
             raise FileNotFoundError(f"Control IC not found: {control_ic}")
+    elif args.single_box and args.mode == "gpu-density":
+        control_ic = None
     else:
         ic_threads = args.ic_threads if args.ic_threads is not None else args.threads
         control_ic = _generate_ic(
@@ -306,7 +318,8 @@ def main():
         "PS_N_THREADS": str(args.threads),
         "PS_PERTURB_FFT": args.perturb_fft,
         "PS_GK61_RULE": str(gk61_path),
-        "PS_CONTROL_IC": str(control_ic),
+        "PS_CONTROL_IC": str(control_ic) if control_ic else "",
+        "PS_IC_THREADS": str(args.ic_threads or args.threads),
         "PS_DIM": str(args.dim),
         "PS_HII_DIM": str(args.hii_dim),
         "PS_BOX_LEN": str(args.box_len),
@@ -326,6 +339,8 @@ def main():
     cpu_out = out_dir / "cpu"
     gpu_out = out_dir / "gpu"
     _run_lightcone(stage, base_env, "cpu", cpu_out, work / "lc_scratch_cpu", common_env)
+    if args.single_box and args.control_ic is None:
+        common_env["PS_CONTROL_IC"] = ""
     _run_lightcone(stage, base_env, "gpu-density", gpu_out, work / "lc_scratch_gpu", common_env)
 
     comp_proc = subprocess.run(

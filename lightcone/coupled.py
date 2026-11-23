@@ -97,6 +97,8 @@ class CoupledRuntime(ResidentRuntime):
         self.resident_filter_inputs = 0
         self.ionization = IonRuntime(self)
         self.spin_fields=LatestSnapshots()
+        self.electron_fields=LatestSnapshots()
+        self.temperature_fields=LatestSnapshots()
         self.lib.SetGPUHeatTableCache.argtypes=[C.c_int]
         self.lib.SetGPUHeatTableCache.restype=None
         self.lib.SetGPUHeatTableCache(1)
@@ -133,6 +135,8 @@ class CoupledRuntime(ResidentRuntime):
         status=super().compute(a)
         if status==0:
             k=(C.cast(a.out_x,C.c_void_p).value,float(a.scalars[0]))
+            self.electron_fields[k[0]]=self.states[k][0]
+            self.temperature_fields[C.cast(a.out_t,C.c_void_p).value]=self.states[k][1]
             self.spin_fields[C.cast(a.out_ts,C.c_void_p).value]=self.states[k][2]
         return status
 

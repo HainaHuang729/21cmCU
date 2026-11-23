@@ -43,7 +43,8 @@ class BrightnessRuntime:
     def compute(self,side,rsd,z,dk,factor,trad,hubble,limit,density,velocity,neutral,ts,out):
         try:
             start=time.perf_counter()
-            if os.environ.get("PS_FFTW_BRIGHTNESS", "1") == "1":
+            device = os.environ.get("PS_DEVICE_BRIGHTNESS") == "1"
+            if not device and os.environ.get("PS_FFTW_BRIGHTNESS", "1") == "1":
                 if hasattr(self.thermal, "wait_heat_prefetch"):
                     self.thermal.wait_heat_prefetch()
                 rc = self.fast_fftw(side, rsd, z, dk, factor, trad, hubble, limit,
@@ -65,11 +66,11 @@ class BrightnessRuntime:
                 self.seed_uploads+=1
             g=d
             if rsd:
-                spec=cp.fft.rfftn(v.reshape(shape))
+                spec=(self.thermal.perturbation.plan_fft(v.reshape(shape),side) if device else cp.fft.rfftn(v.reshape(shape)))
                 deriv=cp.empty_like(spec)
                 self.derivative(((spec.size+255)//256,),(256,),
-                                (spec,deriv,np.int32(side),np.float64(dk)))
-                g=cp.fft.irfftn(deriv,s=shape,norm="forward").ravel()
+                                (spec,deriv,np.int32(side),np.float64(dk),np.int32(device)))
+                g=(self.thermal.perturbation.plan_fft(deriv, side, True) if device else cp.fft.irfftn(deriv,s=shape,norm="forward")).ravel()
             result=cp.empty(n,dtype=cp.float32)
             self.cell(((n+255)//256,),(256,),
                       (d,x,spin,g,result,np.int32(n),np.float32(factor),

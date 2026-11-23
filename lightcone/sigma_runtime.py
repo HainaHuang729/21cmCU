@@ -1,6 +1,6 @@
 """Compute power spectrum moments in batched CUDA quadrature."""
 import ctypes as C
-from pathlib import Path
+from table_rule import table_rule, table_source
 import time
 import traceback
 
@@ -14,9 +14,9 @@ Hook=C.CFUNCTYPE(C.c_int,C.c_int,D,D,D,D,D)
 class SigmaMoments:
     def __init__(self,native):
         self.lib=C.CDLL(native.__file__)
-        self.kernel=cp.RawKernel(Path(__file__).with_name("sigma.cu").read_text(),
-                                 "sigma_moments",options=("--fmad=false",))
-        self.nodes=tuple(cp.asarray(v) for v in np.polynomial.legendre.leggauss(16))
+        self.kernel=cp.RawKernel(table_source("sigma.cu"),
+                                 "sigma_moments",options=("--fmad=false","--std=c++11"))
+        self.rule=table_rule()
         self.calls=0
         self.launches=0
         self.seconds=0.
@@ -37,8 +37,8 @@ class SigmaMoments:
             v=self.cache.get(key)
             if v is None:
                 g,d=(cp.empty(n,dtype=cp.float64) for _ in range(2))
-                self.kernel((n,),(128,),(cp.asarray(params),cp.asarray(radius),cp.asarray(mass),
-                                         *self.nodes,np.int32(n),g,d))
+                self.kernel((n,),(32,),(cp.asarray(params),cp.asarray(radius),cp.asarray(mass),
+                                         self.rule,np.int32(n),g,d))
                 v=(g.get(),d.get())
                 if not all(np.isfinite(x).all() for x in v):
                     raise FloatingPointError("Nonfinite sigma moments")

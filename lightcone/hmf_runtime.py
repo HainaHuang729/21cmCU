@@ -1,6 +1,6 @@
 """GPU quadrature for global Sheth-Tormen collapsed fractions."""
 import ctypes as C
-from pathlib import Path
+from table_rule import table_rule, table_source
 import time
 import traceback
 
@@ -14,9 +14,9 @@ Hook=C.CFUNCTYPE(C.c_int,C.c_int,C.c_int,D,D,F,F,D)
 
 class GlobalCollapse:
     def __init__(self,native):
-        self.kernel=cp.RawKernel(Path(__file__).with_name("hmf.cu").read_text(),
-                                 "global_collapse",options=("--fmad=false",))
-        self.nq=tuple(cp.asarray(a) for a in np.polynomial.legendre.leggauss(8))
+        self.kernel=cp.RawKernel(table_source("hmf.cu"),
+                                 "global_collapse",options=("--fmad=false","--std=c++11"))
+        self.rule=table_rule()
         self.lib=C.CDLL(native.__file__)
         self.cb=Hook(self.compute)
         setter=self.lib.SetGPUGlobalCollapse
@@ -33,7 +33,7 @@ class GlobalCollapse:
             arrays=[cp.asarray(np.ctypeslib.as_array(pointer,shape=(count,)))
                     for pointer,count in ((p,12),(g,n),(s,ns),(d,ns))]
             await_values=cp.empty(n,dtype=cp.float64)
-            self.kernel((n,),(128,),(*arrays,*self.nq,np.int32(ns),await_values))
+            self.kernel((n,),(32,),(*arrays,self.rule,np.int32(ns),np.int32(n),await_values))
             host=await_values.get()
             if not np.isfinite(host).all():
                 raise FloatingPointError("Nonfinite global collapse")

@@ -1,7 +1,6 @@
 """GPU excursion-set filtering, cell ionization, and recombination history."""
 import ctypes as C
 import os
-import os
 from pathlib import Path
 import time
 import traceback
@@ -37,6 +36,7 @@ class IonRuntime:
         self.history = LatestSnapshots()
         self.counts = [0]*6
         self.neutral_fields = LatestSnapshots()
+        self.rec_fields = LatestSnapshots()
         self.seconds = [0.]*6
         self.reference_seconds=[0.]*4
         self.reference_passes=[0,0]
@@ -129,6 +129,7 @@ class IonRuntime:
         neutral.get(out=arr(a.xhi,n))
         tk.get(out=arr(a.temperature,n))
         self.neutral_fields[address(a.xhi)]=neutral
+        self.rec_fields.pop(address(a.nrec), None)
 
     def begin(self,a):
         self.shape = (a.side,)*3
@@ -146,6 +147,9 @@ class IonRuntime:
         if prior is None:
             prior = tuple(cp.asarray(arr(pointer,self.n)) for pointer in (a.old_rec,a.old_z))
         self.prev_rec,self.prev_z = prior
+        if os.environ.get("PS_DEVICE_ION") == "1":
+            self.plan_inputs = (self.density, xe, self.prev_rec)
+            self.plan_spectra = {}
         self.max_pair_dev[0] = cp.max(xe)
         self.max_pair_dev[1] = cp.max(self.prev_rec)
         cp.cuda.runtime.memcpyAsync(
@@ -213,6 +217,24 @@ class IonRuntime:
             else:
                 self.poisson=self.poisson_generator.draw(self.n,a.threads,a.npoisson)
                 self.poisson_gpu_used=True
+
+    def exact_field(self, a, field):
+        fft = self.thermal.perturbation.plan_fft
+        if field not in self.plan_spectra:
+            self.plan_spectra[field] = fft(self.plan_inputs[field].reshape(self.shape), a.side)
+        spectrum = self.plan_spectra[field]
+        filtered = cp.empty_like(spectrum)
+        self.launch(self.kernels[0], spectrum.size, spectrum, filtered, np.int32(a.side),
+                    np.float64(a.dk), np.float32(a.radius), np.int32(a.filtered))
+        result = fft(filtered, a.side, True).reshape(-1)
+        if field == 0:
+            self.delta = cp.maximum(result, np.float32(-1. + 1.e-7))
+            bounds = cp.stack((self.delta.min(), self.delta.max())).get()
+            a.lo, a.hi = min(0., float(bounds[0])), max(0., float(bounds[1]))
+        elif field == 1:
+            self.xe = cp.clip(result, 0., np.float32(.999))
+        else:
+            self.rec = cp.maximum(result, 0.)
 
     def filter(self,a):
         args = (np.int32(a.side),np.float64(a.dk),np.float32(a.radius),np.int32(a.filtered))
@@ -383,6 +405,7 @@ class IonRuntime:
                 self.pmemcpy(C.cast(ptr, C.c_void_p).value, self.finish_pinned[idx].ctypes.data, nbytes, copy_nt)
         self.neutral_fields[address(a.xhi)]=self.xhi
         self.history[(address(a.nrec),a.z)] = (out,self.zre)
+        self.rec_fields[address(a.nrec)] = out
         if self.counts[4] % 10 == 0:
             print(f"GPU_ION z={a.z} active_steps={self.counts[4]+1}",flush=True)
 

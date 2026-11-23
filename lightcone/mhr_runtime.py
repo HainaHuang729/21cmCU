@@ -1,6 +1,6 @@
 """Keep the recombination rate and natural spline tables resident on CUDA."""
 import ctypes as C
-from pathlib import Path
+from table_rule import table_rule, table_source
 import time
 import traceback
 
@@ -13,15 +13,14 @@ Callback=C.CFUNCTYPE(C.c_int,C.c_int,C.c_int,D,D,C.c_double,C.c_double,C.c_int,D
 
 class MHRTable:
     def __init__(self,native):
-        code=Path(__file__).with_name("mhr.cu").read_text()
-        module=cp.RawModule(code=code,options=("--fmad=false",))
+        code=table_source("mhr.cu")
+        module=cp.RawModule(code=code,options=("--fmad=false","--std=c++11"))
         self.rates=module.get_function("mhr_rates")
         self.deriv=module.get_function("natural_derivatives")
         self.normalize=module.get_function("mhr_pdf_normalization")
         self.apply_norm=module.get_function("mhr_pdf_interpolate")
         self.pdf_rows=0
-        self.pdf_quad=tuple(cp.asarray(x) for x in np.polynomial.legendre.leggauss(32))
-        self.gl=tuple(cp.asarray(x) for x in np.polynomial.legendre.leggauss(128))
+        self.rule=table_rule()
         self.knots=None
         self.calls=0
         self.seconds=0.
@@ -41,13 +40,13 @@ class MHRTable:
             az=cp.ascontiguousarray(pdf[:,0])
             norm=cp.empty(na,dtype=cp.float64)
             slopes=cp.empty_like(norm)
-            self.normalize((na,),(128,),(pdf,*self.pdf_quad,norm))
+            self.normalize((na,),(32,),(pdf,self.rule,np.int32(na),norm))
             self.deriv((1,),(32,),(az,norm,np.int32(1),np.int32(na),slopes))
             self.apply_norm(((nz+63)//64,),(64,),(r,az,norm,slopes,np.int32(nz),np.int32(na)))
             self.pdf_rows+=na
             vals=cp.empty((nz,ng),dtype=cp.float64)
             deriv=cp.empty_like(vals)
-            self.rates((nz*ng,),(64,),(r,x,*self.gl,np.int32(nz),np.int32(ng),np.int32(128),
+            self.rates((nz*ng,),(32,),(r,x,self.rule,np.int32(nz),np.int32(ng),
                                       np.float64(alpha),np.float64(helium),vals))
             self.deriv(((nz+31)//32,),(32,),(x,vals,np.int32(nz),np.int32(ng),deriv))
             if not bool(cp.isfinite(vals).all() & cp.isfinite(deriv).all()):

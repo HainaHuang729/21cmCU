@@ -20,6 +20,7 @@ class ICRuntime:
         self.transform = module.get_function("ic_modes")
         self.combine = module.get_function("ic_source")
         self.fft64 = os.environ.get("PS_IC_FFT64") == "1"
+        self.device_ic = os.environ.get("PS_DEVICE_IC") == "1"
         self.archive_complete = os.environ.get("PS_ARCHIVE_GPU_IC") == "1"
         self.fields = {}
         self.seconds = []
@@ -56,7 +57,11 @@ class ICRuntime:
         buffer = cp.empty_like(modes)
         ratio = side//coarse
 
+        if self.device_ic:
+            from plan_cuda.fft_plan_cuda import transform
         def irfft(source):
+            if self.device_ic:
+                return cp.ascontiguousarray(transform(source, side, True, threads=1))
             if self.fft64:
                 precise = cp.fft.irfftn(source.astype(cp.complex128), s=shape, norm="forward")
                 return precise.astype(cp.float32)
@@ -67,7 +72,7 @@ class ICRuntime:
         def inverse(source, mode, volume, radius, a=0, b=0, stage=0, index=0):
             self.launch(self.transform, spectral_size, (source, buffer, np.int32(side),
                 np.float64(dk), np.float64(volume), np.float32(radius), np.int32(mode),
-                np.int32(a), np.int32(b)))
+                np.int32(a), np.int32(b), np.int32(self.device_ic)))
             capture({2:1,4:3,5:10,9:8}[stage],index,buffer)
             result=irfft(buffer)
             capture(stage,index,result)
@@ -76,6 +81,8 @@ class ICRuntime:
         def sample(field):
             return cp.ascontiguousarray(field[::ratio, ::ratio, ::ratio])
 
+        if ratio == 1:
+            radius = 0.0
         high = irfft(modes)
         capture(0,0,high)
         high /= np.float32(volume)
@@ -102,8 +109,12 @@ class ICRuntime:
         del diagonal
         source /= np.float32(source.size)
         capture(6,0,source)
-        second_modes = (cp.fft.rfftn(source.astype(cp.float64)).astype(cp.complex64)
-                        if self.fft64 else cp.fft.rfftn(source))
+        if self.device_ic:
+            second_modes = cp.ascontiguousarray(transform(source, side, threads=1))
+        elif self.fft64:
+            second_modes = cp.fft.rfftn(source.astype(cp.float64)).astype(cp.complex64)
+        else:
+            second_modes = cp.fft.rfftn(source)
         capture(7,0,second_modes)
         del source
         for axis in range(3):
