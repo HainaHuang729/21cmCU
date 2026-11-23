@@ -24,12 +24,13 @@ class Perturbation(PerturbRuntime):
         self.fields = {}
         self.calls = 0
         self.velocity_fields = {}
+        self.pending_device_output = None
 
     def run(self, z, fine, coarse, dk, first, second, initial_growth,
             dlog_growth_dt, inputs, out_density, out_velocity):
         status = super().run(z, fine, coarse, dk, first, second, initial_growth,
                              dlog_growth_dt, inputs, out_density, out_velocity)
-        if status == 0 and os.environ.get("PS_FFTW_PERTURB_DENSITY") == "1":
+        if status == 0 and not self.use_plan and os.environ.get("PS_FFTW_PERTURB_DENSITY") == "1":
             return 4 if os.environ.get("PS_FFTW_PERTURB_VEL", "1") == "1" else 3
         return status
 
@@ -41,6 +42,9 @@ class Perturbation(PerturbRuntime):
             self.fields[C.cast(out_density, C.c_void_p).value] = self.density
         if self.velocity_z is not None:
             self.velocity_fields[C.cast(out_velocity,C.c_void_p).value]=self.velocity_z
+        if self.use_plan:
+            self.pending_device_output = (C.cast(out_density, C.c_void_p).value,
+                                          C.cast(out_velocity, C.c_void_p).value)
         self.calls += 1
 
 class GSLDirectIC(ICRuntime):
@@ -72,8 +76,12 @@ class CoupledRuntime(ResidentRuntime):
             observer_type = C.CFUNCTYPE(C.c_int, C.c_int, ptr, ptr)
             def capture(side, density, velocity):
                 try:
-                    self.perturbation.fields.pop(C.cast(density, C.c_void_p).value, None)
-                    self.perturbation.velocity_fields.pop(C.cast(velocity, C.c_void_p).value, None)
+                    key = (C.cast(density, C.c_void_p).value,
+                           C.cast(velocity, C.c_void_p).value)
+                    if self.perturbation.pending_device_output != key:
+                        self.perturbation.fields.pop(key[0], None)
+                        self.perturbation.velocity_fields.pop(key[1], None)
+                    self.perturbation.pending_device_output = None
                     return 0
                 except Exception:
                     import traceback

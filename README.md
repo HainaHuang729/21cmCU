@@ -18,6 +18,16 @@ python lightcone/run.py --dim 384 --hii-dim 96 --box-len 375.0 --max-z 14.0 --ou
 
 [lightcone/run.py](lightcone/run.py) automatically locates GSL, `fftw3f`, and CUDA, compiles the private CFFI library, and generates ICs on the first run; pass `--gsl-prefix` / `--fftw-prefix` for custom system installs, `--mode verify` to compare GPU vs. CPU (`256/64` runs in ~15 s GPU / ~105 s CPU), use [lightcone/run_batch.py](lightcone/run_batch.py) for concurrent single/multi-GPU batches, or see [gpu/launch_ps.py](gpu/launch_ps.py) for coeval power-spectrum archives.
 
+### GPU perturbation FFTs on the v3 lightcone
+
+Select `--perturb-fft cuda-plan` on `lightcone/run.py` or `lightcone/run_batch.py` to execute the v3 perturbation density and line-of-sight velocity FFTs on CUDA. The v3 native library supplies its actual in-place FFTW plans. The converter compiles their supported scalar/SSE2 arithmetic for the GPU and reports the number of completed transforms in `timing.json` under `runtime_summary.cuda_plan_transforms`. The current implementation targets the cubic low-resolution 2LPT path with FFTW wisdom disabled. An unsupported plan in this path raises an error. The existing `fftw` default uses native FFTW for these transforms. The [v3 paired acceptance report](reports/v3-perturb-cuda-plan-acceptance.json) includes six-field comparisons and launcher wall times for both backends.
+
+For a matched six-field comparison, run:
+
+```bash
+python lightcone/run.py --mode verify --perturb-fft cuda-plan --dim 384 --hii-dim 96 --box-len 375 --max-z 14 --out runs/lc_plan --work runs/plan_work
+```
+
 ### Numbered points and independent batches
 
 The default point comes from `point_config.json`. Register another point in `points/<index>.json` or select a catalog with `--point-dir`. Each numbered file contains its own `index`, `seed`, and complete `astro`, `cosmo`, `flags`, and `user` mappings in the same units as the default file. Select it with `--point-index` or the batch task field `point_index`. The grid, box size, thread count and optional seed come from the run settings. Explicit astrophysics and cosmology arguments must agree with the selected point. Each HDF5 output records the simulation object's parameter dictionaries in the root attributes `astro_json`, `cosmo_json`, `flags_json` and `user_json`.

@@ -631,6 +631,12 @@ static int UncachedMaterializePerturbDensity(struct UserParams *user_params, flo
     return UncachedMaterializePerturbDensityAndVel(user_params, density, NULL, 0.0f, 0);
 }
 
+char *PSPerturbPlanText(int inverse) {
+    if (!user_params_ufunc || user_params_ufunc->USE_FFTW_WISDOM ||
+        EnsurePerturbFFTWPlans(user_params_ufunc, 0)) return NULL;
+    return fftwf_sprint_plan(inverse ? ps_perturb_plan_c2r : ps_perturb_plan_r2c);
+}
+
 int TestMaterializePerturbDensity(int cached, int threads, float *density) {
     struct UserParams tmp = *user_params_ufunc;
     tmp.N_THREADS = threads;

@@ -98,6 +98,8 @@ def build_arg_parser():
     p.add_argument("--astro-json", help="Astrophysics parameter checks (JSON string or .json file path)")
     p.add_argument("--cosmo-json", help="Cosmology parameter checks (JSON string or .json file path)")
     p.add_argument("--threads", type=int, default=8, help="OpenMP/FFTW thread count for lightcone evolution")
+    p.add_argument("--perturb-fft", choices=("fftw", "cuda-plan"), default="fftw",
+                   help="Wave 6 perturbation FFT backend")
     p.add_argument("--ic-threads", type=int, default=None, help="GSL IC thread count (defaults to --threads)")
     p.add_argument("--control-ic", type=Path, help="Existing InitialConditions HDF5 file; generated if omitted")
     p.add_argument("--skip-build", action="store_true", help="Reuse existing <work>/build/package if present")
@@ -302,6 +304,7 @@ def main():
     common_env = {
         "OMP_NUM_THREADS": str(args.threads),
         "PS_N_THREADS": str(args.threads),
+        "PS_PERTURB_FFT": args.perturb_fft,
         "PS_GK61_RULE": str(gk61_path),
         "PS_CONTROL_IC": str(control_ic),
         "PS_DIM": str(args.dim),

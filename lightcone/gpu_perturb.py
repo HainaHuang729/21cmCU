@@ -23,6 +23,8 @@ class PerturbRuntime:
         self.normalizer_guarded = self.module.get_function("density_contrast_guarded")
         self.repair_exact = self.module.get_function("cic_repair_exact")
         self.velocity_op = self.module.get_function("velocity_spectrum")
+        self.use_plan = not shadow and os.environ.get("PS_PERTURB_FFT") == "cuda-plan"
+        self.plan_transforms = 0
         self.shadow = shadow
         self.previous = None
         self.first_upload_seconds = None
@@ -40,6 +42,31 @@ class PerturbRuntime:
         self.set_hook.argtypes = [C.c_void_p]
         self.set_hook.restype = None
         self.callback = Hook(self.run)
+
+    def load_plans(self):
+        from plan_cuda.fft_plan_cuda import transform
+
+        describe = self.lib.PSPerturbPlanText
+        describe.argtypes = [C.c_int]
+        describe.restype = C.c_void_p
+        release = self.lib.fftwf_free
+        release.argtypes = [C.c_void_p]
+        release.restype = None
+        self.plan_trees = []
+        for inverse in (False, True):
+            ptr = describe(inverse)
+            if not ptr:
+                raise RuntimeError("Cannot export the native v3 cubic perturbation FFT plan")
+            try:
+                self.plan_trees.append(C.string_at(ptr).decode())
+            finally:
+                release(ptr)
+        self.transform = transform
+
+    def plan_fft(self, array, side, inverse=False):
+        result = self.transform(array, side, inverse, plan_tree=self.plan_trees[inverse])
+        self.plan_transforms += 1
+        return cp.ascontiguousarray(result)
 
     def load_cpu_ic(self, box):
         """Bind one reloaded CPU initial-condition box to this run."""
@@ -92,6 +119,8 @@ class PerturbRuntime:
                 self.high, self.displacements = self.ic.fields[key[2]]
             elif self.cached_ic_shape != (fine,coarse):
                 raise ValueError("CPU IC must be uploaded before perturbation")
+            if self.use_plan:
+                self.load_plans()
             self.mass = cp.empty(n,dtype=cp.int64)
             self.contrast = cp.empty(shape,dtype=cp.float32)
             self.max_suspects = 65536
@@ -149,7 +178,7 @@ class PerturbRuntime:
         else:
             self.launch(self.scaler,6*n,(*scale_args,np.int32(1)))
             self.launch(self.normalizer,n,(self.mass,self.contrast,np.int64(n),np.float32((fine//coarse)**3)))
-        fftw_density = (not self.shadow) and (os.environ.get("PS_FFTW_PERTURB_DENSITY") == "1")
+        fftw_density = (not self.use_plan) and (not self.shadow) and (os.environ.get("PS_FFTW_PERTURB_DENSITY") == "1")
         fftw_vel = fftw_density and (os.environ.get("PS_FFTW_PERTURB_VEL", "1") == "1")
         if self.shadow:
             stream.synchronize()
@@ -168,16 +197,20 @@ class PerturbRuntime:
             self._pmemcpy(C.cast(out_density, C.c_void_p).value, self.pinned_density.ctypes.data, np.uint64(n * 4), copy_nt)
             velocity = None
         else:
-            spectrum = cp.fft.rfftn(self.contrast)
+            spectrum = self.plan_fft(self.contrast, coarse) if self.use_plan else cp.fft.rfftn(self.contrast)
             self.launch(self.velocity_op,spectrum.size,(spectrum,self.velocity_buffer,
-                                                      np.int32(coarse),np.float64(dk),np.float32(dlog_growth_dt)))
+                                                      np.int32(coarse),np.float64(dk),np.float32(dlog_growth_dt),np.int32(self.use_plan)))
             if fftw_density:
                 self.density = None
             else:
-                self.density = cp.fft.irfftn(spectrum,s=shape,norm="forward")
-                self.density *= np.float32(1./n)
+                if self.use_plan:
+                    self.density = self.plan_fft(spectrum, coarse, True) / np.float32(n)
+                else:
+                    self.density = cp.fft.irfftn(spectrum,s=shape,norm="forward")
+                    self.density *= np.float32(1./n)
                 self.density = cp.where(self.density < -1.0, np.float32(-1.+1e-7), self.density)
-            self.velocity_z = cp.fft.irfftn(self.velocity_buffer,s=shape,norm="forward")
+            self.velocity_z = (self.plan_fft(self.velocity_buffer, coarse, True) if self.use_plan
+                               else cp.fft.irfftn(self.velocity_buffer,s=shape,norm="forward"))
             if self.shadow:
                 stream.synchronize()
                 fft_seconds = time.perf_counter()-start

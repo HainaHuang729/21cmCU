@@ -32,6 +32,8 @@ def build_arg_parser():
     p.add_argument("--concurrency", type=int, default=2, help="Number of concurrent worker processes")
     p.add_argument("--gpus", help="Optional comma-separated GPU IDs to round-robin via CUDA_VISIBLE_DEVICES")
     p.add_argument("--threads-per-worker", type=int, default=4, help="OpenMP/FFTW threads per worker")
+    p.add_argument("--perturb-fft", choices=("fftw", "cuda-plan"), default="fftw",
+                   help="Wave 6 perturbation FFT backend")
     p.add_argument("--ic-threads", type=int, default=None, help="GSL IC thread count (defaults to --threads-per-worker)")
     p.add_argument("--dim", type=int, default=384)
     p.add_argument("--hii-dim", type=int, default=96)
@@ -153,6 +155,7 @@ def _run_one_task(idx, task, args, stage, base_env, out_dir, work_dir, shared_bu
         "--max-z", str(task.get("max_z", args.max_z)),
         "--window-max-z", str(task.get("window_max_z", args.window_max_z)),
         "--threads", str(args.threads_per_worker),
+        "--perturb-fft", args.perturb_fft,
         "--ic-threads", str(ic_threads),
     ]
     if args.point_dir:

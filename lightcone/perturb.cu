@@ -334,7 +334,7 @@ extern "C" __global__ void cic_repair_exact(
 }
 
 extern "C" __global__ void velocity_spectrum(
-    const float2 *density, float2 *velocity, int side, double dk, float dlog_growth_dt
+    const float2 *density, float2 *velocity, int side, double dk, float dlog_growth_dt, int native_plan
 ) {
     long i = (long)blockIdx.x * blockDim.x + threadIdx.x;
     int half = side/2 + 1;
@@ -346,9 +346,9 @@ extern "C" __global__ void velocity_spectrum(
     float ky = (float)((iy > side/2 ? iy-side : iy)*dk);
     float kz = (float)(iz*dk);
     float k2 = kx*kx + ky*ky + kz*kz;
-    // The derivative along z must have a real-valued inverse on its Nyquist plane.
-    // FFTW's real transform discards the anti-Hermitian part there.
-    if (k2 == 0.f || (side % 2 == 0 && iz == side/2)) {
+    // The cuFFT path clears the anti-Hermitian Nyquist plane. The native
+    // v3 path passes it to FFTW, so preserve it when replaying the plan.
+    if (k2 == 0.f || (!native_plan && side % 2 == 0 && iz == side/2)) {
         velocity[i] = make_float2(0.f,0.f);
         return;
     }

@@ -647,6 +647,7 @@ if gpu:
     report["native_profile"] = {n: {"seconds": float(secs[i]), "calls": int(calls[i])} for i, n in enumerate(names)}
     report["runtime_summary"] = {
         "gpu_perturbation_calls": rep["gpu_perturbation_calls"],
+        "cuda_plan_transforms": runtime.perturbation.plan_transforms,
         "heat_steps": len(rep["records"]),
         "heat_gpu_seconds": sum(r["seconds"] for r in rep["records"]),
         "heat_prefetch_hits": rep.get("heat_prefetch_hits", 0),
