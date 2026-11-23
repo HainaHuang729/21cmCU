@@ -1,0 +1,218 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "seed": 424242,
+  "gpu": "RTX A6000",
+  "threads": 2,
+  "atol": 1e-08,
+  "rtol": 0.0001,
+  "runs": [
+    {
+      "job": 490194,
+      "fine": 192,
+      "ic_sha256": "e1c57a3b99dea586cc8a87e56947eda430d2570a6121c7dd1123f3766babc161",
+      "brightness_calls": 43,
+      "slices": 650,
+      "gpu_seconds": 42.22547475702595,
+      "archived_cpu_seconds": 64.05363261699677,
+      "fields": {
+        "brightness_temp": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "neutral_fraction": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "xray_ionised_fraction": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "kinetic_temp_neutral": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "spin_temperature": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "cumulative_recombinations": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        }
+      },
+      "ps32": {
+        "tested": 1376,
+        "failed": 0,
+        "max_abs": 1.6342482922482304e-13,
+        "max_relative_nonzero": 5.1680748138807605e-15
+      }
+    },
+    {
+      "job": 490193,
+      "fine": 384,
+      "ic_sha256": "7018a09629d94b5bf3b2c78223370641ea7d8e764a88ab85b327b4d255f75ab9",
+      "brightness_calls": 43,
+      "slices": 521,
+      "gpu_seconds": 145.8538751800079,
+      "archived_cpu_seconds": 345.5968962539919,
+      "fields": {
+        "brightness_temp": {
+          "max_abs": 3.814697265625e-05,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "neutral_fraction": {
+          "max_abs": 5.960464477539063e-08,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "xray_ionised_fraction": {
+          "max_abs": 1.862645149230957e-09,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "kinetic_temp_neutral": {
+          "max_abs": 0.000244140625,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "spin_temperature": {
+          "max_abs": 0.0001220703125,
+          "failed": 0,
+          "failed_slices": 0
+        },
+        "cumulative_recombinations": {
+          "max_abs": 0.0,
+          "failed": 0,
+          "failed_slices": 0
+        }
+      },
+      "ps32": {
+        "tested": 1376,
+        "failed": 0,
+        "max_abs": 5.6608428167237435e-08,
+        "max_relative_nonzero": 1.5717657177382882e-08
+      }
+    }
+  ],
+  "node_trace": {
+    "job": 490195,
+    "nodes": 43,
+    "different_grid_values": 0,
+    "original_sites": [
+      {
+        "z": 19.183580032957572,
+        "different": 1,
+        "positions": [
+          [
+            51,
+            338,
+            58
+          ]
+        ]
+      },
+      {
+        "z": 17.660854320411957,
+        "different": 1,
+        "positions": [
+          [
+            66,
+            6,
+            333
+          ]
+        ]
+      },
+      {
+        "z": 6.28,
+        "different": 1,
+        "positions": [
+          [
+            102,
+            119,
+            3
+          ]
+        ]
+      }
+    ]
+  },
+  "brightness_direct": {
+    "True": {
+      "job": 490192,
+      "nodes": 43,
+      "fields": {
+        "brightness_temp": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "tau_21": {
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "False": {
+      "job": 490192,
+      "nodes": 43,
+      "fields": {
+        "brightness_temp": {
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      }
+    }
+  },
+  "perturbation_holdouts": [
+    {
+      "job": 490190,
+      "size": 192,
+      "cases": 24,
+      "fields": {
+        "density": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_x": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_y": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_z": {
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    {
+      "job": 490191,
+      "size": 384,
+      "cases": 24,
+      "fields": {
+        "density": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_x": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_y": {
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_z": {
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      }
+    }
+  ]
+}
