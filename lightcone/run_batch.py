@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from time import perf_counter
 
@@ -22,7 +23,8 @@ def build_arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--out", type=Path, default=Path("runs/batch_out"), help="Output parent directory")
     p.add_argument("--work", type=Path, default=Path("runs/batch_work"), help="Shared build and per-worker scratch directory")
-    p.add_argument("--mode", choices=("gpu-density", "cpu"), default="gpu-density")
+    p.add_argument("--mode", choices=("gpu-density", "cpu", "verify"), default="gpu-density")
+    p.add_argument("--point-dir", type=Path)
     p.add_argument("--tasks-json", type=Path, help="JSON file containing a list of task objects (seed, astro, cosmo, etc.)")
     p.add_argument("--seeds", help="Comma-separated random seeds (e.g. 1001,1002,1003,1004)")
     p.add_argument("--count", type=int, default=4, help="Number of sequential seeds to generate when --seeds/--tasks-json are unset")
@@ -153,6 +155,8 @@ def _run_one_task(idx, task, args, stage, base_env, out_dir, work_dir, shared_bu
         "--threads", str(args.threads_per_worker),
         "--ic-threads", str(ic_threads),
     ]
+    if args.point_dir:
+        cmd.extend(["--point-dir", str(args.point_dir.resolve())])
     if "seed" in task and task["seed"] is not None:
         cmd.extend(["--seed", str(task["seed"])])
     if "point_index" in task and task["point_index"] is not None:
@@ -259,16 +263,24 @@ def main():
     base_env["MKL_NUM_THREADS"] = "1"
     base_env["NUMEXPR_NUM_THREADS"] = "1"
 
+    cached_build = work_dir / "shared_build"
+    work_dir = Path(tempfile.mkdtemp(prefix="batch-", dir=work_dir))
     shared_build = work_dir / "shared_build"
-    if not (args.skip_build and (shared_build / "package").is_dir()):
-        if shared_build.exists():
-            shutil.rmtree(shared_build)
-        shared_build.mkdir(parents=True, exist_ok=True)
+    if args.skip_build and (cached_build / "package").is_dir():
+        shared_build = cached_build
+    else:
+        shared_build.mkdir()
         subprocess.run(
             [sys.executable, str(stage / "build.py"), str(root), str(shared_build)],
             env=base_env,
             check=True,
         )
+
+        # Publish only completed builds. Concurrent batches keep their own build.
+        try:
+            cached_build.symlink_to(shared_build, target_is_directory=True)
+        except FileExistsError:
+            pass
 
     gpu_ids = [g.strip() for g in args.gpus.split(",") if g.strip()] if args.gpus else []
     if gpu_ids:
@@ -332,6 +344,7 @@ def main():
         "box_len": args.box_len,
         "max_z": args.max_z,
         "window_max_z": args.window_max_z,
+        "work_dir": str(work_dir),
         "total_tasks": len(tasks),
         "completed": completed,
         "failed": failed,

@@ -13,7 +13,10 @@ import py21cmfast
 import py21cmfast.c_21cmfast as native
 
 FIELDS = ("brightness_temp","xH_box","x_e_box","Tk_box","Ts_box","dNrec_box")
-config = json.loads((Path(os.environ["PS_GPU_ROOT"])/"point_config.json").read_text())
+from point_parameters import resolve_point
+root = Path(os.environ["PS_GPU_ROOT"])
+index = os.environ.get("PS_POINT_INDEX")
+config = resolve_point(root, int(index) if index else None, os.environ.get("PS_POINT_DIR", root / "points"))
 mode, destination, scratch = sys.argv[1:]
 destination = Path(destination)
 destination.mkdir()
@@ -25,12 +28,10 @@ win_env = os.environ.get("PS_WINDOW_MAX_Z", "14.0").strip().lower()
 window_max_z = None if win_env in ("", "none", "off", "0") else float(win_env)
 if os.environ.get("PS_SEED"):
     config["seed"] = int(os.environ["PS_SEED"])
-if os.environ.get("PS_POINT_INDEX"):
-    config["index"] = int(os.environ["PS_POINT_INDEX"])
-if os.environ.get("PS_ASTRO_JSON"):
-    config["astro"].update(json.loads(os.environ["PS_ASTRO_JSON"]))
-if os.environ.get("PS_COSMO_JSON"):
-    config["cosmo"].update(json.loads(os.environ["PS_COSMO_JSON"]))
+for group in ("astro", "cosmo"):
+    supplied = json.loads(os.environ.get(f"PS_{group.upper()}_JSON") or "{}")
+    if any(k not in config[group] or config[group][k] != v for k, v in supplied.items()):
+        raise ValueError(f"Conflicting {group} for registered point {config['index']}")
 config["user"].update(DIM=dim, HII_DIM=hii_dim, BOX_LEN=box_len)
 if os.environ.get("PS_N_THREADS"):
     config["user"]["N_THREADS"] = int(os.environ["PS_N_THREADS"])
@@ -57,6 +58,11 @@ else:
     init_box=InitialConditions.from_file(path)
 ic_seconds=perf_counter()-ic_start
 assert (int(init_box.random_seed), init_box.user_params.DIM, init_box.user_params.HII_DIM) == (config["seed"], dim, hii_dim) and np.isclose(init_box.user_params.BOX_LEN, box_len)
+for key, value in config["cosmo"].items():
+    if init_box.cosmo_params.self.get(key) != value:
+        raise ValueError(f"IC cosmology mismatch: {key}")
+if init_box.user_params.POWER_SPECTRUM != config["user"]["POWER_SPECTRUM"]:
+    raise ValueError("IC power spectrum does not match the point")
 native_scales=0
 native_seconds=0.
 if gpu:
@@ -560,6 +566,13 @@ depth = len(z)
 t_write_start = perf_counter()
 with h5py.File(destination/"lightcone.h5","w") as out:
     out.attrs.update(point=config["index"], seed=config["seed"], dim=config["user"]["DIM"], hii_dim=config["user"]["HII_DIM"], box_len=config["user"]["BOX_LEN"])
+    for group, obj in (("astro", lc.astro_params), ("cosmo", lc.cosmo_params),
+                       ("user", lc.user_params), ("flags", lc.flag_options)):
+        actual = obj.self
+        for key, value in config[group].items():
+            if key not in actual or actual[key] != value:
+                raise ValueError(f"Effective {group}.{key} differs from point {config['index']}")
+        out.attrs[group + "_json"] = json.dumps(actual, sort_keys=True)
     out.create_dataset("redshift",data=z)
     out.create_dataset("distance_Mpc",data=distance)
     out.create_dataset("node_redshift",data=np.asarray(lc.node_redshifts))

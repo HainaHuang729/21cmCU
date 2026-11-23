@@ -18,6 +18,12 @@ python lightcone/run.py --dim 384 --hii-dim 96 --box-len 375.0 --max-z 14.0 --ou
 
 [lightcone/run.py](lightcone/run.py) automatically locates GSL, `fftw3f`, and CUDA, compiles the private CFFI library, and generates ICs on the first run; pass `--gsl-prefix` / `--fftw-prefix` for custom system installs, `--mode verify` to compare GPU vs. CPU (`256/64` runs in ~15 s GPU / ~105 s CPU), use [lightcone/run_batch.py](lightcone/run_batch.py) for concurrent single/multi-GPU batches, or see [gpu/launch_ps.py](gpu/launch_ps.py) for coeval power-spectrum archives.
 
+### Numbered points and independent batches
+
+The default point comes from `point_config.json`. Register another point in `points/<index>.json` or select a catalog with `--point-dir`. Each numbered file contains its own `index`, `seed`, and complete `astro`, `cosmo`, `flags`, and `user` mappings in the same units as the default file. Select it with `--point-index` or the batch task field `point_index`. The grid, box size, thread count and optional seed come from the run settings. Explicit astrophysics and cosmology arguments must agree with the selected point. Each HDF5 output records the simulation object's parameter dictionaries in the root attributes `astro_json`, `cosmo_json`, `flags_json` and `user_json`.
+
+Each invocation of `run_batch.py` reserves a unique `batch-*` directory under `--work`. Separate invocations can share that parent and should use distinct output destinations. Use `--mode verify` for paired CPU/GPU outputs and the six-field comparison. The batch summary records the allocated directory.
+
 ## Benchmarks
 
 Host: AMD Ryzen Threadripper PRO 5975WX (32 cores) + 1x RTX A6000 (GPU runs use 8 CPU threads):

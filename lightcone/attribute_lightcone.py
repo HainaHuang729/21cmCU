@@ -18,6 +18,10 @@ with h5py.File(root / "cpu/lightcone.h5") as cpu, h5py.File(root / sys.argv[2] /
         assert cpu.attrs[key] == gpu.attrs[key]
     if "box_len" in cpu.attrs and "box_len" in gpu.attrs:
         assert float(cpu.attrs["box_len"]) == float(gpu.attrs["box_len"])
+    for group in ("astro", "cosmo", "user", "flags"):
+        key = group + "_json"
+        if key in cpu.attrs or key in gpu.attrs:
+            assert json.loads(cpu.attrs[key]) == json.loads(gpu.attrs[key]), group
     for axis in ("redshift", "distance_Mpc", "node_redshift"):
         np.testing.assert_array_equal(cpu[axis][:], gpu[axis][:])
     zs = cpu["redshift"][:]

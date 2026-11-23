@@ -93,9 +93,10 @@ def build_arg_parser():
     p.add_argument("--max-z", type=float, default=14.0)
     p.add_argument("--window-max-z", default="none")
     p.add_argument("--seed", type=int, help="Random seed override")
-    p.add_argument("--point-index", type=int, help="Point index override")
-    p.add_argument("--astro-json", help="Astrophysics parameter overrides (JSON string or .json file path)")
-    p.add_argument("--cosmo-json", help="Cosmology parameter overrides (JSON string or .json file path)")
+    p.add_argument("--point-dir", type=Path, help="Directory of complete numbered point configs (<index>.json)")
+    p.add_argument("--point-index", type=int, help="Registered physical point index")
+    p.add_argument("--astro-json", help="Astrophysics parameter checks (JSON string or .json file path)")
+    p.add_argument("--cosmo-json", help="Cosmology parameter checks (JSON string or .json file path)")
     p.add_argument("--threads", type=int, default=8, help="OpenMP/FFTW thread count for lightcone evolution")
     p.add_argument("--ic-threads", type=int, default=None, help="GSL IC thread count (defaults to --threads)")
     p.add_argument("--control-ic", type=Path, help="Existing InitialConditions HDF5 file; generated if omitted")
@@ -138,7 +139,6 @@ def _generate_ic(base_env, ic_dir, cfg, dim, hii_dim, box_len, ic_threads):
         DIM=int(dim),
         HII_DIM=int(hii_dim),
         BOX_LEN=float(box_len),
-        POWER_SPECTRUM=0,
         N_THREADS=int(ic_threads),
     )
     ic_script = (
@@ -206,17 +206,14 @@ def main():
 
     work.mkdir(parents=True, exist_ok=True)
 
-    cfg = json.loads((root / "point_config.json").read_text())
+    from point_parameters import resolve_point
+    cfg = resolve_point(root, args.point_index, args.point_dir or root / "points")
     if args.seed is not None:
-        cfg["seed"] = int(args.seed)
-    if args.point_index is not None:
-        cfg["index"] = int(args.point_index)
-    astro_override = _parse_json_or_file(args.astro_json)
-    if astro_override is not None:
-        cfg["astro"].update(astro_override)
-    cosmo_override = _parse_json_or_file(args.cosmo_json)
-    if cosmo_override is not None:
-        cfg["cosmo"].update(cosmo_override)
+        cfg["seed"] = args.seed
+    for group, raw in (("astro", args.astro_json), ("cosmo", args.cosmo_json)):
+        for key, value in (_parse_json_or_file(raw) or {}).items():
+            if key not in cfg[group] or value != cfg[group][key]:
+                raise ValueError(f"{group}.{key} conflicts with registered point {cfg['index']}")
 
     base_env = os.environ.copy()
     if args.gsl_prefix:
@@ -314,6 +311,7 @@ def main():
         "PS_WINDOW_MAX_Z": str(args.window_max_z),
         "PS_SEED": str(cfg["seed"]),
         "PS_POINT_INDEX": str(cfg["index"]),
+        "PS_POINT_DIR": str((args.point_dir or root / "points").resolve()),
         "PS_ASTRO_JSON": json.dumps(cfg["astro"]),
         "PS_COSMO_JSON": json.dumps(cfg["cosmo"]),
     }
