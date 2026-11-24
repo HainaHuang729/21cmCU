@@ -50,7 +50,9 @@ for spin in (True, False):
         fields = ("brightness_temp", "neutral_fraction")
     else:
         fields = lightcone_pair.FIELDS
-    with patch.object(official, "get_all_options_struct", config), patch.object(
-        brightness, "brightness_temperature_gpu", compare
-    ), patch.object(lightcone_pair, "FIELDS", fields):
+    with (
+        patch.object(official, "get_all_options_struct", config),
+        patch.object(brightness, "brightness_temperature_gpu", compare),
+        patch.object(lightcone_pair, "FIELDS", fields),
+    ):
         lightcone_pair.run(run_dir, 192, "gpu")

@@ -1,0 +1,744 @@
+{
+  "scope": "CUDA Poisson gamma/binomial decisions above mean ten in production CHMF grid and NUMBER-LIMITED progenitor windows, using GSL 2.7 on a9.",
+  "gsl_source": "https://ftp.gnu.org/gnu/gsl/gsl-2.7.tar.gz",
+  "activate": "P21_CUDA_GSL_SOURCE with existing P21_CUDA_GLIBC_SOURCE and the grid/progenitor switches.",
+  "precision": "The host evaluates a batched glibc tangent table. A later audit found that GCC vectorized that historical helper. The reported Poisson decisions and cursor results were compared directly with native GSL and still matched. The current helper explicitly calls scalar libm and the optional CUDA tangent is audited separately.",
+  "native_oracle_replay": {
+    "job": "490816",
+    "saved": {
+      "conditions": 1313,
+      "wrong_output": 0,
+      "wrong_word_count": 0,
+      "first_bad": [],
+      "audited_words": 13657
+    },
+    "synthetic": {
+      "conditions": 50000,
+      "wrong_output": 0,
+      "wrong_word_count": 0,
+      "first_bad": [],
+      "audited_words": 610512
+    },
+    "passed": true
+  },
+  "class_mass_limited": {
+    "scope": "One host allocation with sequential paired runs of three catalog calls. Both use CUDA inverse roots and batched mass-limited progenitors.",
+    "low_mean_only": {
+      "job": "490819",
+      "native_job": "490734",
+      "catalogs": [
+        {
+          "z": 11.0,
+          "elapsed_seconds": 1.2030044019920751,
+          "count": 23325,
+          "fields_sha256": {
+            "halo_masses": "cffc12b55e405deff69d100aadfe9b3bdcdc7f1b78761b1914694eb79d5711a2",
+            "halo_coords": "64f48510804b6243eb6e773d11e38b3e9e87f5e50b6d65e0335e1af08dcc8184",
+            "star_rng": "9a7836f487d40c6c76fcab3f6163a643f956597d68f4a83d173c77637b082fb7",
+            "sfr_rng": "06fe4998cf19d0b9924dcc9367d058547a64ca1c76dcf1ab0c515e9cdf942be4",
+            "xray_rng": "f9c56316ceef3d43deaa702d4024a10af59d144cd0576bb160acbf42c7c000e3"
+          },
+          "ordered_sha256": "4ccefd5022ae91df7f4e98ef02b139517c92ae1822a60666442737fa14093d0c"
+        },
+        {
+          "z": 11.5,
+          "elapsed_seconds": 0.34830830397550017,
+          "count": 19230,
+          "fields_sha256": {
+            "halo_masses": "135951f39f8c876244a15600e43cfcdfdc6c830dd66d22c942704fc85b0b30c3",
+            "halo_coords": "d8dcc00402b3ad6f5c42cbd47b1ba4fc53f2cae40aee4ec7990b84706dd12ce5",
+            "star_rng": "1fafcc052d3dbc2cce67081fdbaeebb0e0c2a855a95462c4f4dfb61abd7752ee",
+            "sfr_rng": "16f13def83b2be5f6f159f07c58a2e3ab50edbc4e06bb64d3614303732db95ca",
+            "xray_rng": "351ec8ffcae1f15af40d6ce055fd6bf4fa250b5debf8c28b1926f87e66a7cb2a"
+          },
+          "ordered_sha256": "eaa9c34c79b736299e21966cafc364adc8374bb461b14e02839f900153564539"
+        },
+        {
+          "z": 12.0,
+          "elapsed_seconds": 0.23429877997841686,
+          "count": 15389,
+          "fields_sha256": {
+            "halo_masses": "057f4624b2415e0123cb9ae9cd569a2ae38491af401d78091b60d1bee273201f",
+            "halo_coords": "1463c6b8d75c436ce30ce05eded3d89f86e7fb392b161c7813957b1f8efb5da9",
+            "star_rng": "831081c107a19d2e0fdbd6d8e012ada90334bd9d8d0fb5a14b5cbbc9158352fd",
+            "sfr_rng": "9bf8498c261941feb39b0783e3a7f674f861ef0fe1e0e61f34634513e2f48a1f",
+            "xray_rng": "addb1abef431c79ff18ecd01e9cb00ef3e7467ff00debac3798c0b29d146001a"
+          },
+          "ordered_sha256": "4e0c1eb8c56c996e372e20e9e33c950be5d87ba45bf05ba73ddc625a4f16b395"
+        }
+      ],
+      "counters": {
+        "halo_grid_positions": 23325,
+        "halo_progenitor_positions": 34619,
+        "halo_grid_property_gaussians": 69975,
+        "halo_progenitor_property_gaussians": 103857,
+        "halo_property_host_roundings": 0,
+        "halo_property_batches": 30,
+        "halo_conditional_number_tables": 3,
+        "halo_inverse_cdf_rows": 263,
+        "halo_inverse_cdf_possible_rows": 600,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 8,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 8,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cuda_rows": 263,
+        "halo_inverse_cuda_seconds": 0.24281795194838196,
+        "halo_cuda_mt_words": 918528,
+        "halo_cuda_grid_sample_conditions": 2291,
+        "halo_cuda_grid_sample_masses": 2855,
+        "halo_cuda_grid_sample_words_consumed": 51696,
+        "halo_cuda_grid_sample_high_poisson_conditions": 0,
+        "halo_cuda_grid_sample_sampling_seconds": 0.25291935761924833,
+        "halo_inverse_cdf_built_values": 105200,
+        "halo_cuda_progenitor_conditions": 42543,
+        "halo_cuda_progenitor_masses": 34608,
+        "halo_cuda_progenitor_words_consumed": 530368,
+        "halo_cuda_progenitor_high_poisson_conditions": 0,
+        "halo_cuda_progenitor_sampling_seconds": 0.2872062154347077
+      },
+      "passed": true
+    },
+    "high_mean_enabled": {
+      "job": "490819",
+      "native_job": "490734",
+      "catalogs": [
+        {
+          "z": 11.0,
+          "elapsed_seconds": 1.065065128961578,
+          "count": 23325,
+          "fields_sha256": {
+            "halo_masses": "cffc12b55e405deff69d100aadfe9b3bdcdc7f1b78761b1914694eb79d5711a2",
+            "halo_coords": "64f48510804b6243eb6e773d11e38b3e9e87f5e50b6d65e0335e1af08dcc8184",
+            "star_rng": "9a7836f487d40c6c76fcab3f6163a643f956597d68f4a83d173c77637b082fb7",
+            "sfr_rng": "06fe4998cf19d0b9924dcc9367d058547a64ca1c76dcf1ab0c515e9cdf942be4",
+            "xray_rng": "f9c56316ceef3d43deaa702d4024a10af59d144cd0576bb160acbf42c7c000e3"
+          },
+          "ordered_sha256": "4ccefd5022ae91df7f4e98ef02b139517c92ae1822a60666442737fa14093d0c"
+        },
+        {
+          "z": 11.5,
+          "elapsed_seconds": 0.2695051858900115,
+          "count": 19230,
+          "fields_sha256": {
+            "halo_masses": "135951f39f8c876244a15600e43cfcdfdc6c830dd66d22c942704fc85b0b30c3",
+            "halo_coords": "d8dcc00402b3ad6f5c42cbd47b1ba4fc53f2cae40aee4ec7990b84706dd12ce5",
+            "star_rng": "1fafcc052d3dbc2cce67081fdbaeebb0e0c2a855a95462c4f4dfb61abd7752ee",
+            "sfr_rng": "16f13def83b2be5f6f159f07c58a2e3ab50edbc4e06bb64d3614303732db95ca",
+            "xray_rng": "351ec8ffcae1f15af40d6ce055fd6bf4fa250b5debf8c28b1926f87e66a7cb2a"
+          },
+          "ordered_sha256": "eaa9c34c79b736299e21966cafc364adc8374bb461b14e02839f900153564539"
+        },
+        {
+          "z": 12.0,
+          "elapsed_seconds": 0.2355857299407944,
+          "count": 15389,
+          "fields_sha256": {
+            "halo_masses": "057f4624b2415e0123cb9ae9cd569a2ae38491af401d78091b60d1bee273201f",
+            "halo_coords": "1463c6b8d75c436ce30ce05eded3d89f86e7fb392b161c7813957b1f8efb5da9",
+            "star_rng": "831081c107a19d2e0fdbd6d8e012ada90334bd9d8d0fb5a14b5cbbc9158352fd",
+            "sfr_rng": "9bf8498c261941feb39b0783e3a7f674f861ef0fe1e0e61f34634513e2f48a1f",
+            "xray_rng": "addb1abef431c79ff18ecd01e9cb00ef3e7467ff00debac3798c0b29d146001a"
+          },
+          "ordered_sha256": "4e0c1eb8c56c996e372e20e9e33c950be5d87ba45bf05ba73ddc625a4f16b395"
+        }
+      ],
+      "counters": {
+        "halo_grid_positions": 23325,
+        "halo_progenitor_positions": 34619,
+        "halo_grid_property_gaussians": 69975,
+        "halo_progenitor_property_gaussians": 103857,
+        "halo_property_host_roundings": 0,
+        "halo_property_batches": 30,
+        "halo_conditional_number_tables": 3,
+        "halo_inverse_cdf_rows": 263,
+        "halo_inverse_cdf_possible_rows": 600,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 8,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 8,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cuda_rows": 263,
+        "halo_inverse_cuda_seconds": 0.24442777794320136,
+        "halo_cuda_mt_words": 918528,
+        "halo_cuda_grid_sample_conditions": 4088,
+        "halo_cuda_grid_sample_masses": 23208,
+        "halo_cuda_grid_sample_words_consumed": 336112,
+        "halo_cuda_grid_sample_high_poisson_conditions": 1797,
+        "halo_cuda_grid_sample_sampling_seconds": 0.2444569618673995,
+        "halo_inverse_cdf_built_values": 105200,
+        "halo_cuda_progenitor_conditions": 42543,
+        "halo_cuda_progenitor_masses": 34608,
+        "halo_cuda_progenitor_words_consumed": 530368,
+        "halo_cuda_progenitor_high_poisson_conditions": 0,
+        "halo_cuda_progenitor_sampling_seconds": 0.24473938322626054
+      },
+      "passed": true
+    },
+    "low_mean_only_seconds": 1.7856114859459922,
+    "high_mean_enabled_seconds": 1.570156044792384
+  },
+  "number_limited_two_threads": {
+    "case": {
+      "method": "NUMBER-LIMITED",
+      "seed": 424242,
+      "nodes": [
+        10.0,
+        10.22
+      ],
+      "fine": 32,
+      "coarse": 16,
+      "box_mpc": 24.0,
+      "threads": 2,
+      "version": "4.3.2"
+    },
+    "job": "490818",
+    "catalogs": {
+      "grid": {
+        "count": 32908,
+        "fields_sha256": {
+          "halo_masses": "e1e9bbae436ba0c93be9201721b2fc904ca7d87c11f6a024a5811c1c046ec2fe",
+          "halo_coords": "37bf8045fb72f4ea806b23a3b93fac96ee82c6936dceee7c8536b3ce5f36d449",
+          "star_rng": "88310462c17b53fc798a78c9ffe26950d8ed1dda8cce86a0be6f2c55adbad058",
+          "sfr_rng": "208f8cca0916d4544278b1ad101d6030ec7464e7e6633ddad18246c45d5b56f8",
+          "xray_rng": "9f1fb1368091d80648a9f0c0d27caf44cfa7269edc1bb866078456422c69121f"
+        },
+        "ordered_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+      },
+      "progenitors": {
+        "count": 30205,
+        "fields_sha256": {
+          "halo_masses": "8d09f5dc5173064127e4b3d2b0e9a3960dfea3ab36e64f3bebbf2a0a9a6d4f5e",
+          "halo_coords": "459524c5802222ea2b048f4a2f6501bdd17c8e0d7acf812eb70c7e9fccd289ae",
+          "star_rng": "8d51de1bcd9fd2206bfe3f860d0fb8adea19f90afb0f72ab4a955753f1251d5f",
+          "sfr_rng": "7104a40ceff5ff725278320b09763975af706f0d3aa2fc268914633d13a2cb53",
+          "xray_rng": "e008b1e5c9c8a924d59cfcab2339648eb17fdd6c4649110ccd83260f8e2912c6"
+        },
+        "ordered_sha256": "eeec32e5765c802393ba4429b21a065b17ad10d7780f1f3a963780f052b6e88e"
+      }
+    },
+    "native_cpu_job": "490593",
+    "counters": {
+      "halo_grid_positions": 32908,
+      "halo_progenitor_positions": 30205,
+      "halo_grid_property_gaussians": 98724,
+      "halo_progenitor_property_gaussians": 90615,
+      "halo_property_host_roundings": 0,
+      "halo_property_batches": 33,
+      "halo_conditional_number_tables": 2,
+      "halo_inverse_cdf_rows": 224,
+      "halo_inverse_cdf_possible_rows": 400,
+      "dexm_density_forward_fft": 1,
+      "dexm_ordinary_radii": 10,
+      "dexm_ordinary_candidates": 0,
+      "dexm_radius_searches": 10,
+      "dexm_candidates": 0,
+      "dexm_ordinary_accepted": 0,
+      "dexm_accepted": 0,
+      "dexm_empty_property_catalogs": 1,
+      "dexm_empty_overlap_grids": 1,
+      "halo_inverse_cuda_rows": 224,
+      "halo_inverse_cuda_seconds": 0.19290505512617528,
+      "halo_cuda_mt_words": 519168,
+      "halo_cuda_gfsr_words": 479232,
+      "halo_cuda_grid_sample_conditions": 4085,
+      "halo_cuda_grid_sample_masses": 32697,
+      "halo_cuda_grid_sample_words_consumed": 462060,
+      "halo_cuda_grid_sample_sampling_seconds": 0.9884427230572328,
+      "halo_inverse_cdf_built_values": 89600,
+      "halo_cuda_progenitor_conditions": 32899,
+      "halo_cuda_progenitor_masses": 30180,
+      "halo_cuda_progenitor_words_consumed": 453461,
+      "halo_cuda_progenitor_sampling_seconds": 0.4987615296849981
+    },
+    "mass_limited_counts": {
+      "grid": 32908,
+      "progenitors": 30290
+    },
+    "cpu_gpu_equal": true,
+    "initial_grid_matches_native_mass_limited_sha256": true,
+    "passed": true
+  },
+  "class_molecular_lightcone": {
+    "source_model": "CHMF-SAMPLER",
+    "thermal": true,
+    "seed": 129887,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "nthreads": 1,
+    "nodes": [
+      12.0,
+      11.5,
+      11.0
+    ],
+    "bounds": [
+      11.1,
+      11.9
+    ],
+    "molecular": true,
+    "class_streaming": true,
+    "streaming_model": "FLUCTS",
+    "mode": "gpu",
+    "host": "a9",
+    "job": "490820",
+    "version": "4.3.2",
+    "elapsed_seconds": 18.268226429005153,
+    "catalogs": [
+      {
+        "z": 11.0,
+        "n": 23325,
+        "halo_coords": "64f48510804b6243eb6e773d11e38b3e9e87f5e50b6d65e0335e1af08dcc8184",
+        "halo_masses": "cffc12b55e405deff69d100aadfe9b3bdcdc7f1b78761b1914694eb79d5711a2",
+        "star_rng": "9a7836f487d40c6c76fcab3f6163a643f956597d68f4a83d173c77637b082fb7",
+        "sfr_rng": "06fe4998cf19d0b9924dcc9367d058547a64ca1c76dcf1ab0c515e9cdf942be4",
+        "xray_rng": "f9c56316ceef3d43deaa702d4024a10af59d144cd0576bb160acbf42c7c000e3"
+      },
+      {
+        "z": 11.5,
+        "n": 19230,
+        "halo_coords": "d8dcc00402b3ad6f5c42cbd47b1ba4fc53f2cae40aee4ec7990b84706dd12ce5",
+        "halo_masses": "135951f39f8c876244a15600e43cfcdfdc6c830dd66d22c942704fc85b0b30c3",
+        "star_rng": "1fafcc052d3dbc2cce67081fdbaeebb0e0c2a855a95462c4f4dfb61abd7752ee",
+        "sfr_rng": "16f13def83b2be5f6f159f07c58a2e3ab50edbc4e06bb64d3614303732db95ca",
+        "xray_rng": "351ec8ffcae1f15af40d6ce055fd6bf4fa250b5debf8c28b1926f87e66a7cb2a"
+      },
+      {
+        "z": 12.0,
+        "n": 15389,
+        "halo_coords": "1463c6b8d75c436ce30ce05eded3d89f86e7fb392b161c7813957b1f8efb5da9",
+        "halo_masses": "057f4624b2415e0123cb9ae9cd569a2ae38491af401d78091b60d1bee273201f",
+        "star_rng": "831081c107a19d2e0fdbd6d8e012ada90334bd9d8d0fb5a14b5cbbc9158352fd",
+        "sfr_rng": "9bf8498c261941feb39b0783e3a7f674f861ef0fe1e0e61f34634513e2f48a1f",
+        "xray_rng": "addb1abef431c79ff18ecd01e9cb00ef3e7467ff00debac3798c0b29d146001a"
+      }
+    ],
+    "fields_requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion",
+      "spin_temperature",
+      "kinetic_temp_neutral",
+      "xray_ionised_fraction",
+      "cumulative_recombinations",
+      "xray_emissivity",
+      "sfrd_acg",
+      "J_21_LW",
+      "sfrd_mcg"
+    ],
+    "slice_count": 97,
+    "slice_bounds": [
+      11.10000005519327,
+      11.902384860863508
+    ],
+    "class_solver_calls_during_run": [],
+    "native_cosmo_tables_reused": true,
+    "routing": {
+      "source_model": "CHMF-SAMPLER",
+      "native_stages": [
+        "source scaling constants and redshift-dependent prefactors",
+        "lightcone distances and shell selection",
+        "condition setup and progenitor window-boundary fallback",
+        "grid window-boundary fallback",
+        "GSL uniform draws and polar rejection for CHMF properties; scalar libm check at ambiguous float rounding",
+        "CLASS matter transfer and cosmological mean streaming speed"
+      ],
+      "counters": {
+        "halo_grid_positions": 23325,
+        "halo_progenitor_positions": 34619,
+        "halo_grid_property_gaussians": 69975,
+        "halo_progenitor_property_gaussians": 103857,
+        "halo_property_host_roundings": 0,
+        "halo_property_batches": 30,
+        "halo_conditional_number_tables": 3,
+        "halo_inverse_cdf_rows": 263,
+        "halo_inverse_cdf_possible_rows": 600,
+        "halo_grid_calls": 3,
+        "halo_grid_halos": 57944,
+        "halo_grid_empty": 0,
+        "subgrid_nion_tables": 0,
+        "subgrid_sfrd_tables": 0,
+        "subgrid_xray_tables": 0,
+        "backend_setup_seconds": 11.985994649934582,
+        "gpu_class_transfer": 1,
+        "gpu_power_normalization": 1,
+        "gpu_seed_and_modes": 1,
+        "gpu_sigma_mass_table": 1,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 8,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 8,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cuda_rows": 263,
+        "halo_inverse_cuda_seconds": 0.24012947210576385,
+        "halo_cuda_mt_words": 918528,
+        "halo_cuda_grid_sample_conditions": 4088,
+        "halo_cuda_grid_sample_masses": 23208,
+        "halo_cuda_grid_sample_words_consumed": 336112,
+        "halo_cuda_grid_sample_high_poisson_conditions": 1797,
+        "halo_cuda_grid_sample_sampling_seconds": 0.2053899196907878,
+        "halo_inverse_cdf_built_values": 105200,
+        "halo_cuda_progenitor_conditions": 42543,
+        "halo_cuda_progenitor_masses": 34608,
+        "halo_cuda_progenitor_words_consumed": 530368,
+        "halo_cuda_progenitor_high_poisson_conditions": 0,
+        "halo_cuda_progenitor_sampling_seconds": 0.24357200122904032,
+        "mcg_turnover_grids": 3,
+        "mcg_turnover_cells": 12288,
+        "sampled_mcg_halos": 57944,
+        "subgrid_sfrd_acg_2d_tables": 3,
+        "subgrid_sfrd_mcg_2d_tables": 3,
+        "subgrid_xray_acg_2d_tables": 3,
+        "subgrid_xray_mcg_2d_tables": 3,
+        "subgrid_nion_acg_2d_tables": 3,
+        "subgrid_nion_mcg_2d_tables": 3,
+        "subgrid_advection_calls": 3,
+        "subgrid_advection_cells": 12288,
+        "subgrid_advection_input_bytes": 3520608,
+        "subgrid_advection_output_bytes": 245772,
+        "subgrid_advection_seconds": 0.04434849100653082,
+        "subgrid_molecular_advection_cells": 12288,
+        "thermal_initial_conditions": 1,
+        "ionization_mhr_table": 1,
+        "ionization_global_nion_acg_integrals": 6,
+        "ionization_global_nion_mcg_integrals": 6,
+        "ionization_global_nion": 3,
+        "ionization_forward_fft": 12,
+        "ionization_radius_inverse_pair": 90,
+        "ionization_conditional_nion": 90,
+        "ionization_halo_barrier": 90,
+        "ionization_temperature": 3,
+        "ionization_cumulative_recombinations": 3,
+        "radiation_lyman_spectral_factors": 2,
+        "radiation_ionization_interpolation": 2,
+        "radiation_mcg_global_nion": 2,
+        "mcg_xray_optical_depth_and_frequency": 2,
+        "radiation_shell_filter": 192,
+        "radiation_shell_accumulation": 64,
+        "mcg_lw_shells": 64,
+        "radiation_field_normalization": 2,
+        "mcg_lw_normalizations": 2,
+        "thermal_constants": 2,
+        "thermal_update": 2,
+        "mcg_spin_lw": 2,
+        "gpu_matter_perturbations": 3,
+        "gpu_brightness": 3
+      }
+    },
+    "reference_job": "490734",
+    "reference_elapsed_seconds": 30.735757085029036,
+    "coordinates_equal": true,
+    "inputs_equal": true,
+    "catalogs_equal": true,
+    "fields": {
+      "J_21_LW": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "brightness_temp": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 7.62939453125e-06
+      },
+      "cumulative_recombinations": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "density": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "los_velocity": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "neutral_fraction": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "sfrd_acg": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "sfrd_mcg": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "spin_temperature": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "tau_21": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "velocity_z": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_emissivity": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_ionised_fraction": {
+        "tested": 24832,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "global_quantities": {
+      "J_21_LW": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1920928955078125e-07
+      },
+      "brightness_temp": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09
+      },
+      "cumulative_recombinations": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 9.313225746154785e-10
+      },
+      "density": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09
+      },
+      "fesc_weighted_sfrd": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.4210854715202004e-14
+      },
+      "ionisation_rate_G12": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 2.3283064365386963e-10
+      },
+      "kinetic_temp_neutral": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 4.76837158203125e-07
+      },
+      "kinetic_temperature": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "log10_mturn_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 5.53335155473178e-13
+      },
+      "log10_mturn_mcg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.2434497875801753e-14
+      },
+      "mean_free_path": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.725290298461914e-09
+      },
+      "n_ion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 2.9802322387695312e-08
+      },
+      "neutral_fraction": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      },
+      "sfrd_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.3877787807814457e-17
+      },
+      "sfrd_mcg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.469446951953614e-18
+      },
+      "spin_temperature": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.814697265625e-06
+      },
+      "tau_21": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09
+      },
+      "velocity_z": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 4.321695583162791e-26
+      },
+      "xray_emissivity": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      },
+      "xray_ionised_fraction": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 2.9103830456733704e-11
+      },
+      "z_reion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "brightness_transverse_power": {
+      "unit": "mK^2 Mpc^2",
+      "k_unit": "Mpc^-1",
+      "k_mean": [
+        0.31601981632284,
+        0.5648004102572511,
+        0.7954108410141316,
+        1.0682798108135991,
+        1.3452138414952763,
+        1.595396102466962,
+        1.8486187843440371,
+        2.0276098204629176
+      ],
+      "modes_per_bin": [
+        8,
+        12,
+        16,
+        32,
+        28,
+        40,
+        40,
+        18
+      ],
+      "slices": 97,
+      "tested": 776,
+      "failed": 0,
+      "max_abs": 6.352293257805286e-05
+    },
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "class_tables": {
+      "density": {
+        "x_values": "6b1d63a4bb99bfe4d4666e3ec9782e1f1d33ab60c68cf1abca36939c0b6237c7",
+        "y_values": "697b06d3f5819186dad55d3f43279dbd0b7a5161d1fe890468d855565217747d"
+      },
+      "relative_velocity": {
+        "x_values": "6b1d63a4bb99bfe4d4666e3ec9782e1f1d33ab60c68cf1abca36939c0b6237c7",
+        "y_values": "b966261a64b9c0db3f1b882818e06dc3bd7898fc0311f4ccdc3f64501630ff7b"
+      }
+    },
+    "class_normalization": {
+      "USE_SIGMA_8": true,
+      "ps_norm": 0.8102,
+      "V_CB_AVG": 27.03787802692852
+    },
+    "class_tables_equal": true,
+    "donor_class_tables_equal": true,
+    "scaled_molecular_fields": {
+      "sfrd_acg": {
+        "peak": 4.495956051897565e-09,
+        "different": 0,
+        "max_abs": 0.0,
+        "tested": 24832,
+        "failed": 0
+      },
+      "sfrd_mcg": {
+        "peak": 2.931002662798221e-10,
+        "different": 0,
+        "max_abs": 0.0,
+        "tested": 24832,
+        "failed": 0
+      },
+      "xray_emissivity": {
+        "peak": 43.74867248535156,
+        "different": 0,
+        "max_abs": 0.0,
+        "tested": 24832,
+        "failed": 0
+      },
+      "J_21_LW": {
+        "peak": 3.0261147022247314,
+        "different": 0,
+        "max_abs": 0.0,
+        "tested": 24832,
+        "failed": 0
+      }
+    },
+    "streaming_velocity": {
+      "cells": 4096,
+      "min_km_s": 0.766298234462738,
+      "max_km_s": 20.859210968017578,
+      "rms_km_s": 9.394531541611899,
+      "different": 0
+    },
+    "required_thermal_stages": [
+      "thermal_initial_conditions",
+      "radiation_shell_filter",
+      "radiation_shell_accumulation",
+      "radiation_lyman_spectral_factors",
+      "thermal_update",
+      "ionization_mhr_table",
+      "ionization_cumulative_recombinations",
+      "mcg_xray_optical_depth_and_frequency",
+      "radiation_mcg_global_nion",
+      "radiation_ionization_interpolation",
+      "mcg_turnover_grids",
+      "mcg_lw_shells",
+      "mcg_spin_lw",
+      "mcg_lw_normalizations",
+      "subgrid_molecular_advection_cells",
+      "ionization_halo_barrier",
+      "ionization_global_nion",
+      "subgrid_nion_acg_2d_tables",
+      "subgrid_nion_mcg_2d_tables",
+      "subgrid_sfrd_acg_2d_tables",
+      "subgrid_sfrd_mcg_2d_tables",
+      "subgrid_xray_acg_2d_tables",
+      "subgrid_xray_mcg_2d_tables",
+      "sampled_mcg_halos"
+    ],
+    "missing_thermal_stages": [],
+    "passed": true
+  }
+}

@@ -57,9 +57,14 @@ struct FrequencyIntegrand {
             return secondary_table.interpolate(e, 0) * planck * dnu * abundance * fraction * cross;
         }
         if (channel == 1) {
+#ifdef XRAY_V432
+            const float extra = (secondary_table.interpolate(e, 2) + secondary_table.interpolate(e, 3))
+                              + (secondary_table.interpolate(e, 4) + 1.f);
+#else
             const float extra = secondary_table.interpolate(e, 2)
                               + secondary_table.interpolate(e, 3)
                               + secondary_table.interpolate(e, 4) + 1;
+#endif
             return extra * abundance * fraction * cross;
         }
         return secondary_table.interpolate(e, 1) * abundance * fraction * cross;
@@ -81,7 +86,8 @@ struct Estimate {
     double abs_deviation;
 };
 
-__device__ Estimate integrate_interval(const FrequencyIntegrand &f, double a, double b) {
+template<typename Integrand>
+__device__ Estimate integrate_interval(const Integrand &f, double a, double b) {
     constexpr double eps = 2.2204460492503131e-16;
     const double center = .5 * (a + b);
     const double width = .5 * (b - a);
@@ -118,10 +124,11 @@ struct Interval {
     Estimate integral;
 };
 
-__device__ double integrate_frequency(const FrequencyIntegrand &f, double lo, double hi,
-                                      unsigned char &interval_count) {
+template<typename Integrand>
+__device__ double integrate_frequency(const Integrand &f, double lo, double hi,
+                                      unsigned char &interval_count,double relative_error=.01) {
     constexpr int capacity = 128;
-    constexpr double relative_error = .01;  // Same as the production native frequency integral.
+
     Interval intervals[capacity];
     intervals[0] = {lo, hi, integrate_interval(f, lo, hi)};
     double value = intervals[0].integral.value;

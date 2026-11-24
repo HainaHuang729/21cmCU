@@ -1,0 +1,484 @@
+{
+  "version": "py21cmfast 4.3.2",
+  "gpu": "RTX A6000 a9",
+  "reference_cache_job": 490636,
+  "scope": "Single RadiationFieldsSetup, L-INTEGRAL at z=11.5; same 32\u00b3 \u2192 16\u00b3, 24 Mpc cube, seed 129887, one thread, saved z=12 TsBox and z=12/11.5 emissivity. Molecular cooling, AVG-DEBUG streaming, feedback, metallicity, spin fluctuations, inhomogeneous recombinations. No lightcone run.",
+  "physics": "One 400-node ACG history uses the homogeneous ACG turnover. Molecular cooling has 400 x 50 entries for redshift and log10(turnover mass / Msun). Both integrate in log halo mass from 1e5 to 1e16 Msun with the native GK61 adaptive tolerance of 1e-3, independently of the conditional integration method. Stellar and escape powers pivot at 1e10 (ACG) or 1e7 (MCG) solar masses. The molecular occupation has both lower and atomic upper exponential cutoffs. All entries remain binary64 photons per baryon, with no log-table floor. The 4.3.2 threshold kills MCGs when homogeneous ACG turnover exceeds 1.001 x atomic mass.",
+  "eligibility": "Production shim is restricted to mass-dependent Lagrangian, USE_MCGS, HMF=ST. Native host supplies redshifts, thresholds and weights; CUDA applies the v3 adaptive quadrature and shared v4.3.2 mass function/occupations.",
+  "scalar_mean_fix": "Lagrangian ST has fix_mean=false in native set_scaling_constants. No active single-point emissivity mean-fix call on this supported case. A single native interpolation at the actual saved mean MCG turnover (including the suppression test) is compared below.",
+  "validation": "The audit temporarily saves results from the original library before CUDA fills its native arrays. Subsequent 4.3.2 optical-depth and frequency calculations consumed the GPU tables. A 1e-10 relative tolerance was applied at every nonzero node, with exact zero masks and all outputs finite.",
+  "live_radiation_setup": {
+    "job": "490689",
+    "z": 11.5,
+    "stages": {
+      "radiation_lyman_spectral_factors": 1,
+      "radiation_ionization_interpolation": 1,
+      "radiation_mcg_global_nion": 1,
+      "mcg_xray_optical_depth_and_frequency": 1
+    },
+    "node_axes": {
+      "axes": [
+        11.488499641418457,
+        0.006437461776542186,
+        11.488499641418457,
+        0.006437461776542186,
+        4.99999991,
+        0.10204081816326531
+      ],
+      "shape": [
+        400,
+        50
+      ],
+      "gpu_seconds_including_first_use": 10.277496463968419
+    },
+    "tables": {
+      "acg": {
+        "n": 400,
+        "cpu_range": [
+          0.060569572776446735,
+          0.2224399999360768
+        ],
+        "gpu_range": [
+          0.06056957277644685,
+          0.22243999993607716
+        ],
+        "different": 400,
+        "max_abs": 4.996003610813204e-16,
+        "max_relative_nonzero": 2.5360960394716705e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "mcg": {
+        "n": 20000,
+        "cpu_range": [
+          1.3913102165127344e-16,
+          0.03754268588240617
+        ],
+        "gpu_range": [
+          1.391310216512814e-16,
+          0.03754268588240622
+        ],
+        "different": 19999,
+        "max_abs": 7.632783294297951e-17,
+        "max_relative_nonzero": 6.031649825803832e-14,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      }
+    },
+    "setup": {
+      "zpp_avg": {
+        "n": 40,
+        "cpu_range": [
+          11.50259461139539,
+          14.043003538248374
+        ],
+        "gpu_range": [
+          11.50259461139539,
+          14.043003538248374
+        ],
+        "different": 0,
+        "max_abs": 0.0,
+        "max_relative_nonzero": 0.0,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "zpp_edges": {
+        "n": 40,
+        "cpu_range": [
+          11.50518922279078,
+          14.271673037740886
+        ],
+        "gpu_range": [
+          11.50518922279078,
+          14.271673037740886
+        ],
+        "different": 0,
+        "max_abs": 0.0,
+        "max_relative_nonzero": 0.0,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_heat_tbl": {
+        "n": 560,
+        "cpu_range": [
+          1.1455761122531047e-16,
+          6.978881114406159e-15
+        ],
+        "gpu_range": [
+          1.1455761122531047e-16,
+          6.978881114406159e-15
+        ],
+        "different": 379,
+        "max_abs": 5.5220263365470826e-30,
+        "max_relative_nonzero": 1.5402588514483562e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_ion_tbl": {
+        "n": 560,
+        "cpu_range": [
+          2.821878358990954e-07,
+          0.00017662814961810815
+        ],
+        "gpu_range": [
+          2.821878358990954e-07,
+          0.00017662814961810812
+        ],
+        "different": 312,
+        "max_abs": 1.6263032587282567e-19,
+        "max_relative_nonzero": 2.1877864555434173e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_lya_tbl": {
+        "n": 560,
+        "cpu_range": [
+          30.249814245931848,
+          3990213.9068286633
+        ],
+        "gpu_range": [
+          30.249814245931844,
+          3990213.9068286624
+        ],
+        "different": 396,
+        "max_abs": 3.026798367500305e-09,
+        "max_relative_nonzero": 2.0250329168606385e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_heat_tbl_diff": {
+        "n": 560,
+        "cpu_range": [
+          -1.5806402054185557e-15,
+          1.2066384852467964e-15
+        ],
+        "gpu_range": [
+          -1.5806402054185565e-15,
+          1.2066384852467956e-15
+        ],
+        "different": 476,
+        "max_abs": 4.733165431326071e-30,
+        "max_relative_nonzero": 7.255013859622706e-14,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_ion_tbl_diff": {
+        "n": 560,
+        "cpu_range": [
+          -4.77049099068343e-05,
+          0.0
+        ],
+        "gpu_range": [
+          -4.77049099068343e-05,
+          0.0
+        ],
+        "different": 316,
+        "max_abs": 1.8973538018496328e-19,
+        "max_relative_nonzero": 1.3581378421904348e-13,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "freq_int_lya_tbl_diff": {
+        "n": 560,
+        "cpu_range": [
+          -942349.6629391146,
+          0.0
+        ],
+        "gpu_range": [
+          -942349.6629391145,
+          0.0
+        ],
+        "different": 446,
+        "max_abs": 3.259629011154175e-09,
+        "max_relative_nonzero": 5.24465802661548e-14,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lya_flux_continuum_prefactor_acg": {
+        "n": 40,
+        "cpu_range": [
+          1.7561810016441817e-08,
+          3.777902224499682e-08
+        ],
+        "gpu_range": [
+          1.7561810016441817e-08,
+          3.777902224499682e-08
+        ],
+        "different": 2,
+        "max_abs": 6.617444900424222e-24,
+        "max_relative_nonzero": 2.0941985356712095e-16,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lya_flux_injected_prefactor_acg": {
+        "n": 40,
+        "cpu_range": [
+          0.0,
+          6.341325392390749e-08
+        ],
+        "gpu_range": [
+          0.0,
+          6.341325392390744e-08
+        ],
+        "different": 25,
+        "max_abs": 7.940933880509066e-23,
+        "max_relative_nonzero": 3.5069418645014586e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lyw_flux_prefactor_acg": {
+        "n": 40,
+        "cpu_range": [
+          0.0,
+          16628230.064206827
+        ],
+        "gpu_range": [
+          0.0,
+          16628230.064206777
+        ],
+        "different": 31,
+        "max_abs": 1.1734664440155029e-07,
+        "max_relative_nonzero": 9.144509982785084e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lyw_flux_prefactor_mcg": {
+        "n": 40,
+        "cpu_range": [
+          0.0,
+          7972897.764378757
+        ],
+        "gpu_range": [
+          0.0,
+          7972897.764378705
+        ],
+        "different": 26,
+        "max_abs": 8.66129994392395e-08,
+        "max_relative_nonzero": 1.1371751849356335e-14,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lya_flux_continuum_prefactor_mcg": {
+        "n": 40,
+        "cpu_range": [
+          6.783437500765951e-09,
+          1.4592552589912678e-08
+        ],
+        "gpu_range": [
+          6.783437500765951e-09,
+          1.4592552589912678e-08
+        ],
+        "different": 4,
+        "max_abs": 3.308722450212111e-24,
+        "max_relative_nonzero": 3.2446062268862836e-16,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "lya_flux_injected_prefactor_mcg": {
+        "n": 40,
+        "cpu_range": [
+          0.0,
+          6.679930526954676e-08
+        ],
+        "gpu_range": [
+          0.0,
+          6.679930526954676e-08
+        ],
+        "different": 25,
+        "max_abs": 4.963083675318166e-23,
+        "max_relative_nonzero": 2.842759784326574e-15,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "Q_HI_zp": {
+        "n": 1,
+        "cpu_range": [
+          0.7650268309408487,
+          0.7650268309408487
+        ],
+        "gpu_range": [
+          0.7650268309408482,
+          0.7650268309408482
+        ],
+        "different": 1,
+        "max_abs": 4.440892098500626e-16,
+        "max_relative_nonzero": 5.8048841150304605e-16,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "x_e_ave_zp": {
+        "n": 1,
+        "cpu_range": [
+          0.00018266000552102923,
+          0.00018266000552102923
+        ],
+        "gpu_range": [
+          0.00018266000552102923,
+          0.00018266000552102923
+        ],
+        "different": 0,
+        "max_abs": 0.0,
+        "max_relative_nonzero": 0.0,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      },
+      "NO_LIGHT": {
+        "n": 1,
+        "cpu_range": [
+          0.0,
+          0.0
+        ],
+        "gpu_range": [
+          0.0,
+          0.0
+        ],
+        "different": 0,
+        "max_abs": 0.0,
+        "max_relative_nonzero": 0.0,
+        "unequal_zeros": 0,
+        "failed_strict": 0,
+        "failed_1e10": 0
+      }
+    }
+  },
+  "separate_timing_and_suppression": {
+    "physical": {
+      "cpu_seconds": [
+        0.5627550509525463
+      ],
+      "gpu_seconds": [
+        1.2113480820553377,
+        0.032279707957059145,
+        0.03117356402799487,
+        0.029865965014323592
+      ],
+      "lookup": {
+        "different": 2,
+        "n": 2,
+        "max_relative": 1.8981502694618985e-15,
+        "max_abs": 4.163336342344337e-16,
+        "range": [
+          0.013708531172839485,
+          0.22121974594489555
+        ],
+        "mismatched_zeros": 0
+      },
+      "acg": {
+        "different": 400,
+        "n": 400,
+        "max_relative": 2.5360960394716705e-15,
+        "max_abs": 4.996003610813204e-16,
+        "range": [
+          0.060569572776446735,
+          0.2224399999360768
+        ],
+        "mismatched_zeros": 0
+      },
+      "mcg": {
+        "different": 19999,
+        "n": 20000,
+        "max_relative": 6.031649825803832e-14,
+        "max_abs": 7.632783294297951e-17,
+        "range": [
+          1.3913102165127344e-16,
+          0.03754268588240617
+        ],
+        "mismatched_zeros": 0
+      },
+      "lookup_cpu": [
+        0.22121974594489555,
+        0.013708531172839485
+      ],
+      "lookup_gpu": [
+        0.22121974594489596,
+        0.013708531172839511
+      ]
+    },
+    "suppressed": {
+      "cpu_seconds": [
+        0.0006638839840888977
+      ],
+      "gpu_seconds": [
+        0.0032480519730597734
+      ],
+      "lookup": {
+        "different": 1,
+        "n": 2,
+        "max_relative": 4.527147260563567e-16,
+        "max_abs": 1.0408340855860843e-17,
+        "range": [
+          0.0,
+          0.02299094828774169
+        ],
+        "mismatched_zeros": 0
+      },
+      "acg": {
+        "different": 9,
+        "n": 11,
+        "max_relative": 5.527080464176069e-16,
+        "max_abs": 1.0408340855860843e-17,
+        "range": [
+          0.0024851136515414026,
+          0.023188263666798388
+        ],
+        "mismatched_zeros": 0
+      },
+      "mcg": {
+        "different": 0,
+        "n": 550,
+        "max_relative": 0.0,
+        "max_abs": 0.0,
+        "range": [
+          0.0,
+          0.0
+        ],
+        "mismatched_zeros": 0
+      },
+      "lookup_cpu": [
+        0.02299094828774169,
+        0.0
+      ],
+      "lookup_gpu": [
+        0.0229909482877417,
+        0.0
+      ]
+    },
+    "job": "490697",
+    "log_mturn_from_saved_emissivity": 6.385466043545419,
+    "stages": {
+      "radiation_mcg_global_nion": 5
+    }
+  },
+  "wall_seconds": {
+    "native_cpu_seconds": 0.5627550509525463,
+    "gpu_warm_median_seconds": 0.03117356402799487,
+    "gpu_warm_replicates": [
+      0.032279707957059145,
+      0.03117356402799487,
+      0.029865965014323592
+    ],
+    "warm_speedup": 18.05231671448199,
+    "first_gpu_full_compile_seconds": 10.277496463968419,
+    "first_process_gpu_with_compiler_cache_seconds": 1.2113480820553377,
+    "scope": "One unconditional paired history. Warm/cached measurements include the C row setup, transfers, table allocation and one lookup at stored mean turnover. Full-compile time measures the initial callback in a fresh process."
+  },
+  "replay_location": "~/ps_v432_perturb/mcg-rad-ntJhot/global.py, warm.py. Native reference under ~/ps_v432_perturb/molecular.hD9zGp/L-INTEGRAL/cpu-cache."
+}

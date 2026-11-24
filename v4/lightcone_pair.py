@@ -1,4 +1,6 @@
-"""Compare native v4 lightcones with CUDA perturbation and coeval brightness."""
+"""Compare native v4 lightcones with the CUDA evolution adapter."""
+
+# ruff: noqa: E402 -- include scientific-library import time in the benchmark.
 
 from contextlib import ExitStack
 from time import perf_counter
@@ -17,7 +19,6 @@ import numpy as np
 import py21cmfast as p21
 from py21cmfast.drivers import single_field
 from py21cmfast.lightconers import RectilinearLightconer
-from tests import produce_integration_test_data as official
 
 FIELDS = (
     "brightness_temp",
@@ -29,7 +30,10 @@ FIELDS = (
 )
 
 
-def run(directory, fine, mode):
+def benchmark_case(fine):
+    """Construct the native benchmark inputs and line-of-sight coordinates."""
+    from tests import produce_integration_test_data as official
+
     low, box = {192: (64, 200), 384: (96, 375)}[fine]
     with patch.object(official, "SEED", 424242):
         inputs = official.get_all_options_struct(
@@ -50,6 +54,23 @@ def run(directory, fine, mode):
         quantities=FIELDS,
         resolution=inputs.simulation_options.cell_size,
     )
+    return inputs, lightconer
+
+
+def run(directory, fine, mode, *, audit_evolution=False):
+    inputs, lightconer = benchmark_case(fine)
+    with ExitStack() as stack:
+        timings = None
+        if mode == "gpu":
+            from gpu_lightcone import _backend
+
+            timings = stack.enter_context(
+                _backend(inputs, lightconer, directory, audit=audit_evolution)
+            )
+        return _run(directory, fine, mode, inputs, lightconer, timings)
+
+
+def _run(directory, fine, mode, inputs, lightconer, timings):
     ic = p21.compute_initial_conditions(inputs=inputs, write=False, regenerate=True)
     hash_start = perf_counter()
     digest = hashlib.sha256()
@@ -62,37 +83,17 @@ def run(directory, fine, mode):
     calls = []
 
     def perturb(**kwargs):
-        t = perf_counter()
-        if mode == "gpu":
-            from perturb import perturb_field_gpu
-
-            result = perturb_field_gpu(
-                redshift=kwargs["redshift"],
-                initial_conditions=kwargs["initial_conditions"],
-                strict_fft=True,
-            )
-        else:
-            result = cpu_func(**kwargs)
-        calls.append(perf_counter() - t)
+        start = perf_counter()
+        result = cpu_func(**kwargs)
+        calls.append(perf_counter() - start)
         return result
 
     brightness_calls = []
     with ExitStack() as hooks:
-        hooks.enter_context(patch.object(single_field, "perturb_field", perturb))
-        if mode == "gpu":
-            from brightness import brightness_temperature_gpu
-
-            def brightness(**kwargs):
-                start = perf_counter()
-                output = brightness_temperature_gpu(
-                    ionized_box=kwargs["ionized_box"],
-                    perturbed_field=kwargs["perturbed_field"],
-                    spin_temp=kwargs.get("spin_temp"),
-                )
-                brightness_calls.append(perf_counter() - start)
-                return output
-
-            hooks.enter_context(patch.object(single_field, "brightness_temperature", brightness))
+        if timings is None:
+            hooks.enter_context(patch.object(single_field, "perturb_field", perturb))
+        else:
+            calls, brightness_calls = timings.perturb, timings.brightness
         cone = p21.run_lightcone(
             lightconer=lightconer,
             inputs=inputs,
@@ -102,6 +103,8 @@ def run(directory, fine, mode):
         )
     path = directory / (mode + ".h5")
     cone.save(path, clobber=True)
+    with h5py.File(path, "r+") as saved:
+        saved.attrs["benchmark_ic_sha256"] = digest.hexdigest()
     with path.open("rb") as stream:
         os.fsync(stream.fileno())
     elapsed = perf_counter() - START

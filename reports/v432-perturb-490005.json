@@ -1,0 +1,315 @@
+{
+  "job": 490005,
+  "node": "a8",
+  "seed": 12345,
+  "z": 10,
+  "dim": 150,
+  "hii_dim": 50,
+  "box_mpc": 100,
+  "cpu_threads": 2,
+  "official_pytest": [
+    "3 passed, 49 deselected in 3.76s"
+  ],
+  "results": {
+    "gpu": {
+      "reference_fft": false,
+      "version": "4.3.2",
+      "gpu": "NVIDIA RTX A6000",
+      "atol": 1e-08,
+      "rtol": 0.0001,
+      "cases": {
+        "linear": {
+          "cpu": {
+            "first": 0.009462013025768101,
+            "warm_median": 0.003765713016036898,
+            "samples": [
+              0.009462013025768101,
+              0.004627739021088928,
+              0.003765713016036898,
+              0.0037255119532346725
+            ]
+          },
+          "gpu": {
+            "first": 0.2658605729811825,
+            "warm_median": 0.0017000229563564062,
+            "samples": [
+              0.2658605729811825,
+              0.0019111470319330692,
+              0.0017000229563564062,
+              0.0016958320047706366
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 5.960464477539062e-07,
+              "failed": 237,
+              "peak_reference": 1.3634674549102783
+            },
+            "velocity_x": {
+              "max_abs": 4.301339185275744e-23,
+              "failed": 0,
+              "peak_reference": 1.304952855174266e-16,
+              "failed_in_upstream_scaled_units": 143
+            },
+            "velocity_y": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 9.803771089758086e-17,
+              "failed_in_upstream_scaled_units": 151
+            },
+            "velocity_z": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 9.67404667039711e-17,
+              "failed_in_upstream_scaled_units": 138
+            }
+          }
+        },
+        "no2lpt": {
+          "cpu": {
+            "first": 0.07374140404863283,
+            "warm_median": 0.07015238399617374,
+            "samples": [
+              0.07374140404863283,
+              0.07103902200469747,
+              0.07015238399617374,
+              0.07013280503451824
+            ]
+          },
+          "gpu": {
+            "first": 0.09133673401083797,
+            "warm_median": 0.00410712999291718,
+            "samples": [
+              0.09133673401083797,
+              0.004274362989235669,
+              0.004106929001864046,
+              0.00410712999291718
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 5.364418029785156e-07,
+              "failed": 232,
+              "peak_reference": 2.029268264770508
+            },
+            "velocity_x": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 1.3820316622343252e-16,
+              "failed_in_upstream_scaled_units": 131
+            },
+            "velocity_y": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 1.0038835305766465e-16,
+              "failed_in_upstream_scaled_units": 166
+            },
+            "velocity_z": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 9.86717150586007e-17,
+              "failed_in_upstream_scaled_units": 114
+            }
+          }
+        },
+        "highres": {
+          "cpu": {
+            "first": 0.26023542502662167,
+            "warm_median": 0.2334973289980553,
+            "samples": [
+              0.26023542502662167,
+              0.24469738500192761,
+              0.2334973289980553,
+              0.23299278796184808
+            ]
+          },
+          "gpu": {
+            "first": 0.0483613139949739,
+            "warm_median": 0.012865868979133666,
+            "samples": [
+              0.0483613139949739,
+              0.01319858495844528,
+              0.012865868979133666,
+              0.012802426994312555
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 1.430511474609375e-06,
+              "failed": 524,
+              "peak_reference": 3.634838581085205
+            },
+            "velocity_x": {
+              "max_abs": 4.1359030627651384e-23,
+              "failed": 0,
+              "peak_reference": 1.5163639408283648e-16,
+              "failed_in_upstream_scaled_units": 226
+            },
+            "velocity_y": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 1.2214407005309123e-16,
+              "failed_in_upstream_scaled_units": 149
+            },
+            "velocity_z": {
+              "max_abs": 4.632211430296955e-23,
+              "failed": 0,
+              "peak_reference": 1.1471191180630638e-16,
+              "failed_in_upstream_scaled_units": 118
+            }
+          }
+        }
+      }
+    },
+    "gpu_native_density_fft": {
+      "reference_fft": true,
+      "version": "4.3.2",
+      "gpu": "NVIDIA RTX A6000",
+      "atol": 1e-08,
+      "rtol": 0.0001,
+      "cases": {
+        "linear": {
+          "cpu": {
+            "first": 0.00966226594755426,
+            "warm_median": 0.0038801449700258672,
+            "samples": [
+              0.00966226594755426,
+              0.004857133026234806,
+              0.0038801449700258672,
+              0.003874284971971065
+            ]
+          },
+          "gpu": {
+            "first": 0.2548406510031782,
+            "warm_median": 0.0033522149897180498,
+            "samples": [
+              0.2548406510031782,
+              0.0039766859845258296,
+              0.0033522149897180498,
+              0.003264493017923087
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "peak_reference": 1.3634674549102783
+            },
+            "velocity_x": {
+              "max_abs": 4.301339185275744e-23,
+              "failed": 0,
+              "peak_reference": 1.304952855174266e-16,
+              "failed_in_upstream_scaled_units": 143
+            },
+            "velocity_y": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 9.803771089758086e-17,
+              "failed_in_upstream_scaled_units": 151
+            },
+            "velocity_z": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 9.67404667039711e-17,
+              "failed_in_upstream_scaled_units": 138
+            }
+          }
+        },
+        "no2lpt": {
+          "cpu": {
+            "first": 0.07624970201868564,
+            "warm_median": 0.07284108700696379,
+            "samples": [
+              0.07624970201868564,
+              0.07351978903170675,
+              0.07284108700696379,
+              0.07266806298866868
+            ]
+          },
+          "gpu": {
+            "first": 0.09181215200806037,
+            "warm_median": 0.006036515987943858,
+            "samples": [
+              0.09181215200806037,
+              0.006321051972918212,
+              0.005831143003888428,
+              0.006036515987943858
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "peak_reference": 2.029268264770508
+            },
+            "velocity_x": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 1.3820316622343252e-16,
+              "failed_in_upstream_scaled_units": 131
+            },
+            "velocity_y": {
+              "max_abs": 3.3087224502121107e-23,
+              "failed": 0,
+              "peak_reference": 1.0038835305766465e-16,
+              "failed_in_upstream_scaled_units": 166
+            },
+            "velocity_z": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 9.86717150586007e-17,
+              "failed_in_upstream_scaled_units": 114
+            }
+          }
+        },
+        "highres": {
+          "cpu": {
+            "first": 0.27635749598266557,
+            "warm_median": 0.2735265219816938,
+            "samples": [
+              0.27635749598266557,
+              0.2646438400261104,
+              0.2737902570515871,
+              0.2735265219816938
+            ]
+          },
+          "gpu": {
+            "first": 0.10025130596477538,
+            "warm_median": 0.06274769199080765,
+            "samples": [
+              0.10025130596477538,
+              0.06248151703039184,
+              0.06288097403012216,
+              0.06274769199080765
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "peak_reference": 3.634838581085205
+            },
+            "velocity_x": {
+              "max_abs": 4.1359030627651384e-23,
+              "failed": 0,
+              "peak_reference": 1.5163639408283648e-16,
+              "failed_in_upstream_scaled_units": 226
+            },
+            "velocity_y": {
+              "max_abs": 3.970466940254533e-23,
+              "failed": 0,
+              "peak_reference": 1.2214407005309123e-16,
+              "failed_in_upstream_scaled_units": 149
+            },
+            "velocity_z": {
+              "max_abs": 4.632211430296955e-23,
+              "failed": 0,
+              "peak_reference": 1.1471191180630638e-16,
+              "failed_in_upstream_scaled_units": 118
+            }
+          }
+        }
+      }
+    }
+  }
+}

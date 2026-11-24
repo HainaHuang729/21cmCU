@@ -1,0 +1,1416 @@
+{
+  "scope": "Joined public 21cmFAST 4.3.2 CUDA driver and independent read-only audit of coevals against the saved native CPU benchmark.",
+  "environment": "Slurm a9, RTX A6000, one CPU thread, 24 Mpc, seed 129887, redshift nodes 12, 11.5, 11.",
+  "remote_campaign": "~/ps_v432_perturb/molecular.hD9zGp/joined-432.T8erw7",
+  "timing": "Lightcone driver call including coeval cache writes. CPU times come from existing separate allocations; the GPU files were produced by one new run per case. Timings include normal process initialization and the use of existing CUDA compilation caches.",
+  "lightcone_tolerance": "abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU), with a field-peak-scaled check for the four low-amplitude molecular fields",
+  "cached_coeval_tolerance": "abs(GPU - CPU) <= 1e-5 * abs(CPU) per value",
+  "runs": [
+    {
+      "case": "CHMF-FLUCTS-CUDA-CONDITIONS",
+      "cpu_job": "490734",
+      "gpu_job": "490905",
+      "source_model": "CHMF-SAMPLER",
+      "dim": 32,
+      "hii_dim": 16,
+      "slices": 97,
+      "cpu_seconds": 30.735757085029036,
+      "gpu_seconds": 14.81775359599851,
+      "inputs_equal": true,
+      "slice_distances_equal": true,
+      "catalogs_equal": true,
+      "halo_counts": {
+        "11.0": 23325,
+        "11.5": 19230,
+        "12.0": 15389
+      },
+      "class_tables_equal": true,
+      "class_solver_calls": [],
+      "class_streaming_velocity": {
+        "cells": 4096,
+        "min_km_s": 0.766298234462738,
+        "max_km_s": 20.859210968017578,
+        "rms_km_s": 9.394531541611899,
+        "different": 0
+      },
+      "fields": {
+        "J_21_LW": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "brightness_temp": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 7.62939453125e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "density": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "los_velocity": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "n_ion": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "neutral_fraction": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_acg": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_mcg": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "spin_temperature": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "tau_21": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_z": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_emissivity": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_ionised_fraction": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "global_quantities": {
+        "J_21_LW": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "brightness_temp": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.862645149230957e-09
+        },
+        "cumulative_recombinations": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "density": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.862645149230957e-09
+        },
+        "fesc_weighted_sfrd": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.4210854715202004e-14
+        },
+        "ionisation_rate_G12": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.3283064365386963e-10
+        },
+        "kinetic_temp_neutral": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 4.76837158203125e-07
+        },
+        "kinetic_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "log10_mturn_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 5.53335155473178e-13
+        },
+        "log10_mturn_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.2434497875801753e-14
+        },
+        "mean_free_path": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "n_ion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9802322387695312e-08
+        },
+        "neutral_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "sfrd_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.3877787807814457e-17
+        },
+        "sfrd_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.469446951953614e-18
+        },
+        "spin_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "tau_21": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.862645149230957e-09
+        },
+        "velocity_z": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 4.321695583162791e-26
+        },
+        "xray_emissivity": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "xray_ionised_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9103830456733704e-11
+        },
+        "z_reion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "power": {
+        "unit": "mK^2 Mpc^2",
+        "k_unit": "Mpc^-1",
+        "k_mean": [
+          0.31601981632284,
+          0.5648004102572511,
+          0.7954108410141316,
+          1.0682798108135991,
+          1.3452138414952763,
+          1.595396102466962,
+          1.8486187843440371,
+          2.0276098204629176
+        ],
+        "modes_per_bin": [
+          8,
+          12,
+          16,
+          32,
+          28,
+          40,
+          40,
+          18
+        ],
+        "slices": 97,
+        "tested": 776,
+        "failed": 0,
+        "max_abs": 6.352293257805286e-05
+      },
+      "cached_coeval_values": 258048,
+      "cached_coeval_fields": {
+        "RadiationFields": {
+          "xray_heating_rate": {
+            "values": 12288,
+            "different": 7961,
+            "max_abs": 3.944304526105059e-30,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionization_rate": {
+            "values": 12288,
+            "different": 8156,
+            "max_abs": 1.4444474582904269e-34,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_lya_flux": {
+            "values": 12288,
+            "different": 8072,
+            "max_abs": 1.2116903504194741e-27,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lyw_flux": {
+            "values": 12288,
+            "different": 7847,
+            "max_abs": 1.4654943925052066e-14,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_continuum": {
+            "values": 12288,
+            "different": 6122,
+            "max_abs": 3.101927297073854e-25,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_injected": {
+            "values": 12288,
+            "different": 7584,
+            "max_abs": 1.550963648536927e-25,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "TsBox": {
+          "spin_temperature": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionised_fraction": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temp_neutral": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "J_21_LW": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "IonizedBox": {
+          "neutral_fraction": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "ionisation_rate_G12": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "z_reion": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "mean_free_path": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "cumulative_recombinations": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temperature": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "EmissivityFields": {
+          "sfrd_acg": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "sfrd_mcg": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_emissivity": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "n_ion": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "fesc_weighted_sfrd": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        }
+      },
+      "installed_radiation_stages": {
+        "thermal_initial_conditions": 1,
+        "radiation_shell_filter": 192,
+        "radiation_shell_accumulation": 64,
+        "radiation_lyman_spectral_factors": 2,
+        "thermal_update": 2,
+        "ionization_mhr_table": 1,
+        "ionization_cumulative_recombinations": 3,
+        "mcg_xray_optical_depth_and_frequency": 2,
+        "radiation_mcg_global_nion": 2,
+        "radiation_ionization_interpolation": 2,
+        "mcg_turnover_grids": 3,
+        "mcg_lw_shells": 64,
+        "mcg_spin_lw": 2,
+        "mcg_lw_normalizations": 2,
+        "subgrid_molecular_advection_cells": 12288,
+        "ionization_halo_barrier": 90,
+        "ionization_global_nion": 3,
+        "subgrid_nion_acg_2d_tables": 3,
+        "subgrid_nion_mcg_2d_tables": 3,
+        "subgrid_sfrd_acg_2d_tables": 3,
+        "subgrid_sfrd_mcg_2d_tables": 3,
+        "subgrid_xray_acg_2d_tables": 3,
+        "subgrid_xray_mcg_2d_tables": 3,
+        "sampled_mcg_halos": 57944
+      },
+      "emissivity_history": {
+        "uploads": 15,
+        "uploaded_bytes": 491520,
+        "filter_input_reuses": 192,
+        "filter_input_reused_bytes": 3145728,
+        "filter_downloads_avoided": 186,
+        "filter_downloads_avoided_bytes": 3047424,
+        "filtered_input_reuses": 192,
+        "filtered_input_reuses_bytes": 3145728,
+        "accumulator_downloads_avoided": 384,
+        "accumulator_downloads_avoided_bytes": 12582912,
+        "reused_uploads": 369,
+        "reused_bytes": 12091392,
+        "accumulator_input_reuses": 384,
+        "accumulator_input_reuses_bytes": 12582912
+      },
+      "passed": true,
+      "source_scalar_sigma": {
+        "gpu_source_scalar_sigma": 8,
+        "gpu_source_scalar_sigma_reuses": 7
+      },
+      "scaled_molecular_fields": {
+        "sfrd_acg": {
+          "peak": 4.495956051897565e-09,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "sfrd_mcg": {
+          "peak": 2.931002662798221e-10,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "xray_emissivity": {
+          "peak": 43.74867248535156,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "J_21_LW": {
+          "peak": 3.0261147022247314,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "case": "E-SCATTER",
+      "cpu_job": "490743",
+      "gpu_job": "490905",
+      "source_model": "E-INTEGRAL",
+      "dim": 16,
+      "hii_dim": 8,
+      "slices": 49,
+      "cpu_seconds": 18.652099617989734,
+      "gpu_seconds": 9.74282879405655,
+      "inputs_equal": true,
+      "slice_distances_equal": true,
+      "catalogs_equal": true,
+      "halo_counts": {},
+      "class_tables_equal": null,
+      "class_solver_calls": null,
+      "class_streaming_velocity": null,
+      "fields": {
+        "J_21_LW": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "brightness_temp": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 1.9073486328125e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "density": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "los_velocity": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "n_ion": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "neutral_fraction": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_acg": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_mcg": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "spin_temperature": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "tau_21": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_z": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_emissivity": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_ionised_fraction": {
+          "tested": 3136,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "global_quantities": {
+        "J_21_LW": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "brightness_temp": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "density": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "ionisation_rate_G12": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 4.76837158203125e-07
+        },
+        "kinetic_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.00048828125
+        },
+        "log10_mturn_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 6.394884621840902e-14
+        },
+        "log10_mturn_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 8.348877145181177e-14
+        },
+        "mean_free_path": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 7.450580596923828e-09
+        },
+        "n_ion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9802322387695312e-08
+        },
+        "neutral_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.4901161193847656e-08
+        },
+        "nion_conditional_filtered_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "sfrd_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.3877787807814457e-17
+        },
+        "sfrd_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.734723475976807e-18
+        },
+        "spin_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "tau_21": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "velocity_z": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.4217166778255163e-25
+        },
+        "xray_emissivity": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "xray_ionised_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9103830456733704e-11
+        },
+        "z_reion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "power": {
+        "unit": "mK^2 Mpc^2",
+        "k_unit": "Mpc^-1",
+        "k_mean": [
+          0.31601981632284,
+          0.5648004102572511,
+          0.7954108410141316,
+          0.9645844035152513
+        ],
+        "modes_per_bin": [
+          8,
+          12,
+          16,
+          10
+        ],
+        "slices": 49,
+        "tested": 196,
+        "failed": 0,
+        "max_abs": 6.506487466140243e-06
+      },
+      "cached_coeval_values": 36864,
+      "cached_coeval_fields": {
+        "RadiationFields": {
+          "xray_heating_rate": {
+            "values": 1536,
+            "different": 910,
+            "max_abs": 7.888609052210118e-30,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionization_rate": {
+            "values": 1536,
+            "different": 947,
+            "max_abs": 1.925929944387236e-34,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_lya_flux": {
+            "values": 1536,
+            "different": 950,
+            "max_abs": 2.4233807008389483e-27,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lyw_flux": {
+            "values": 1536,
+            "different": 973,
+            "max_abs": 6.483702463810914e-14,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_continuum": {
+            "values": 1536,
+            "different": 638,
+            "max_abs": 3.101927297073854e-25,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_injected": {
+            "values": 1536,
+            "different": 923,
+            "max_abs": 1.2407709188295415e-24,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "TsBox": {
+          "spin_temperature": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionised_fraction": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temp_neutral": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "J_21_LW": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "IonizedBox": {
+          "neutral_fraction": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "ionisation_rate_G12": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "z_reion": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "mean_free_path": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "cumulative_recombinations": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temperature": {
+            "values": 1536,
+            "different": 1,
+            "max_abs": 0.00390625,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "nion_conditional_filtered_acg": {
+            "values": 3072,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "nion_conditional_filtered_mcg": {
+            "values": 3072,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "EmissivityFields": {
+          "sfrd_acg": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "sfrd_mcg": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_emissivity": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "n_ion": {
+            "values": 1536,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        }
+      },
+      "installed_radiation_stages": {
+        "thermal_initial_conditions": 1,
+        "radiation_shell_filter": 60,
+        "radiation_shell_accumulation": 20,
+        "radiation_lyman_spectral_factors": 2,
+        "thermal_update": 2,
+        "ionization_mhr_table": 1,
+        "ionization_cumulative_recombinations": 3,
+        "radiation_lya_scattering_filter": 40,
+        "mcg_xray_optical_depth_and_frequency": 2,
+        "radiation_mcg_global_nion": 2,
+        "radiation_ionization_interpolation": 2,
+        "mcg_turnover_grids": 3,
+        "mcg_lw_shells": 20,
+        "mcg_spin_lw": 2,
+        "mcg_lw_normalizations": 2,
+        "eulerian_mcg_emissivity_cells": 1536,
+        "eulerian_mcg_global_integrals": 12,
+        "eulerian_mcg_ion_turnover_grids": 3,
+        "eulerian_mcg_ion_filter_radius": 6,
+        "eulerian_mcg_ion_ion_center": 6,
+        "eulerian_mcg_ion_global_nion": 3,
+        "ion_mcg_radius_history": 6,
+        "ion_mcg_radius_previous_correction": 4
+      },
+      "emissivity_history": {
+        "uploads": 15,
+        "uploaded_bytes": 61440,
+        "filter_input_reuses": 100,
+        "filter_input_reused_bytes": 204800,
+        "filter_downloads_avoided": 90,
+        "filter_downloads_avoided_bytes": 184320,
+        "filter_forward_fft_reuses": 36,
+        "filtered_input_reuses": 100,
+        "filtered_input_reuses_bytes": 204800,
+        "accumulator_downloads_avoided": 120,
+        "accumulator_downloads_avoided_bytes": 491520,
+        "reused_uploads": 105,
+        "reused_bytes": 430080,
+        "accumulator_input_reuses": 120,
+        "accumulator_input_reuses_bytes": 491520
+      },
+      "passed": true,
+      "scaled_molecular_fields": {
+        "sfrd_acg": {
+          "peak": 8.173632437546985e-09,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 3136,
+          "failed": 0
+        },
+        "sfrd_mcg": {
+          "peak": 2.0571730430241075e-10,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 3136,
+          "failed": 0
+        },
+        "xray_emissivity": {
+          "peak": 80.54622650146484,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 3136,
+          "failed": 0
+        },
+        "J_21_LW": {
+          "peak": 7.066939353942871,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 3136,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "case": "L-INTEGRAL-MCG-LYA-SHARED",
+      "cpu_job": "490887",
+      "gpu_job": "490905",
+      "source_model": "L-INTEGRAL",
+      "dim": 32,
+      "hii_dim": 16,
+      "slices": 97,
+      "cpu_seconds": 16.30724213994108,
+      "gpu_seconds": 13.728563230019063,
+      "inputs_equal": true,
+      "slice_distances_equal": true,
+      "catalogs_equal": true,
+      "halo_counts": {},
+      "class_tables_equal": null,
+      "class_solver_calls": null,
+      "class_streaming_velocity": null,
+      "fields": {
+        "J_21_LW": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "brightness_temp": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 7.62939453125e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "density": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "los_velocity": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "n_ion": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "neutral_fraction": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_acg": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "sfrd_mcg": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "spin_temperature": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "tau_21": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "velocity_z": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_emissivity": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_ionised_fraction": {
+          "tested": 24832,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "global_quantities": {
+        "J_21_LW": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "brightness_temp": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 7.62939453125e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 4.656612873077393e-10
+        },
+        "density": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.0954757928848267e-09
+        },
+        "fesc_weighted_sfrd": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.4210854715202004e-14
+        },
+        "ionisation_rate_G12": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.1641532182693481e-10
+        },
+        "kinetic_temp_neutral": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.384185791015625e-07
+        },
+        "kinetic_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "log10_mturn_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 5.53335155473178e-13
+        },
+        "log10_mturn_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9665159217984183e-13
+        },
+        "mean_free_path": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "n_ion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.4901161193847656e-08
+        },
+        "neutral_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.7881393432617188e-07
+        },
+        "sfrd_acg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 6.938893903907228e-18
+        },
+        "sfrd_mcg": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 1.734723475976807e-18
+        },
+        "spin_temperature": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "tau_21": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "velocity_z": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 4.8467614016778965e-26
+        },
+        "xray_emissivity": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9802322387695312e-08
+        },
+        "xray_ionised_fraction": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 2.9103830456733704e-11
+        },
+        "z_reion": {
+          "tested": 3,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "power": {
+        "unit": "mK^2 Mpc^2",
+        "k_unit": "Mpc^-1",
+        "k_mean": [
+          0.31601981632284,
+          0.5648004102572511,
+          0.7954108410141316,
+          1.0682798108135991,
+          1.3452138414952763,
+          1.595396102466962,
+          1.8486187843440371,
+          2.0276098204629176
+        ],
+        "modes_per_bin": [
+          8,
+          12,
+          16,
+          32,
+          28,
+          40,
+          40,
+          18
+        ],
+        "slices": 97,
+        "tested": 776,
+        "failed": 0,
+        "max_abs": 5.927075198997045e-05
+      },
+      "cached_coeval_values": 258048,
+      "cached_coeval_fields": {
+        "RadiationFields": {
+          "xray_heating_rate": {
+            "values": 12288,
+            "different": 8192,
+            "max_abs": 1.2227344030925683e-29,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionization_rate": {
+            "values": 12288,
+            "different": 8192,
+            "max_abs": 3.7314892672502695e-34,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_lya_flux": {
+            "values": 12288,
+            "different": 8192,
+            "max_abs": 6.058451752097371e-27,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lyw_flux": {
+            "values": 12288,
+            "different": 7810,
+            "max_abs": 1.7319479184152442e-14,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_continuum": {
+            "values": 12288,
+            "different": 6704,
+            "max_abs": 3.877409121342317e-25,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "lya_flux_injected": {
+            "values": 12288,
+            "different": 7669,
+            "max_abs": 4.1359030627651384e-25,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "TsBox": {
+          "spin_temperature": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_ionised_fraction": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temp_neutral": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "J_21_LW": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "IonizedBox": {
+          "neutral_fraction": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "ionisation_rate_G12": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "z_reion": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "mean_free_path": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "cumulative_recombinations": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "kinetic_temperature": {
+            "values": 12288,
+            "different": 6,
+            "max_abs": 0.00390625,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        },
+        "EmissivityFields": {
+          "sfrd_acg": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "sfrd_mcg": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "xray_emissivity": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "n_ion": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          },
+          "fesc_weighted_sfrd": {
+            "values": 12288,
+            "different": 0,
+            "max_abs": 0.0,
+            "strict_failures": 0,
+            "voxel_failures": 0
+          }
+        }
+      },
+      "installed_radiation_stages": {
+        "thermal_initial_conditions": 1,
+        "radiation_shell_filter": 192,
+        "radiation_shell_accumulation": 64,
+        "radiation_lyman_spectral_factors": 2,
+        "thermal_update": 2,
+        "ionization_mhr_table": 1,
+        "ionization_cumulative_recombinations": 3,
+        "radiation_lya_scattering_filter": 128,
+        "mcg_xray_optical_depth_and_frequency": 2,
+        "radiation_mcg_global_nion": 2,
+        "radiation_ionization_interpolation": 2,
+        "mcg_turnover_grids": 3,
+        "mcg_lw_shells": 64,
+        "mcg_spin_lw": 2,
+        "mcg_lw_normalizations": 2,
+        "subgrid_molecular_advection_cells": 12288,
+        "ionization_halo_barrier": 90,
+        "ionization_global_nion": 3,
+        "subgrid_nion_acg_2d_tables": 3,
+        "subgrid_nion_mcg_2d_tables": 3,
+        "subgrid_sfrd_acg_2d_tables": 3,
+        "subgrid_sfrd_mcg_2d_tables": 3,
+        "subgrid_xray_acg_2d_tables": 3,
+        "subgrid_xray_mcg_2d_tables": 3
+      },
+      "emissivity_history": {
+        "uploads": 15,
+        "uploaded_bytes": 491520,
+        "filter_input_reuses": 320,
+        "filter_input_reused_bytes": 5242880,
+        "filter_downloads_avoided": 310,
+        "filter_downloads_avoided_bytes": 5079040,
+        "filter_forward_fft_reuses": 124,
+        "filtered_input_reuses": 320,
+        "filtered_input_reuses_bytes": 5242880,
+        "accumulator_downloads_avoided": 384,
+        "accumulator_downloads_avoided_bytes": 12582912,
+        "reused_uploads": 369,
+        "reused_bytes": 12091392,
+        "accumulator_input_reuses": 384,
+        "accumulator_input_reuses_bytes": 12582912
+      },
+      "passed": true,
+      "source_scalar_sigma": {
+        "gpu_source_scalar_sigma": 8,
+        "gpu_source_scalar_sigma_reuses": 7
+      },
+      "scaled_molecular_fields": {
+        "sfrd_acg": {
+          "peak": 5.769117628062759e-09,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "sfrd_mcg": {
+          "peak": 2.657146169759983e-10,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "xray_emissivity": {
+          "peak": 26.790027618408203,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        },
+        "J_21_LW": {
+          "peak": 3.4376766681671143,
+          "different": 0,
+          "max_abs": 0.0,
+          "tested": 24832,
+          "failed": 0
+        }
+      }
+    }
+  ]
+}

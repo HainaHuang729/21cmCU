@@ -1,0 +1,706 @@
+{
+  "seed": 424242,
+  "redshift": 8.0,
+  "source_model": "CHMF-SAMPLER",
+  "n_halos": 334723,
+  "subgrid": {
+    "halo_number": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "halo_mass_density": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "stellar_mass_density_acg": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "sfrd_acg": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "xray_emissivity": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "n_ion": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    },
+    "fesc_weighted_sfrd": {
+      "nonzero": 13824,
+      "failed": 0,
+      "max_abs": 0.0,
+      "max_relative": 0.0
+    }
+  },
+  "tables": {
+    "SFRD_conditional_table1D_acg": {
+      "tested": 400,
+      "failed": 0,
+      "max_abs": 0.0
+    },
+    "Nion_conditional_table1D_acg": {
+      "tested": 400,
+      "failed": 0,
+      "max_abs": 0.0
+    }
+  },
+  "audit_counts": {
+    "halo_grid_calls": 1,
+    "halo_grid_halos": 334723,
+    "halo_grid_empty": 0,
+    "subgrid_nion_tables": 1,
+    "subgrid_sfrd_tables": 1
+  },
+  "report": {
+    "halo_grid_calls": 1,
+    "halo_grid_halos": 334723,
+    "halo_grid_empty": 0,
+    "subgrid_nion_tables": 1,
+    "subgrid_sfrd_tables": 1
+  },
+  "fields": {
+    "halo_number": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "halo_mass_density": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "stellar_mass_density_acg": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "sfrd_acg": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "xray_emissivity": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "n_ion": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    },
+    "fesc_weighted_sfrd": {
+      "sampled_cells": 13819,
+      "different": 0,
+      "failed": 0,
+      "max_relative": 0.0
+    }
+  },
+  "job": 490422,
+  "node": "a8",
+  "gpu": "RTX A6000",
+  "grid": [
+    48,
+    24
+  ],
+  "box_length_mpc": 40,
+  "comparison": "Single coeval native CPU and GPU on an identical catalog/IC. Additional subgrid-only comparison set all sampled masses to zero. Table comparison uses the native single-node oracle.",
+  "timing": {
+    "jobs": {
+      "original": 490424,
+      "warp": 490427
+    },
+    "cpu_threads": 2,
+    "redshift": 8.0,
+    "measurement": "Same-input per-table wall clock from C caller, 7 warmed measurements after an initial call, including the GPU transfer and synchronization.",
+    "milliseconds": {
+      "original": {
+        "sfrd": {
+          "measurements": 7,
+          "cpu_median_ms": 2.58338707,
+          "gpu_median_ms": 3.41779599,
+          "speedup": 0.7558634504688503
+        },
+        "nion": {
+          "measurements": 7,
+          "cpu_median_ms": 2.5662860100000002,
+          "gpu_median_ms": 3.4289449700000003,
+          "speedup": 0.748418546361215
+        }
+      },
+      "warp": {
+        "sfrd": {
+          "measurements": 7,
+          "cpu_median_ms": 2.53470498,
+          "gpu_median_ms": 0.435179914,
+          "speedup": 5.82449901398712
+        },
+        "nion": {
+          "measurements": 7,
+          "cpu_median_ms": 2.51468504,
+          "gpu_median_ms": 0.43205893599999995,
+          "speedup": 5.820236154078757
+        }
+      }
+    }
+  },
+  "warp_validation": {
+    "job": 490427,
+    "tables": {
+      "SFRD_conditional_table1D_acg": {
+        "tested": 400,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "Nion_conditional_table1D_acg": {
+        "tested": 400,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "grid_field_differences": {
+      "halo_number": 0,
+      "halo_mass_density": 0,
+      "stellar_mass_density_acg": 0,
+      "sfrd_acg": 0,
+      "xray_emissivity": 0,
+      "n_ion": 0,
+      "fesc_weighted_sfrd": 0
+    },
+    "subgrid_nonzero_cells": {
+      "halo_number": 13824,
+      "halo_mass_density": 13824,
+      "stellar_mass_density_acg": 13824,
+      "sfrd_acg": 13824,
+      "xray_emissivity": 13824,
+      "n_ion": 13824,
+      "fesc_weighted_sfrd": 13824
+    },
+    "subgrid_max_abs": {
+      "halo_number": 0.0,
+      "halo_mass_density": 0.0,
+      "stellar_mass_density_acg": 0.0,
+      "sfrd_acg": 0.0,
+      "xray_emissivity": 0.0,
+      "n_ion": 0.0,
+      "fesc_weighted_sfrd": 0.0
+    }
+  },
+  "eulerian_old_vs_warp_cuda": {
+    "job": 490429,
+    "fixture": "E-INTEGRAL at seed 424242, 48^3/24^3. Native v4.3.2 IC and perturbed density at z=8 and 12, cell sizes of the 192 and 384 benchmarks. Both actual and extended density ranges, to cover all three branches; each table has 400 entries. Identical copied float32 values required vs the previous CUDA table.",
+    "cell_size_Mpc": [
+      3.125,
+      3.90625
+    ],
+    "redshifts": [
+      8,
+      12
+    ],
+    "tables": 16,
+    "entries": 6400,
+    "results": {
+      "SFRD": {
+        "GL": {
+          "count": 2568,
+          "different": 0
+        },
+        "adaptive": {
+          "count": 225,
+          "different": 0
+        },
+        "collapsed": {
+          "count": 407,
+          "different": 0
+        },
+        "native_range_vs_cpu_different": 0
+      },
+      "Nion": {
+        "GL": {
+          "count": 2568,
+          "different": 0
+        },
+        "adaptive": {
+          "count": 225,
+          "different": 0
+        },
+        "collapsed": {
+          "count": 407,
+          "different": 0
+        },
+        "native_range_vs_cpu_different": 0
+      }
+    },
+    "rows": [
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 8.0,
+        "kind": "SFRD",
+        "test": "native_range",
+        "lo": -0.625201562821865,
+        "hi": 1.8068259493112562,
+        "threshold": 1.4651965575923909,
+        "native_different": 0,
+        "GL": {
+          "count": 300,
+          "different": 0,
+          "min": -26.251239776611328,
+          "max": -16.94639015197754
+        },
+        "adaptive": {
+          "count": 43,
+          "different": 0,
+          "min": -16.90900421142578,
+          "max": -15.43186092376709
+        },
+        "collapsed": {
+          "count": 57,
+          "different": 0,
+          "min": -15.30472183227539,
+          "max": -15.30472183227539
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 8.0,
+        "kind": "SFRD",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4651965575923909,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -28.17554473876953,
+          "max": -16.942697525024414
+        },
+        "adaptive": {
+          "count": 34,
+          "different": 0,
+          "min": -16.896766662597656,
+          "max": -15.441241264343262
+        },
+        "collapsed": {
+          "count": 84,
+          "different": 0,
+          "min": -15.30472183227539,
+          "max": -15.30472183227539
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 8.0,
+        "kind": "Nion",
+        "test": "native_range",
+        "lo": -0.625201562821865,
+        "hi": 1.8068259493112562,
+        "threshold": 1.4651965575923909,
+        "native_different": 0,
+        "GL": {
+          "count": 300,
+          "different": 0,
+          "min": -4.079227924346924,
+          "max": 2.6757707595825195
+        },
+        "adaptive": {
+          "count": 43,
+          "different": 0,
+          "min": 2.690363645553589,
+          "max": 3.1859049797058105
+        },
+        "collapsed": {
+          "count": 57,
+          "different": 0,
+          "min": 3.220829963684082,
+          "max": 3.220829963684082
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 8.0,
+        "kind": "Nion",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4651965575923909,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -5.841726303100586,
+          "max": 2.6772348880767822
+        },
+        "adaptive": {
+          "count": 34,
+          "different": 0,
+          "min": 2.6952552795410156,
+          "max": 3.1831490993499756
+        },
+        "collapsed": {
+          "count": 84,
+          "different": 0,
+          "min": 3.220829963684082,
+          "max": 3.220829963684082
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 12.0,
+        "kind": "SFRD",
+        "test": "native_range",
+        "lo": -0.48911725449562066,
+        "hi": 1.0637908947467802,
+        "threshold": 1.4476608517901035,
+        "native_different": 0,
+        "GL": {
+          "count": 400,
+          "different": 0,
+          "min": -29.92585563659668,
+          "max": -17.865524291992188
+        },
+        "adaptive": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        },
+        "collapsed": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 12.0,
+        "kind": "SFRD",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4476608517901035,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -34.561309814453125,
+          "max": -16.890953063964844
+        },
+        "adaptive": {
+          "count": 32,
+          "different": 0,
+          "min": -16.83439064025879,
+          "max": -14.927289009094238
+        },
+        "collapsed": {
+          "count": 86,
+          "different": 0,
+          "min": -14.7535982131958,
+          "max": -14.7535982131958
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 12.0,
+        "kind": "Nion",
+        "test": "native_range",
+        "lo": -0.48911725449562066,
+        "hi": 1.0637908947467802,
+        "threshold": 1.4476608517901035,
+        "native_different": 0,
+        "GL": {
+          "count": 400,
+          "different": 0,
+          "min": -7.985450744628906,
+          "max": 2.0108346939086914
+        },
+        "adaptive": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        },
+        "collapsed": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "cell_Mpc": 3.125,
+        "redshift": 12.0,
+        "kind": "Nion",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4476608517901035,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -12.408356666564941,
+          "max": 2.48244047164917
+        },
+        "adaptive": {
+          "count": 32,
+          "different": 0,
+          "min": 2.5071356296539307,
+          "max": 3.1738576889038086
+        },
+        "collapsed": {
+          "count": 86,
+          "different": 0,
+          "min": 3.220829963684082,
+          "max": 3.220829963684082
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 8.0,
+        "kind": "SFRD",
+        "test": "native_range",
+        "lo": -0.5829970417022704,
+        "hi": 1.5114466270208358,
+        "threshold": 1.4594441154690552,
+        "native_different": 0,
+        "GL": {
+          "count": 340,
+          "different": 0,
+          "min": -25.757841110229492,
+          "max": -16.675764083862305
+        },
+        "adaptive": {
+          "count": 50,
+          "different": 0,
+          "min": -16.642826080322266,
+          "max": -15.06945514678955
+        },
+        "collapsed": {
+          "count": 10,
+          "different": 0,
+          "min": -14.969802856445312,
+          "max": -14.969802856445312
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 8.0,
+        "kind": "SFRD",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4594441154690552,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -27.88219451904297,
+          "max": -16.667373657226562
+        },
+        "adaptive": {
+          "count": 34,
+          "different": 0,
+          "min": -16.620588302612305,
+          "max": -15.076590538024902
+        },
+        "collapsed": {
+          "count": 84,
+          "different": 0,
+          "min": -14.969802856445312,
+          "max": -14.969802856445312
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 8.0,
+        "kind": "Nion",
+        "test": "native_range",
+        "lo": -0.5829970417022704,
+        "hi": 1.5114466270208358,
+        "threshold": 1.4594441154690552,
+        "native_different": 0,
+        "GL": {
+          "count": 340,
+          "different": 0,
+          "min": -3.6636502742767334,
+          "max": 2.6967926025390625
+        },
+        "adaptive": {
+          "count": 50,
+          "different": 0,
+          "min": 2.708792209625244,
+          "max": 3.1966800689697266
+        },
+        "collapsed": {
+          "count": 10,
+          "different": 0,
+          "min": 3.2210335731506348,
+          "max": 3.2210335731506348
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 8.0,
+        "kind": "Nion",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4594441154690552,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -5.594933986663818,
+          "max": 2.6998860836029053
+        },
+        "adaptive": {
+          "count": 34,
+          "different": 0,
+          "min": 2.7169344425201416,
+          "max": 3.194720506668091
+        },
+        "collapsed": {
+          "count": 84,
+          "different": 0,
+          "min": 3.2210335731506348,
+          "max": 3.2210335731506348
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 12.0,
+        "kind": "SFRD",
+        "test": "native_range",
+        "lo": -0.45201611495018,
+        "hi": 0.940912313401699,
+        "threshold": 1.4444894260824945,
+        "native_different": 0,
+        "GL": {
+          "count": 400,
+          "different": 0,
+          "min": -29.247249603271484,
+          "max": -18.528127670288086
+        },
+        "adaptive": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        },
+        "collapsed": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 12.0,
+        "kind": "SFRD",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4444894260824945,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -34.13039779663086,
+          "max": -16.646514892578125
+        },
+        "adaptive": {
+          "count": 32,
+          "different": 0,
+          "min": -16.587377548217773,
+          "max": -14.573837280273438
+        },
+        "collapsed": {
+          "count": 86,
+          "different": 0,
+          "min": -14.418679237365723,
+          "max": -14.418679237365723
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 12.0,
+        "kind": "Nion",
+        "test": "native_range",
+        "lo": -0.45201611495018,
+        "hi": 0.940912313401699,
+        "threshold": 1.4444894260824945,
+        "native_different": 0,
+        "GL": {
+          "count": 400,
+          "different": 0,
+          "min": -7.368136882781982,
+          "max": 1.5744128227233887
+        },
+        "adaptive": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        },
+        "collapsed": {
+          "count": 0,
+          "different": 0,
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "cell_Mpc": 3.90625,
+        "redshift": 12.0,
+        "kind": "Nion",
+        "test": "all_thresholds",
+        "lo": -0.95,
+        "hi": 2.1,
+        "threshold": 1.4444894260824945,
+        "native_different": null,
+        "GL": {
+          "count": 282,
+          "different": 0,
+          "min": -12.011603355407715,
+          "max": 2.508223056793213
+        },
+        "adaptive": {
+          "count": 32,
+          "different": 0,
+          "min": 2.5323102474212646,
+          "max": 3.182879686355591
+        },
+        "collapsed": {
+          "count": 86,
+          "different": 0,
+          "min": 3.2210335731506348,
+          "max": 3.2210335731506348
+        }
+      }
+    ]
+  }
+}

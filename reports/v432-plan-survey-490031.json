@@ -1,0 +1,520 @@
+[
+  {
+    "n": 63,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hf_9",
+      "n1fv_7_sse2",
+      "r2cf_7",
+      "r2cf_9",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x3969/1\n      (rdft2-rdft-r2hc-63/1-0\n        (rdft-ct-dit/9\n          (hc2hc-direct-9/16 \"hf_9\"\n            (rdft-r2hc-direct-r2c-9 \"r2cf_9\")\n            (rdft-nop))\n          (rdft-r2hc-direct-r2c-7-x9 \"r2cf_7\"))\n        (rdft2-nop)))\n    (dft-vrank>=1-x63/1\n      (dft-buffered-63-x32/32-7\n        (dft-vrank>=1-x32/1\n          (dft-ct-dit/9\n            (dftw-direct-9/32 \"t1fuv_9_sse2\")\n            (dft-direct-7-x9 \"n1fv_7_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x32-x63))\n        (dft-nop))))\n  (dft-buffered-63-x252/2016-7\n    (dft-vrank>=1-x252/1\n      (dft-ct-dit/9\n        (dftw-direct-9/32 \"t1fuv_9_sse2\")\n        (dft-direct-7-x9 \"n1fv_7_sse2\")))\n    (dft-r2hc-1\n      (rdft-rank0-tiledbuf/2-x252-x63))\n    (dft-nop)))"
+  },
+  {
+    "n": 63,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hb_7",
+      "n1bv_7_sse2",
+      "r2cb_7",
+      "r2cb_9",
+      "t1buv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x3969/1\n      (rdft2-rdft-hc2r-63/1-0\n        (rdft-ct-dif/7\n          (hc2hc-direct-7/12 \"hb_7\"\n            (rdft-hc2r-direct-r2c-7 \"r2cb_7\")\n            (rdft-nop))\n          (rdft-hc2r-direct-r2c-9-x7 \"r2cb_9\"))\n        (rdft2-nop)))\n    (dft-vrank>=1-x63/1\n      (dft-buffered-63-x32/32-7\n        (dft-vrank>=1-x32/1\n          (dft-ct-dit/9\n            (dftw-direct-9/32 \"t1buv_9_sse2\")\n            (dft-direct-7-x9 \"n1bv_7_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x32-x63))\n        (dft-nop))))\n  (dft-buffered-63-x252/2016-7\n    (dft-vrank>=1-x252/1\n      (dft-ct-dit/9\n        (dftw-direct-9/32 \"t1buv_9_sse2\")\n        (dft-direct-7-x9 \"n1bv_7_sse2\")))\n    (dft-r2hc-1\n      (rdft-rank0-tiledbuf/2-x252-x63))\n    (dft-nop)))"
+  },
+  {
+    "n": 63,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hf_9",
+      "n1fv_7_sse2",
+      "r2cf_7",
+      "r2cf_9",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2016/1\n        (rdft2-rdft-r2hc-63/1-0\n          (rdft-ct-dit/9\n            (hc2hc-direct-9/16 \"hf_9\"\n              (rdft-r2hc-direct-r2c-9 \"r2cf_9\")\n              (rdft-nop))\n            (rdft-r2hc-direct-r2c-7-x9 \"r2cf_7\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x32/1\n        (dft-buffered-63-x32/32-7\n          (dft-vrank>=1-x32/1\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-direct-7-x9 \"n1fv_7_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x32-x63))\n          (dft-nop))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x1953/1\n        (rdft2-rdft-r2hc-63/1-0\n          (rdft-ct-dit/9\n            (hc2hc-direct-9/16 \"hf_9\"\n              (rdft-r2hc-direct-r2c-9 \"r2cf_9\")\n              (rdft-nop))\n            (rdft-r2hc-direct-r2c-7-x9 \"r2cf_7\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x31/1\n        (dft-buffered-63-x32/32-7\n          (dft-vrank>=1-x32/1\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-direct-7-x9 \"n1fv_7_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x32-x63))\n          (dft-nop)))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-buffered-63-x252/1008-7\n      (dft-vrank>=1-x252/1\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-direct-7-x9 \"n1fv_7_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x252-x63))\n      (dft-nop))\n    (dft-buffered-63-x252/1008-7\n      (dft-vrank>=1-x252/1\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-direct-7-x9 \"n1fv_7_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x252-x63))\n      (dft-nop))))"
+  },
+  {
+    "n": 63,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hb_7",
+      "n1bv_7_sse2",
+      "r2cb_7",
+      "r2cb_9",
+      "t1buv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2016/1\n        (rdft2-rdft-hc2r-63/1-0\n          (rdft-ct-dif/7\n            (hc2hc-direct-7/12 \"hb_7\"\n              (rdft-hc2r-direct-r2c-7 \"r2cb_7\")\n              (rdft-nop))\n            (rdft-hc2r-direct-r2c-9-x7 \"r2cb_9\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x32/1\n        (dft-buffered-63-x32/32-7\n          (dft-vrank>=1-x32/1\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1buv_9_sse2\")\n              (dft-direct-7-x9 \"n1bv_7_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x32-x63))\n          (dft-nop))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x1953/1\n        (rdft2-rdft-hc2r-63/1-0\n          (rdft-ct-dif/7\n            (hc2hc-direct-7/12 \"hb_7\"\n              (rdft-hc2r-direct-r2c-7 \"r2cb_7\")\n              (rdft-nop))\n            (rdft-hc2r-direct-r2c-9-x7 \"r2cb_9\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x31/1\n        (dft-buffered-63-x32/32-7\n          (dft-vrank>=1-x32/1\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1buv_9_sse2\")\n              (dft-direct-7-x9 \"n1bv_7_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x32-x63))\n          (dft-nop)))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-buffered-63-x252/1008-7\n      (dft-vrank>=1-x252/1\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1buv_9_sse2\")\n          (dft-direct-7-x9 \"n1bv_7_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x252-x63))\n      (dft-nop))\n    (dft-buffered-63-x252/1008-7\n      (dft-vrank>=1-x252/1\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1buv_9_sse2\")\n          (dft-direct-7-x9 \"n1bv_7_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x252-x63))\n      (dft-nop))))"
+  },
+  {
+    "n": 64,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_64_sse2",
+      "r2cf_64"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-r2hc-direct-64-x4096 \"r2cf_64\")\n    (dft-vrank>=1-x64/1\n      (dft-direct-64-x33 \"n1fv_64_sse2\")))\n  (dft-direct-64-x2112 \"n1fv_64_sse2\"))"
+  },
+  {
+    "n": 64,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "n1bv_64_sse2",
+      "r2cb_64"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-hc2r-direct-64-x4096 \"r2cb_64\")\n    (dft-vrank>=1-x64/1\n      (dft-direct-64-x33 \"n1bv_64_sse2\")))\n  (dft-direct-64-x2112 \"n1bv_64_sse2\"))"
+  },
+  {
+    "n": 64,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_64_sse2",
+      "r2cf_64"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-r2hc-direct-64-x2048 \"r2cf_64\")\n      (dft-vrank>=1-x32/1\n        (dft-direct-64-x33 \"n1fv_64_sse2\")))\n    (rdft2-rank>=2/1\n      (rdft2-r2hc-direct-64-x2048 \"r2cf_64\")\n      (dft-vrank>=1-x32/1\n        (dft-direct-64-x33 \"n1fv_64_sse2\"))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-direct-64-x1056 \"n1fv_64_sse2\")\n    (dft-direct-64-x1056 \"n1fv_64_sse2\")))"
+  },
+  {
+    "n": 64,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "n1bv_64_sse2",
+      "r2cb_64"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-hc2r-direct-64-x2048 \"r2cb_64\")\n      (dft-vrank>=1-x32/1\n        (dft-direct-64-x33 \"n1bv_64_sse2\")))\n    (rdft2-rank>=2/1\n      (rdft2-hc2r-direct-64-x2048 \"r2cb_64\")\n      (dft-vrank>=1-x32/1\n        (dft-direct-64-x33 \"n1bv_64_sse2\"))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-direct-64-x1056 \"n1bv_64_sse2\")\n    (dft-direct-64-x1056 \"n1bv_64_sse2\")))"
+  },
+  {
+    "n": 65,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hf2_5",
+      "n1fv_13_sse2",
+      "r2cf_13",
+      "r2cf_5",
+      "t1fuv_5_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x4225/1\n      (rdft2-rdft-r2hc-65/1-0\n        (rdft-ct-dit/5\n          (hc2hc-direct-5/4 \"hf2_5\"\n            (rdft-r2hc-direct-r2c-5 \"r2cf_5\")\n            (rdft-nop))\n          (rdft-r2hc-direct-r2c-13-x5 \"r2cf_13\"))\n        (rdft2-nop)))\n    (dft-vrank>=1-x65/1\n      (dft-buffered-65-x33/33-5\n        (dft-vrank>=1-x33/1\n          (dft-ct-dit/5\n            (dftw-direct-5/16 \"t1fuv_5_sse2\")\n            (dft-direct-13-x5 \"n1fv_13_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x33-x65))\n        (dft-nop))))\n  (dft-buffered-65-x195/2145-5\n    (dft-vrank>=1-x195/1\n      (dft-ct-dit/5\n        (dftw-direct-5/16 \"t1fuv_5_sse2\")\n        (dft-direct-13-x5 \"n1fv_13_sse2\")))\n    (dft-r2hc-1\n      (rdft-rank0-tiledbuf/2-x195-x65))\n    (dft-nop)))"
+  },
+  {
+    "n": 65,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hb2_5",
+      "n1bv_13_sse2",
+      "r2cb_13",
+      "r2cb_5",
+      "t1buv_5_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x4225/1\n      (rdft2-rdft-hc2r-65/1-0\n        (rdft-ct-dif/5\n          (hc2hc-direct-5/4 \"hb2_5\"\n            (rdft-hc2r-direct-r2c-5 \"r2cb_5\")\n            (rdft-nop))\n          (rdft-hc2r-direct-r2c-13-x5 \"r2cb_13\"))\n        (rdft2-nop)))\n    (dft-vrank>=1-x65/1\n      (dft-buffered-65-x33/33-5\n        (dft-vrank>=1-x33/1\n          (dft-ct-dit/5\n            (dftw-direct-5/16 \"t1buv_5_sse2\")\n            (dft-direct-13-x5 \"n1bv_13_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x33-x65))\n        (dft-nop))))\n  (dft-buffered-65-x195/2145-5\n    (dft-vrank>=1-x195/1\n      (dft-ct-dit/5\n        (dftw-direct-5/16 \"t1buv_5_sse2\")\n        (dft-direct-13-x5 \"n1bv_13_sse2\")))\n    (dft-r2hc-1\n      (rdft-rank0-tiledbuf/2-x195-x65))\n    (dft-nop)))"
+  },
+  {
+    "n": 65,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hf2_5",
+      "n1fv_13_sse2",
+      "r2cf_13",
+      "r2cf_5",
+      "t1fuv_5_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2145/1\n        (rdft2-rdft-r2hc-65/1-0\n          (rdft-ct-dit/5\n            (hc2hc-direct-5/4 \"hf2_5\"\n              (rdft-r2hc-direct-r2c-5 \"r2cf_5\")\n              (rdft-nop))\n            (rdft-r2hc-direct-r2c-13-x5 \"r2cf_13\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x33/1\n        (dft-buffered-65-x33/33-5\n          (dft-vrank>=1-x33/1\n            (dft-ct-dit/5\n              (dftw-direct-5/16 \"t1fuv_5_sse2\")\n              (dft-direct-13-x5 \"n1fv_13_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x33-x65))\n          (dft-nop))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2080/1\n        (rdft2-rdft-r2hc-65/1-0\n          (rdft-ct-dit/5\n            (hc2hc-direct-5/4 \"hf2_5\"\n              (rdft-r2hc-direct-r2c-5 \"r2cf_5\")\n              (rdft-nop))\n            (rdft-r2hc-direct-r2c-13-x5 \"r2cf_13\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x32/1\n        (dft-buffered-65-x33/33-5\n          (dft-vrank>=1-x33/1\n            (dft-ct-dit/5\n              (dftw-direct-5/16 \"t1fuv_5_sse2\")\n              (dft-direct-13-x5 \"n1fv_13_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x33-x65))\n          (dft-nop)))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-buffered-65-x256/1073-5\n      (dft-vrank>=1-x256/1\n        (dft-ct-dit/5\n          (dftw-direct-5/16 \"t1fuv_5_sse2\")\n          (dft-direct-13-x5 \"n1fv_13_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x256-x65))\n      (dft-buffered-65-x49/49-5\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/5\n            (dftw-direct-5/16 \"t1fuv_5_sse2\")\n            (dft-direct-13-x5 \"n1fv_13_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x49-x65))\n        (dft-nop)))\n    (dft-buffered-65-x134/1072-5\n      (dft-vrank>=1-x134/1\n        (dft-ct-dit/5\n          (dftw-direct-5/16 \"t1fuv_5_sse2\")\n          (dft-direct-13-x5 \"n1fv_13_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x134-x65))\n      (dft-nop))))"
+  },
+  {
+    "n": 65,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hb2_5",
+      "n1bv_13_sse2",
+      "r2cb_13",
+      "r2cb_5",
+      "t1buv_5_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2145/1\n        (rdft2-rdft-hc2r-65/1-0\n          (rdft-ct-dif/5\n            (hc2hc-direct-5/4 \"hb2_5\"\n              (rdft-hc2r-direct-r2c-5 \"r2cb_5\")\n              (rdft-nop))\n            (rdft-hc2r-direct-r2c-13-x5 \"r2cb_13\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x33/1\n        (dft-buffered-65-x33/33-5\n          (dft-vrank>=1-x33/1\n            (dft-ct-dit/5\n              (dftw-direct-5/16 \"t1buv_5_sse2\")\n              (dft-direct-13-x5 \"n1bv_13_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x33-x65))\n          (dft-nop))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2080/1\n        (rdft2-rdft-hc2r-65/1-0\n          (rdft-ct-dif/5\n            (hc2hc-direct-5/4 \"hb2_5\"\n              (rdft-hc2r-direct-r2c-5 \"r2cb_5\")\n              (rdft-nop))\n            (rdft-hc2r-direct-r2c-13-x5 \"r2cb_13\"))\n          (rdft2-nop)))\n      (dft-vrank>=1-x32/1\n        (dft-buffered-65-x33/33-5\n          (dft-vrank>=1-x33/1\n            (dft-ct-dit/5\n              (dftw-direct-5/16 \"t1buv_5_sse2\")\n              (dft-direct-13-x5 \"n1bv_13_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x33-x65))\n          (dft-nop)))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-buffered-65-x256/1073-5\n      (dft-vrank>=1-x256/1\n        (dft-ct-dit/5\n          (dftw-direct-5/16 \"t1buv_5_sse2\")\n          (dft-direct-13-x5 \"n1bv_13_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x256-x65))\n      (dft-buffered-65-x49/49-5\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/5\n            (dftw-direct-5/16 \"t1buv_5_sse2\")\n            (dft-direct-13-x5 \"n1bv_13_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x49-x65))\n        (dft-nop)))\n    (dft-buffered-65-x134/1072-5\n      (dft-vrank>=1-x134/1\n        (dft-ct-dit/5\n          (dftw-direct-5/16 \"t1buv_5_sse2\")\n          (dft-direct-13-x5 \"n1bv_13_sse2\")))\n      (dft-r2hc-1\n        (rdft-rank0-tiledbuf/2-x134-x65))\n      (dft-nop))))"
+  },
+  {
+    "n": 67,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_15_sse2",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x4489/1\n      (rdft2-rdft-r2hc-67/1-0\n        (rdft-generic-r2hc-67)\n        (rdft2-nop)))\n    (dft-vrank>=1-x67/1\n      (dft-vrank>=1-x34/1\n        (dft-bluestein-67/135\n          (dft-ct-dit/9\n            (dftw-direct-9/32 \"t1fuv_9_sse2\")\n            (dft-buffered-15-x9/9-7\n              (dft-direct-15-x9 \"n1fv_15_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-iter-ci/30-x9))\n              (dft-nop)))))))\n  (dft-vrank>=1-x2278/1\n    (dft-bluestein-67/135\n      (dft-ct-dit/9\n        (dftw-direct-9/32 \"t1fuv_9_sse2\")\n        (dft-buffered-15-x9/9-7\n          (dft-direct-15-x9 \"n1fv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-iter-ci/30-x9))\n          (dft-nop))))))"
+  },
+  {
+    "n": 67,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "n1fv_15_sse2",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x4489/1\n      (rdft2-rdft-hc2r-67/1-0\n        (rdft-generic-hc2r-67)\n        (rdft2-nop)))\n    (dft-vrank>=1-x67/1\n      (dft-vrank>=1-x34/1\n        (dft-bluestein-67/135\n          (dft-ct-dit/9\n            (dftw-direct-9/32 \"t1fuv_9_sse2\")\n            (dft-buffered-15-x9/9-7\n              (dft-direct-15-x9 \"n1fv_15_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-iter-ci/30-x9))\n              (dft-nop)))))))\n  (dft-vrank>=1-x2278/1\n    (dft-bluestein-67/135\n      (dft-ct-dit/9\n        (dftw-direct-9/32 \"t1fuv_9_sse2\")\n        (dft-buffered-15-x9/9-7\n          (dft-direct-15-x9 \"n1fv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-iter-ci/30-x9))\n          (dft-nop))))))"
+  },
+  {
+    "n": 67,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_15_sse2",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2278/1\n        (rdft2-rdft-r2hc-67/1-0\n          (rdft-generic-r2hc-67)\n          (rdft2-nop)))\n      (dft-vrank>=1-x34/1\n        (dft-vrank>=1-x34/1\n          (dft-bluestein-67/135\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-buffered-15-x9/9-7\n                (dft-direct-15-x9 \"n1fv_15_sse2\")\n                (dft-r2hc-1\n                  (rdft-rank0-iter-ci/30-x9))\n                (dft-nop)))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2211/1\n        (rdft2-rdft-r2hc-67/1-0\n          (rdft-generic-r2hc-67)\n          (rdft2-nop)))\n      (dft-vrank>=1-x33/1\n        (dft-vrank>=1-x34/1\n          (dft-bluestein-67/135\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-buffered-15-x9/9-7\n                (dft-direct-15-x9 \"n1fv_15_sse2\")\n                (dft-r2hc-1\n                  (rdft-rank0-iter-ci/30-x9))\n                (dft-nop))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x1139/1\n      (dft-bluestein-67/135\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-buffered-15-x9/9-7\n            (dft-direct-15-x9 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x9))\n            (dft-nop)))))\n    (dft-vrank>=1-x1139/1\n      (dft-bluestein-67/135\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-buffered-15-x9/9-7\n            (dft-direct-15-x9 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x9))\n            (dft-nop)))))))"
+  },
+  {
+    "n": 67,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "n1fv_15_sse2",
+      "t1fuv_9_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2278/1\n        (rdft2-rdft-hc2r-67/1-0\n          (rdft-generic-hc2r-67)\n          (rdft2-nop)))\n      (dft-vrank>=1-x34/1\n        (dft-vrank>=1-x34/1\n          (dft-bluestein-67/135\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-buffered-15-x9/9-7\n                (dft-direct-15-x9 \"n1fv_15_sse2\")\n                (dft-r2hc-1\n                  (rdft-rank0-iter-ci/30-x9))\n                (dft-nop)))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x2211/1\n        (rdft2-rdft-hc2r-67/1-0\n          (rdft-generic-hc2r-67)\n          (rdft2-nop)))\n      (dft-vrank>=1-x33/1\n        (dft-vrank>=1-x34/1\n          (dft-bluestein-67/135\n            (dft-ct-dit/9\n              (dftw-direct-9/32 \"t1fuv_9_sse2\")\n              (dft-buffered-15-x9/9-7\n                (dft-direct-15-x9 \"n1fv_15_sse2\")\n                (dft-r2hc-1\n                  (rdft-rank0-iter-ci/30-x9))\n                (dft-nop))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x1139/1\n      (dft-bluestein-67/135\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-buffered-15-x9/9-7\n            (dft-direct-15-x9 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x9))\n            (dft-nop)))))\n    (dft-vrank>=1-x1139/1\n      (dft-bluestein-67/135\n        (dft-ct-dit/9\n          (dftw-direct-9/32 \"t1fuv_9_sse2\")\n          (dft-buffered-15-x9/9-7\n            (dft-direct-15-x9 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x9))\n            (dft-nop)))))))"
+  },
+  {
+    "n": 96,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_2_sse2",
+      "hc2cfdftv_32_sse2",
+      "n1fv_12_sse2",
+      "n1fv_16_sse2",
+      "n1fv_3_sse2",
+      "r2cfII_2",
+      "r2cf_2",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x9216/1\n      (rdft2-ct-dit/32\n        (hc2c-direct-32/124/1 \"hc2cfdftv_32_sse2\"\n          (rdft2-ct-dit/2\n            (hc2c-direct-2/4/1 \"hc2cfdftv_2_sse2\"\n              (rdft2-r2hc-direct-2 \"r2cf_2\")\n              (rdft2-r2hc01-direct-2 \"r2cfII_2\"))\n            (dft-direct-16 \"n1fv_16_sse2\"))\n          (rdft2-nop))\n        (dft-buffered-3-x16/16-0\n          (dft-direct-3-x16 \"n1fv_3_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-iter-ci/6-x16))\n          (dft-nop))))\n    (dft-vrank>=1-x96/1\n      (dft-vrank>=1-x49/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1fuv_8_sse2\")\n          (dft-directbuf/14-12-x8 \"n1fv_12_sse2\")))))\n  (dft-vrank>=1-x4704/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1fuv_8_sse2\")\n      (dft-directbuf/14-12-x8 \"n1fv_12_sse2\"))))"
+  },
+  {
+    "n": 96,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_2_sse2",
+      "hc2cbdftv_32_sse2",
+      "n1bv_12_sse2",
+      "n1bv_16_sse2",
+      "n1bv_3_sse2",
+      "r2cbIII_2",
+      "r2cb_2",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x9216/1\n      (rdft2-ct-dif/32\n        (hc2c-direct-32/124/1 \"hc2cbdftv_32_sse2\"\n          (rdft2-ct-dif/2\n            (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n              (rdft2-hc2r-direct-2 \"r2cb_2\")\n              (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n            (dft-direct-16 \"n1bv_16_sse2\"))\n          (rdft2-nop))\n        (dft-buffered-3-x16/16-0\n          (dft-direct-3-x16 \"n1bv_3_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x16-x3))\n          (dft-nop))))\n    (dft-vrank>=1-x96/1\n      (dft-vrank>=1-x49/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1buv_8_sse2\")\n          (dft-buffered-12-x8/8-2\n            (dft-direct-12-x8 \"n1bv_12_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x8-x12))\n            (dft-nop))))))\n  (dft-vrank>=1-x4704/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1buv_8_sse2\")\n      (dft-buffered-12-x8/8-2\n        (dft-direct-12-x8 \"n1bv_12_sse2\")\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x8-x12))\n        (dft-nop)))))"
+  },
+  {
+    "n": 96,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_2_sse2",
+      "hc2cfdftv_32_sse2",
+      "n1fv_12_sse2",
+      "n1fv_16_sse2",
+      "n1fv_3_sse2",
+      "r2cfII_2",
+      "r2cf_2",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x4608/1\n        (rdft2-ct-dit/32\n          (hc2c-direct-32/124/1 \"hc2cfdftv_32_sse2\"\n            (rdft2-ct-dit/2\n              (hc2c-direct-2/4/1 \"hc2cfdftv_2_sse2\"\n                (rdft2-r2hc-direct-2 \"r2cf_2\")\n                (rdft2-r2hc01-direct-2 \"r2cfII_2\"))\n              (dft-direct-16 \"n1fv_16_sse2\"))\n            (rdft2-nop))\n          (dft-buffered-3-x16/16-0\n            (dft-direct-3-x16 \"n1fv_3_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/6-x16))\n            (dft-nop))))\n      (dft-vrank>=1-x48/1\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-directbuf/14-12-x8 \"n1fv_12_sse2\")))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x4608/1\n        (rdft2-ct-dit/32\n          (hc2c-direct-32/124/1 \"hc2cfdftv_32_sse2\"\n            (rdft2-ct-dit/2\n              (hc2c-direct-2/4/1 \"hc2cfdftv_2_sse2\"\n                (rdft2-r2hc-direct-2 \"r2cf_2\")\n                (rdft2-r2hc01-direct-2 \"r2cfII_2\"))\n              (dft-direct-16 \"n1fv_16_sse2\"))\n            (rdft2-nop))\n          (dft-buffered-3-x16/16-0\n            (dft-direct-3-x16 \"n1fv_3_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/6-x16))\n            (dft-nop))))\n      (dft-vrank>=1-x48/1\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-directbuf/14-12-x8 \"n1fv_12_sse2\"))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x2352/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-directbuf/14-12-x8 \"n1fv_12_sse2\")))\n    (dft-vrank>=1-x2352/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-directbuf/14-12-x8 \"n1fv_12_sse2\")))))"
+  },
+  {
+    "n": 96,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_2_sse2",
+      "hc2cbdftv_32_sse2",
+      "n1bv_12_sse2",
+      "n1bv_16_sse2",
+      "n1bv_3_sse2",
+      "r2cbIII_2",
+      "r2cb_2",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x4608/1\n        (rdft2-ct-dif/32\n          (hc2c-direct-32/124/1 \"hc2cbdftv_32_sse2\"\n            (rdft2-ct-dif/2\n              (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n                (rdft2-hc2r-direct-2 \"r2cb_2\")\n                (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n              (dft-direct-16 \"n1bv_16_sse2\"))\n            (rdft2-nop))\n          (dft-buffered-3-x16/16-0\n            (dft-direct-3-x16 \"n1bv_3_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x16-x3))\n            (dft-nop))))\n      (dft-vrank>=1-x48/1\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-buffered-12-x8/8-2\n              (dft-direct-12-x8 \"n1bv_12_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x12))\n              (dft-nop))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x4608/1\n        (rdft2-ct-dif/32\n          (hc2c-direct-32/124/1 \"hc2cbdftv_32_sse2\"\n            (rdft2-ct-dif/2\n              (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n                (rdft2-hc2r-direct-2 \"r2cb_2\")\n                (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n              (dft-direct-16 \"n1bv_16_sse2\"))\n            (rdft2-nop))\n          (dft-buffered-3-x16/16-0\n            (dft-direct-3-x16 \"n1bv_3_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x16-x3))\n            (dft-nop))))\n      (dft-vrank>=1-x48/1\n        (dft-vrank>=1-x49/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-buffered-12-x8/8-2\n              (dft-direct-12-x8 \"n1bv_12_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x12))\n              (dft-nop)))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x2352/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-buffered-12-x8/8-2\n          (dft-direct-12-x8 \"n1bv_12_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x12))\n          (dft-nop))))\n    (dft-vrank>=1-x2352/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-buffered-12-x8/8-2\n          (dft-direct-12-x8 \"n1bv_12_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x12))\n          (dft-nop))))))"
+  },
+  {
+    "n": 128,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_128_sse2",
+      "r2cf_128"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-r2hc-direct-128-x16384 \"r2cf_128\")\n    (dft-vrank>=1-x128/1\n      (dft-direct-128-x65 \"n1fv_128_sse2\")))\n  (dft-direct-128-x8320 \"n1fv_128_sse2\"))"
+  },
+  {
+    "n": 128,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "n1bv_128_sse2",
+      "r2cb_128"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-hc2r-direct-128-x16384 \"r2cb_128\")\n    (dft-vrank>=1-x128/1\n      (dft-direct-128-x65 \"n1bv_128_sse2\")))\n  (dft-direct-128-x8320 \"n1bv_128_sse2\"))"
+  },
+  {
+    "n": 128,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "n1fv_128_sse2",
+      "r2cf_128"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-r2hc-direct-128-x8192 \"r2cf_128\")\n      (dft-vrank>=1-x64/1\n        (dft-direct-128-x65 \"n1fv_128_sse2\")))\n    (rdft2-rank>=2/1\n      (rdft2-r2hc-direct-128-x8192 \"r2cf_128\")\n      (dft-vrank>=1-x64/1\n        (dft-direct-128-x65 \"n1fv_128_sse2\"))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-direct-128-x4160 \"n1fv_128_sse2\")\n    (dft-direct-128-x4160 \"n1fv_128_sse2\")))"
+  },
+  {
+    "n": 128,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "n1bv_128_sse2",
+      "r2cb_128"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-hc2r-direct-128-x8192 \"r2cb_128\")\n      (dft-vrank>=1-x64/1\n        (dft-direct-128-x65 \"n1bv_128_sse2\")))\n    (rdft2-rank>=2/1\n      (rdft2-hc2r-direct-128-x8192 \"r2cb_128\")\n      (dft-vrank>=1-x64/1\n        (dft-direct-128-x65 \"n1bv_128_sse2\"))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-direct-128-x4160 \"n1bv_128_sse2\")\n    (dft-direct-128-x4160 \"n1bv_128_sse2\")))"
+  },
+  {
+    "n": 150,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_10_sse2",
+      "n1fv_15_sse2",
+      "r2cf_10",
+      "t1fuv_10_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x22500/1\n      (rdft2-ct-dit/10\n        (hc2c-direct-10/36/1 \"hc2cfdftv_10_sse2\"\n          (rdft2-r2hc-direct-10 \"r2cf_10\")\n          (rdft2-nop))\n        (dft-buffered-15-x5/5-7\n          (dft-direct-15-x5 \"n1fv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-iter-ci/30-x5))\n          (dft-nop))))\n    (dft-vrank>=1-x150/1\n      (dft-vrank>=1-x76/1\n        (dft-ct-dit/10\n          (dftw-direct-10/36 \"t1fuv_10_sse2\")\n          (dft-directbuf/18-15-x10 \"n1fv_15_sse2\")))))\n  (dft-vrank>=1-x11400/1\n    (dft-ct-dit/10\n      (dftw-direct-10/36 \"t1fuv_10_sse2\")\n      (dft-directbuf/18-15-x10 \"n1fv_15_sse2\"))))"
+  },
+  {
+    "n": 150,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_10_sse2",
+      "n1bv_15_sse2",
+      "r2cb_10",
+      "t1buv_10_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x22500/1\n      (rdft2-ct-dif/10\n        (hc2c-direct-10/36/1 \"hc2cbdftv_10_sse2\"\n          (rdft2-hc2r-direct-10 \"r2cb_10\")\n          (rdft2-nop))\n        (dft-buffered-15-x5/5-7\n          (dft-direct-15-x5 \"n1bv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x5-x15))\n          (dft-nop))))\n    (dft-vrank>=1-x150/1\n      (dft-vrank>=1-x76/1\n        (dft-ct-dit/10\n          (dftw-direct-10/36 \"t1buv_10_sse2\")\n          (dft-buffered-15-x10/10-7\n            (dft-direct-15-x10 \"n1bv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x10-x15))\n            (dft-nop))))))\n  (dft-vrank>=1-x11400/1\n    (dft-ct-dit/10\n      (dftw-direct-10/36 \"t1buv_10_sse2\")\n      (dft-buffered-15-x10/10-7\n        (dft-direct-15-x10 \"n1bv_15_sse2\")\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x10-x15))\n        (dft-nop)))))"
+  },
+  {
+    "n": 150,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_10_sse2",
+      "n1fv_15_sse2",
+      "r2cf_10",
+      "t1fuv_10_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x11250/1\n        (rdft2-ct-dit/10\n          (hc2c-direct-10/36/1 \"hc2cfdftv_10_sse2\"\n            (rdft2-r2hc-direct-10 \"r2cf_10\")\n            (rdft2-nop))\n          (dft-buffered-15-x5/5-7\n            (dft-direct-15-x5 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x5))\n            (dft-nop))))\n      (dft-vrank>=1-x75/1\n        (dft-vrank>=1-x76/1\n          (dft-ct-dit/10\n            (dftw-direct-10/36 \"t1fuv_10_sse2\")\n            (dft-directbuf/18-15-x10 \"n1fv_15_sse2\")))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x11250/1\n        (rdft2-ct-dit/10\n          (hc2c-direct-10/36/1 \"hc2cfdftv_10_sse2\"\n            (rdft2-r2hc-direct-10 \"r2cf_10\")\n            (rdft2-nop))\n          (dft-buffered-15-x5/5-7\n            (dft-direct-15-x5 \"n1fv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-iter-ci/30-x5))\n            (dft-nop))))\n      (dft-vrank>=1-x75/1\n        (dft-vrank>=1-x76/1\n          (dft-ct-dit/10\n            (dftw-direct-10/36 \"t1fuv_10_sse2\")\n            (dft-directbuf/18-15-x10 \"n1fv_15_sse2\"))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x5700/1\n      (dft-ct-dit/10\n        (dftw-direct-10/36 \"t1fuv_10_sse2\")\n        (dft-directbuf/18-15-x10 \"n1fv_15_sse2\")))\n    (dft-vrank>=1-x5700/1\n      (dft-ct-dit/10\n        (dftw-direct-10/36 \"t1fuv_10_sse2\")\n        (dft-directbuf/18-15-x10 \"n1fv_15_sse2\")))))"
+  },
+  {
+    "n": 150,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_10_sse2",
+      "n1bv_15_sse2",
+      "r2cb_10",
+      "t1buv_10_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x11250/1\n        (rdft2-ct-dif/10\n          (hc2c-direct-10/36/1 \"hc2cbdftv_10_sse2\"\n            (rdft2-hc2r-direct-10 \"r2cb_10\")\n            (rdft2-nop))\n          (dft-buffered-15-x5/5-7\n            (dft-direct-15-x5 \"n1bv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x5-x15))\n            (dft-nop))))\n      (dft-vrank>=1-x75/1\n        (dft-vrank>=1-x76/1\n          (dft-ct-dit/10\n            (dftw-direct-10/36 \"t1buv_10_sse2\")\n            (dft-buffered-15-x10/10-7\n              (dft-direct-15-x10 \"n1bv_15_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x10-x15))\n              (dft-nop))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x11250/1\n        (rdft2-ct-dif/10\n          (hc2c-direct-10/36/1 \"hc2cbdftv_10_sse2\"\n            (rdft2-hc2r-direct-10 \"r2cb_10\")\n            (rdft2-nop))\n          (dft-buffered-15-x5/5-7\n            (dft-direct-15-x5 \"n1bv_15_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x5-x15))\n            (dft-nop))))\n      (dft-vrank>=1-x75/1\n        (dft-vrank>=1-x76/1\n          (dft-ct-dit/10\n            (dftw-direct-10/36 \"t1buv_10_sse2\")\n            (dft-buffered-15-x10/10-7\n              (dft-direct-15-x10 \"n1bv_15_sse2\")\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x10-x15))\n              (dft-nop)))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x5700/1\n      (dft-ct-dit/10\n        (dftw-direct-10/36 \"t1buv_10_sse2\")\n        (dft-buffered-15-x10/10-7\n          (dft-direct-15-x10 \"n1bv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x10-x15))\n          (dft-nop))))\n    (dft-vrank>=1-x5700/1\n      (dft-ct-dit/10\n        (dftw-direct-10/36 \"t1buv_10_sse2\")\n        (dft-buffered-15-x10/10-7\n          (dft-direct-15-x10 \"n1bv_15_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x10-x15))\n          (dft-nop))))))"
+  },
+  {
+    "n": 192,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_3_sse2",
+      "n1fv_6_sse2",
+      "q1fv_4_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x36864/1\n      (rdft2-ct-dit/8\n        (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n          (rdft2-r2hc-direct-8 \"r2cf_8\")\n          (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n        (dft-ct-dif/4\n          (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n          (dft-vrank>=1-x4/1\n            (dft-direct-6-x4 \"n1fv_6_sse2\")))))\n    (dft-vrank>=1-x192/1\n      (dft-vrank>=1-x97/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1fuv_8_sse2\")\n          (dft-buffered-24-x8/8-6\n            (dft-vrank>=1-x8/1\n              (dft-ct-dit/8\n                (dftw-direct-8/28 \"t1fuv_8_sse2\")\n                (dft-direct-3-x8 \"n1fv_3_sse2\")))\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x8-x24))\n            (dft-nop))))))\n  (dft-vrank>=1-x18624/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1fuv_8_sse2\")\n      (dft-buffered-24-x8/8-6\n        (dft-vrank>=1-x8/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-direct-3-x8 \"n1fv_3_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x8-x24))\n        (dft-nop)))))"
+  },
+  {
+    "n": 192,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_6_sse2",
+      "n1bv_32_sse2",
+      "n1bv_3_sse2",
+      "r2cbIII_6",
+      "r2cb_6",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x36864/1\n      (rdft2-ct-dif/6\n        (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n          (rdft2-hc2r-direct-6 \"r2cb_6\")\n          (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n        (dft-buffered-32-x3/3-6\n          (dft-direct-32-x3 \"n1bv_32_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x3-x32))\n          (dft-nop))))\n    (dft-vrank>=1-x192/1\n      (dft-vrank>=1-x97/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1buv_8_sse2\")\n          (dft-buffered-24-x8/8-6\n            (dft-vrank>=1-x8/1\n              (dft-ct-dit/8\n                (dftw-direct-8/28 \"t1buv_8_sse2\")\n                (dft-direct-3-x8 \"n1bv_3_sse2\")))\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x8-x24))\n            (dft-nop))))))\n  (dft-vrank>=1-x18624/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1buv_8_sse2\")\n      (dft-buffered-24-x8/8-6\n        (dft-vrank>=1-x8/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-direct-3-x8 \"n1bv_3_sse2\")))\n        (dft-r2hc-1\n          (rdft-rank0-tiledbuf/2-x8-x24))\n        (dft-nop)))))"
+  },
+  {
+    "n": 192,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_3_sse2",
+      "n1fv_6_sse2",
+      "q1fv_4_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x18432/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-6-x4 \"n1fv_6_sse2\")))))\n      (dft-vrank>=1-x96/1\n        (dft-vrank>=1-x97/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-buffered-24-x8/8-6\n              (dft-vrank>=1-x8/1\n                (dft-ct-dit/8\n                  (dftw-direct-8/28 \"t1fuv_8_sse2\")\n                  (dft-direct-3-x8 \"n1fv_3_sse2\")))\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x24))\n              (dft-nop))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x18432/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-6-x4 \"n1fv_6_sse2\")))))\n      (dft-vrank>=1-x96/1\n        (dft-vrank>=1-x97/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-buffered-24-x8/8-6\n              (dft-vrank>=1-x8/1\n                (dft-ct-dit/8\n                  (dftw-direct-8/28 \"t1fuv_8_sse2\")\n                  (dft-direct-3-x8 \"n1fv_3_sse2\")))\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x24))\n              (dft-nop)))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x9312/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-buffered-24-x8/8-6\n          (dft-vrank>=1-x8/1\n            (dft-ct-dit/8\n              (dftw-direct-8/28 \"t1fuv_8_sse2\")\n              (dft-direct-3-x8 \"n1fv_3_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x24))\n          (dft-nop))))\n    (dft-vrank>=1-x9312/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-buffered-24-x8/8-6\n          (dft-vrank>=1-x8/1\n            (dft-ct-dit/8\n              (dftw-direct-8/28 \"t1fuv_8_sse2\")\n              (dft-direct-3-x8 \"n1fv_3_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x24))\n          (dft-nop))))))"
+  },
+  {
+    "n": 192,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_6_sse2",
+      "n1bv_32_sse2",
+      "n1bv_3_sse2",
+      "r2cbIII_6",
+      "r2cb_6",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x18432/1\n        (rdft2-ct-dif/6\n          (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n            (rdft2-hc2r-direct-6 \"r2cb_6\")\n            (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n          (dft-buffered-32-x3/3-6\n            (dft-direct-32-x3 \"n1bv_32_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x3-x32))\n            (dft-nop))))\n      (dft-vrank>=1-x96/1\n        (dft-vrank>=1-x97/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-buffered-24-x8/8-6\n              (dft-vrank>=1-x8/1\n                (dft-ct-dit/8\n                  (dftw-direct-8/28 \"t1buv_8_sse2\")\n                  (dft-direct-3-x8 \"n1bv_3_sse2\")))\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x24))\n              (dft-nop))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x18432/1\n        (rdft2-ct-dif/6\n          (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n            (rdft2-hc2r-direct-6 \"r2cb_6\")\n            (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n          (dft-buffered-32-x3/3-6\n            (dft-direct-32-x3 \"n1bv_32_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x3-x32))\n            (dft-nop))))\n      (dft-vrank>=1-x96/1\n        (dft-vrank>=1-x97/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-buffered-24-x8/8-6\n              (dft-vrank>=1-x8/1\n                (dft-ct-dit/8\n                  (dftw-direct-8/28 \"t1buv_8_sse2\")\n                  (dft-direct-3-x8 \"n1bv_3_sse2\")))\n              (dft-r2hc-1\n                (rdft-rank0-tiledbuf/2-x8-x24))\n              (dft-nop)))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x9312/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-buffered-24-x8/8-6\n          (dft-vrank>=1-x8/1\n            (dft-ct-dit/8\n              (dftw-direct-8/28 \"t1buv_8_sse2\")\n              (dft-direct-3-x8 \"n1bv_3_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x24))\n          (dft-nop))))\n    (dft-vrank>=1-x9312/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-buffered-24-x8/8-6\n          (dft-vrank>=1-x8/1\n            (dft-ct-dit/8\n              (dftw-direct-8/28 \"t1buv_8_sse2\")\n              (dft-direct-3-x8 \"n1bv_3_sse2\")))\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x8-x24))\n          (dft-nop))))))"
+  },
+  {
+    "n": 256,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_4_sse2",
+      "n1fv_8_sse2",
+      "q1fv_4_sse2",
+      "q1fv_8_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x65536/1\n      (rdft2-ct-dit/8\n        (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n          (rdft2-r2hc-direct-8 \"r2cf_8\")\n          (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n        (dft-ct-dif/4\n          (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n          (dft-vrank>=1-x4/1\n            (dft-direct-8-x4 \"n1fv_8_sse2\")))))\n    (dft-vrank>=1-x256/1\n      (dft-vrank>=1-x129/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1fuv_8_sse2\")\n          (dft-ct-dif/8\n            (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n            (dft-vrank>=1-x8/1\n              (dft-direct-4-x8 \"n1fv_4_sse2\")))))))\n  (dft-vrank>=1-x33024/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1fuv_8_sse2\")\n      (dft-ct-dif/8\n        (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n        (dft-vrank>=1-x8/1\n          (dft-direct-4-x8 \"n1fv_4_sse2\"))))))"
+  },
+  {
+    "n": 256,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_2_sse2",
+      "n1bv_2_sse2",
+      "n1bv_4_sse2",
+      "q1bv_8_sse2",
+      "r2cbIII_2",
+      "r2cb_2",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x65536/1\n      (rdft2-ct-dif/2\n        (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n          (rdft2-hc2r-direct-2 \"r2cb_2\")\n          (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1buv_8_sse2\")\n          (dft-ct-dif/8\n            (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n            (dft-vrank>=1-x8/1\n              (dft-direct-2-x8 \"n1bv_2_sse2\"))))))\n    (dft-vrank>=1-x256/1\n      (dft-vrank>=1-x129/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1buv_8_sse2\")\n          (dft-ct-dif/8\n            (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n            (dft-vrank>=1-x8/1\n              (dft-direct-4-x8 \"n1bv_4_sse2\")))))))\n  (dft-vrank>=1-x33024/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1buv_8_sse2\")\n      (dft-ct-dif/8\n        (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n        (dft-vrank>=1-x8/1\n          (dft-direct-4-x8 \"n1bv_4_sse2\"))))))"
+  },
+  {
+    "n": 256,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_4_sse2",
+      "n1fv_8_sse2",
+      "q1fv_4_sse2",
+      "q1fv_8_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x32768/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-8-x4 \"n1fv_8_sse2\")))))\n      (dft-vrank>=1-x128/1\n        (dft-vrank>=1-x129/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-4-x8 \"n1fv_4_sse2\")))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x32768/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-8-x4 \"n1fv_8_sse2\")))))\n      (dft-vrank>=1-x128/1\n        (dft-vrank>=1-x129/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-4-x8 \"n1fv_4_sse2\"))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x16512/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-4-x8 \"n1fv_4_sse2\")))))\n    (dft-vrank>=1-x16512/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-4-x8 \"n1fv_4_sse2\")))))))"
+  },
+  {
+    "n": 256,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_2_sse2",
+      "n1bv_2_sse2",
+      "n1bv_4_sse2",
+      "q1bv_8_sse2",
+      "r2cbIII_2",
+      "r2cb_2",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x32768/1\n        (rdft2-ct-dif/2\n          (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n            (rdft2-hc2r-direct-2 \"r2cb_2\")\n            (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-2-x8 \"n1bv_2_sse2\"))))))\n      (dft-vrank>=1-x128/1\n        (dft-vrank>=1-x129/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-4-x8 \"n1bv_4_sse2\")))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x32768/1\n        (rdft2-ct-dif/2\n          (hc2c-direct-2/4/1 \"hc2cbdftv_2_sse2\"\n            (rdft2-hc2r-direct-2 \"r2cb_2\")\n            (rdft2-hc2r10-direct-2 \"r2cbIII_2\"))\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-2-x8 \"n1bv_2_sse2\"))))))\n      (dft-vrank>=1-x128/1\n        (dft-vrank>=1-x129/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-4-x8 \"n1bv_4_sse2\"))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x16512/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-4-x8 \"n1bv_4_sse2\")))))\n    (dft-vrank>=1-x16512/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-4-x8 \"n1bv_4_sse2\")))))))"
+  },
+  {
+    "n": 384,
+    "threads": 1,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_12_sse2",
+      "n1fv_6_sse2",
+      "q1fv_4_sse2",
+      "q1fv_8_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x147456/1\n      (rdft2-ct-dit/8\n        (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n          (rdft2-r2hc-direct-8 \"r2cf_8\")\n          (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n        (dft-ct-dif/4\n          (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n          (dft-vrank>=1-x4/1\n            (dft-direct-12-x4 \"n1fv_12_sse2\")))))\n    (dft-vrank>=1-x384/1\n      (dft-vrank>=1-x193/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1fuv_8_sse2\")\n          (dft-ct-dif/8\n            (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n            (dft-vrank>=1-x8/1\n              (dft-direct-6-x8 \"n1fv_6_sse2\")))))))\n  (dft-vrank>=1-x74112/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1fuv_8_sse2\")\n      (dft-ct-dif/8\n        (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n        (dft-vrank>=1-x8/1\n          (dft-direct-6-x8 \"n1fv_6_sse2\"))))))"
+  },
+  {
+    "n": 384,
+    "threads": 1,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_6_sse2",
+      "n1bv_64_sse2",
+      "n1bv_6_sse2",
+      "q1bv_8_sse2",
+      "r2cbIII_6",
+      "r2cb_6",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-rank>=2/1\n    (rdft2-vrank>=1-x147456/1\n      (rdft2-ct-dif/6\n        (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n          (rdft2-hc2r-direct-6 \"r2cb_6\")\n          (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n        (dft-buffered-64-x3/3-6\n          (dft-direct-64-x3 \"n1bv_64_sse2\")\n          (dft-r2hc-1\n            (rdft-rank0-tiledbuf/2-x3-x64))\n          (dft-nop))))\n    (dft-vrank>=1-x384/1\n      (dft-vrank>=1-x193/1\n        (dft-ct-dit/8\n          (dftw-direct-8/28 \"t1buv_8_sse2\")\n          (dft-ct-dif/8\n            (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n            (dft-vrank>=1-x8/1\n              (dft-direct-6-x8 \"n1bv_6_sse2\")))))))\n  (dft-vrank>=1-x74112/1\n    (dft-ct-dit/8\n      (dftw-direct-8/28 \"t1buv_8_sse2\")\n      (dft-ct-dif/8\n        (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n        (dft-vrank>=1-x8/1\n          (dft-direct-6-x8 \"n1bv_6_sse2\"))))))"
+  },
+  {
+    "n": 384,
+    "threads": 2,
+    "direction": "r2c",
+    "codelets": [
+      "hc2cfdftv_8_sse2",
+      "n1fv_12_sse2",
+      "n1fv_6_sse2",
+      "q1fv_4_sse2",
+      "q1fv_8_sse2",
+      "r2cfII_8",
+      "r2cf_8",
+      "t1fuv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x73728/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-12-x4 \"n1fv_12_sse2\")))))\n      (dft-vrank>=1-x192/1\n        (dft-vrank>=1-x193/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-6-x8 \"n1fv_6_sse2\")))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x73728/1\n        (rdft2-ct-dit/8\n          (hc2c-direct-8/28/1 \"hc2cfdftv_8_sse2\"\n            (rdft2-r2hc-direct-8 \"r2cf_8\")\n            (rdft2-r2hc01-direct-8 \"r2cfII_8\"))\n          (dft-ct-dif/4\n            (dftw-directsq-4/12-x4 \"q1fv_4_sse2\")\n            (dft-vrank>=1-x4/1\n              (dft-direct-12-x4 \"n1fv_12_sse2\")))))\n      (dft-vrank>=1-x192/1\n        (dft-vrank>=1-x193/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1fuv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-6-x8 \"n1fv_6_sse2\"))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x37056/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-6-x8 \"n1fv_6_sse2\")))))\n    (dft-vrank>=1-x37056/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1fuv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1fv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-6-x8 \"n1fv_6_sse2\")))))))"
+  },
+  {
+    "n": 384,
+    "threads": 2,
+    "direction": "c2r",
+    "codelets": [
+      "hc2cbdftv_6_sse2",
+      "n1bv_64_sse2",
+      "n1bv_6_sse2",
+      "q1bv_8_sse2",
+      "r2cbIII_6",
+      "r2cb_6",
+      "t1buv_8_sse2"
+    ],
+    "tree": "(rdft2-rank>=2/1\n  (rdft2-thr-vrank>=1-x2/1)\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x73728/1\n        (rdft2-ct-dif/6\n          (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n            (rdft2-hc2r-direct-6 \"r2cb_6\")\n            (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n          (dft-buffered-64-x3/3-6\n            (dft-direct-64-x3 \"n1bv_64_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x3-x64))\n            (dft-nop))))\n      (dft-vrank>=1-x192/1\n        (dft-vrank>=1-x193/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-6-x8 \"n1bv_6_sse2\")))))))\n    (rdft2-rank>=2/1\n      (rdft2-vrank>=1-x73728/1\n        (rdft2-ct-dif/6\n          (hc2c-direct-6/20/1 \"hc2cbdftv_6_sse2\"\n            (rdft2-hc2r-direct-6 \"r2cb_6\")\n            (rdft2-hc2r10-direct-6 \"r2cbIII_6\"))\n          (dft-buffered-64-x3/3-6\n            (dft-direct-64-x3 \"n1bv_64_sse2\")\n            (dft-r2hc-1\n              (rdft-rank0-tiledbuf/2-x3-x64))\n            (dft-nop))))\n      (dft-vrank>=1-x192/1\n        (dft-vrank>=1-x193/1\n          (dft-ct-dit/8\n            (dftw-direct-8/28 \"t1buv_8_sse2\")\n            (dft-ct-dif/8\n              (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n              (dft-vrank>=1-x8/1\n                (dft-direct-6-x8 \"n1bv_6_sse2\"))))))))\n  (dft-thr-vrank>=1-x2/1\n    (dft-vrank>=1-x37056/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-6-x8 \"n1bv_6_sse2\")))))\n    (dft-vrank>=1-x37056/1\n      (dft-ct-dit/8\n        (dftw-direct-8/28 \"t1buv_8_sse2\")\n        (dft-ct-dif/8\n          (dftw-directsq-8/28-x8 \"q1bv_8_sse2\")\n          (dft-vrank>=1-x8/1\n            (dft-direct-6-x8 \"n1bv_6_sse2\")))))))"
+  }
+]

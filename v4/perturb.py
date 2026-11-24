@@ -1,4 +1,5 @@
 """GPU perturbation adapter for cubic v4.3.2 InitialConditions."""
+
 from contextlib import ExitStack
 import ctypes
 import cupy as cp
@@ -61,6 +62,83 @@ def gaussian_weights(k2, radius):
     return cp.exp((-0.5 * 0.643**2) * kr2.astype(cp.float64))
 
 
+_NATIVE_LIB = None
+_PERTURB_GEOM_CACHE = {}
+
+
+def _get_native_lib():
+    global _NATIVE_LIB
+    if _NATIVE_LIB is None:
+        _NATIVE_LIB = ctypes.CDLL(c_21cmfast.__file__)
+    return _NATIVE_LIB
+
+
+def _geometry_cache(
+    n, m, low, length, high, smooth, smooth_radius, n_threads, wisdom, strict_fft
+):
+    key = (
+        int(n),
+        int(m),
+        int(low),
+        float(length),
+        bool(high),
+        bool(smooth),
+        float(smooth_radius) if smooth else None,
+        int(n_threads),
+        bool(wisdom),
+        bool(strict_fft),
+        int(cp.cuda.runtime.getDevice()),
+    )
+    cached = _PERTURB_GEOM_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    def supported(size):
+        if wisdom:
+            if strict_fft:
+                raise UnsupportedPlan("External FFTW wisdom is enabled")
+            return False
+        try:
+            for inverse_direction in (False, True):
+                executable(size, inverse_direction, n_threads)
+        except UnsupportedPlan:
+            if strict_fft:
+                raise
+            return False
+        return True
+
+    ordered = {size for size in {m, low} if supported(size)}
+    axes = modes(m, length)
+    k2 = sum(k * k for k in axes)
+    denom = cp.where(k2 == 0, 1, k2)
+    axes_f64 = tuple(k.astype(cp.float64) for k in axes)
+    window = None
+    sample = None
+    if high:
+        radius = np.float32(0.620350491 * length / low)
+        kr = (
+            (cp.sqrt(k2.astype(cp.float64)) * radius)
+            .astype(cp.float32)
+            .astype(cp.float64)
+        )
+        safe = cp.where(kr == 0, 1.0, kr)
+        window = cp.where(
+            kr < 1e-4,
+            1 - 0.1 * (kr * kr),
+            (3 / ((safe * safe) * safe)) * (cp.sin(kr) - kr * cp.cos(kr)),
+        )
+        idx = cp.floor(cp.arange(low) * (n / low) + 0.5).astype(cp.int32)
+        sample = cp.ix_(idx, idx, idx)
+    smooth_weights = None
+    if smooth:
+        low_k2 = sum(k * k for k in modes(low, length))
+        radius = np.float32(smooth_radius * length / low)
+        smooth_weights = gaussian_weights(low_k2, radius)
+    cached = (ordered, axes_f64, denom, window, sample, smooth_weights)
+    _PERTURB_GEOM_CACHE[key] = cached
+    return cached
+
+
 def reference_density(lib, inputs, grid):
     """Apply upstream FFTW operations to GPU-deposited mass, using FFTW alignment."""
     sim, opt = inputs.simulation_options, inputs.matter_options
@@ -98,94 +176,107 @@ def reference_density(lib, inputs, grid):
         return box[:, :, :low].copy()
 
 
-def perturb_field_gpu(*, redshift, initial_conditions, reference_fft=False, strict_fft=False):
+def perturb_field_gpu(
+    *,
+    redshift,
+    initial_conditions,
+    inputs=None,
+    reference_fft=False,
+    strict_fft=False,
+    resident=None,
+):
     """Return a CPU-visible v4 PerturbedField, with GPU CIC, FFTs and velocities."""
     ic = initial_conditions
-    inputs = ic.inputs
+    inputs = ic.inputs if inputs is None else inputs
     sim, opt = inputs.simulation_options, inputs.matter_options
     if sim.NON_CUBIC_FACTOR != 1:
         raise ValueError("This adapter supports cubic boxes")
-    n, low, length = sim.DIM, sim.HII_DIM, sim.BOX_LEN
+    # SimulationOptions stores BOX_LEN as a C float before calculating the
+    # displacement, mode spacing and filter radius in double precision.
+    n, low, length = sim.DIM, sim.HII_DIM, float(np.float32(sim.BOX_LEN))
     high = opt.PERTURB_ON_HIGH_RES
     m = n if high else low
     prefix = "hires_" if high else "lowres_"
-    lib = ctypes.CDLL(c_21cmfast.__file__)
-    for f in (lib.dicke, lib.ddickedt):
-        f.argtypes = [ctypes.c_double]
-        f.restype = ctypes.c_double
-    with c_state(inputs, broadcast_inputs=True):
-        native_z = float(np.float32(redshift))  # ComputePerturbedField accepts a C float.
-        growth = lib.dicke(native_z)
-        growth0 = lib.dicke(sim.INITIAL_REDSHIFT)
-        rate = lib.ddickedt(native_z) / growth
+    lib = _get_native_lib()
+    from growth import perturb_coefficients
+
+    growth, growth0, rate = perturb_coefficients(inputs, redshift)
+    read = ic.get if resident is None else resident.ic_fields.__getitem__
     if opt.PERTURB_ALGORITHM == "LINEAR":
-        grid = (
-            cp.asarray(ic.get(prefix + "density"), dtype=cp.float64) * growth
-        ).astype(cp.float32)
+        grid = (cp.asarray(read(prefix + "density"), dtype=cp.float64) * growth).astype(
+            cp.float32
+        )
     else:
 
         def vectors(suffix):
-            return cp.stack(
-                [cp.asarray(ic.get(prefix + "v" + axis + suffix)) for axis in "xyz"]
-            )
+            components = [
+                cp.asarray(read(prefix + "v" + axis + suffix)) for axis in "xyz"
+            ]
+            if resident is not None:
+                cache = getattr(resident, "ic_vel_stacked", None)
+                if cache is None:
+                    cache = resident.ic_vel_stacked = {}
+                key = (prefix, suffix, tuple(id(c) for c in components))
+                stacked = cache.get(key)
+                if stacked is None:
+                    stacked = cp.stack(components)
+                    cache[key] = stacked
+                return stacked
+            return cp.stack(components)
 
         two = opt.PERTURB_ALGORITHM == "2LPT"
         vel = vectors("")
         second = vectors("_2LPT") if two else vel
         mass = cp.zeros((m, m, m), dtype=cp.float64)
         from cic_ordered import deposit_ordered
-        deposit_ordered(cp.asarray(ic.get("hires_density")), vel, second, mass, n, m,
-                        growth0, (growth-growth0)/length*n,
-                        (-3/7)*(growth*growth-growth0*growth0)/length*n, two)
+
+        deposit_ordered(
+            cp.asarray(read("hires_density")),
+            vel,
+            second,
+            mass,
+            n,
+            m,
+            growth0,
+            (growth - growth0) / length * n,
+            (-3 / 7) * (growth * growth - growth0 * growth0) / length * n,
+            two,
+        )
         grid = mass.astype(cp.float32)
     native_density = reference_density(lib, inputs, grid) if reference_fft else None
 
-    # Use the native plan for both directions as a pair. Preserve the existing
-    # cuFFT backend for layouts the CUDA compiler cannot yet lower.
-    def supported(size):
-        if opt.USE_FFTW_WISDOM:
-            if strict_fft:
-                raise UnsupportedPlan("External FFTW wisdom is enabled")
-            return False
-        try:
-            for inverse_direction in (False, True):
-                executable(size, inverse_direction, sim.N_THREADS)
-        except UnsupportedPlan:
-            if strict_fft:
-                raise
-            return False
-        return True
-
-    ordered = {size for size in {m, low} if supported(size)}
+    ordered, axes_f64, denom, window, sample, smooth_weights = _geometry_cache(
+        n,
+        m,
+        low,
+        length,
+        high,
+        opt.SMOOTH_EVOLVED_DENSITY_FIELD,
+        sim.DENSITY_SMOOTH_RADIUS,
+        sim.N_THREADS,
+        opt.USE_FFTW_WISDOM,
+        strict_fft,
+    )
 
     def forward(array, size):
         if size in ordered:
-            return transform(array.astype(cp.float32, copy=False), size, threads=sim.N_THREADS)
+            return transform(
+                array.astype(cp.float32, copy=False), size, threads=sim.N_THREADS
+            )
         return cp.fft.rfftn(array.astype(cp.float64))
 
     def inverse(spectrum, size):
         if size in ordered:
             return transform(
-                spectrum.astype(cp.complex64, copy=False), size, True, threads=sim.N_THREADS
+                spectrum.astype(cp.complex64, copy=False),
+                size,
+                True,
+                threads=sim.N_THREADS,
             ) / np.float32(size**3)
         return cp.fft.irfftn(spectrum, s=(size,) * 3)
 
-    axes = modes(m, length)
-    k2 = sum(k * k for k in axes)
     if high:
         saved = forward(grid, m)
-        radius = np.float32(0.620350491 * length / low)
-        kr = (
-            (cp.sqrt(k2.astype(cp.float64)) * radius)
-            .astype(cp.float32)
-            .astype(cp.float64)
-        )
-        safe = cp.where(kr == 0, 1.0, kr)
-        window = cp.where(
-            kr < 1e-4, 1 - kr**2 / 10, 3 * (cp.sin(kr) - kr * cp.cos(kr)) / safe**3
-        )
-        idx = cp.floor(cp.arange(low) * (n / low) + 0.5).astype(cp.int32)
-        sample = cp.ix_(idx, idx, idx)
         grid = inverse(saved * window, m)[sample].astype(cp.float32)
     if opt.PERTURB_ALGORITHM != "LINEAR":
         grid = (grid.astype(cp.float64) * (1 if high else (low / n) ** 3)).astype(
@@ -193,12 +284,11 @@ def perturb_field_gpu(*, redshift, initial_conditions, reference_fft=False, stri
         ) - 1
     density_k = forward(grid, low)
     if opt.SMOOTH_EVOLVED_DENSITY_FIELD:
-        low_k2 = sum(k * k for k in modes(low, length))
-        radius = np.float32(sim.DENSITY_SMOOTH_RADIUS * length / low)
-        density_k *= gaussian_weights(low_k2, radius)
+        density_k *= smooth_weights
     if not high:
         saved = density_k
     out = PerturbedField.new(inputs=inputs, redshift=redshift)
+    registry = None if resident is None else getattr(resident, "device_registry", None)
     if reference_fft:
         out.set("density", native_density)
     else:
@@ -207,17 +297,18 @@ def perturb_field_gpu(*, redshift, initial_conditions, reference_fft=False, stri
             if low in ordered or opt.SMOOTH_EVOLVED_DENSITY_FIELD
             else grid
         )
-        out.set(
-            "density",
-            cp.maximum(density, np.float32(-1 + 1e-7)).astype(cp.float32).get(),
+        device_density = cp.ascontiguousarray(
+            cp.maximum(density, np.float32(-1 + 1e-7)), dtype=cp.float32
         )
-    denom = cp.where(k2 == 0, 1, k2)
-    for axis, k in zip("xyz", axes):
+        out.set("density", device_density.get())
+        if resident is not None:
+            resident.density_pair = (out.get("density"), device_density)
+        if registry is not None:
+            registry.record(out.get("density"), device_density)
+    for axis, k_f64 in zip("xyz", axes_f64):
         name = "velocity_" + axis
         if name in out.arrays:
-            spec = (saved * (1j * rate * k.astype(cp.float64) / denom / m**3)).astype(
-                cp.complex64
-            )
+            spec = (saved * (1j * rate * k_f64 / denom / m**3)).astype(cp.complex64)
             if high and n != low:
                 spec = (spec * window).astype(cp.complex64)
             v = (
@@ -225,5 +316,8 @@ def perturb_field_gpu(*, redshift, initial_conditions, reference_fft=False, stri
                 if m in ordered
                 else cp.fft.irfftn(spec, s=(m,) * 3, norm="forward")
             )
-            out.set(name, (v[sample] if high else v).get())
+            vel_dev = cp.ascontiguousarray(v[sample] if high else v, dtype=cp.float32)
+            out.set(name, vel_dev.get())
+            if registry is not None:
+                registry.record(out.get(name), vel_dev)
     return out

@@ -1,0 +1,2927 @@
+{
+  "device": "NVIDIA RTX A6000",
+  "threads": 2,
+  "version": "21cmFAST v4.3.2",
+  "seed": 424242,
+  "input": "numpy default_rng standard_normal float32, newly seeded for each cubic grid; inverse uses the CPU spectrum",
+  "comparison": "count of numerically unequal values; zero sign bits are not compared",
+  "sizes_tested": 265,
+  "failed_lengths": [],
+  "results": {
+    "1": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "2": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "3": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "4": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "5": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "6": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "7": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "8": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "9": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "10": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "11": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "12": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "13": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "14": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "15": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "16": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "17": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "18": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "19": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "20": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "21": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "22": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "23": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "24": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "25": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "26": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "27": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "28": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "29": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "30": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "31": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "32": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "33": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "34": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "35": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "36": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "37": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "38": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "39": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "40": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "41": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "42": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "43": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "44": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "45": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "46": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "47": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "48": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "49": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "50": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "51": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "52": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "53": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "54": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "55": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "56": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "57": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "58": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "59": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "60": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "61": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "62": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "63": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "64": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "65": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "66": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "67": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "68": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "69": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "70": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "71": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "72": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "73": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "74": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "75": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "76": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "77": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "78": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "79": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "80": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "81": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "82": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "83": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "84": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "85": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "86": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "87": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "88": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "89": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "90": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "91": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "92": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "93": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "94": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "95": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "96": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "97": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "98": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "99": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "100": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "101": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "102": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "103": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "104": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "105": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "106": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "107": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "108": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "109": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "110": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "111": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "112": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "113": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "114": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "115": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "116": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "117": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "118": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "119": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "120": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "121": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "122": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "123": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "124": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "125": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "126": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "127": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "128": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "129": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "130": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "131": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "132": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "133": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "134": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "135": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "136": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "137": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "138": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "139": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "140": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "141": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "142": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "143": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "144": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "145": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "146": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "147": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "148": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "149": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "150": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "151": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "152": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "153": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "154": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "155": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "156": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "157": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "158": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "159": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "160": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "161": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "162": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "163": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "164": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "165": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "166": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "167": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "168": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "169": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "170": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "171": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "172": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "173": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "174": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "175": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "176": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "177": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "178": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "179": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "180": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "181": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "182": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "183": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "184": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "185": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "186": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "187": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "188": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "189": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "190": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "191": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "192": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "193": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "194": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "195": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "196": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "197": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "198": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "199": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "200": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "201": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "202": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "203": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "204": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "205": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "206": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "207": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "208": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "209": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "210": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "211": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "212": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "213": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "214": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "215": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "216": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "217": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "218": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "219": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "220": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "221": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "222": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "223": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "224": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "225": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "226": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "227": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "228": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "229": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "230": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "231": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "232": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "233": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "234": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "235": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "236": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "237": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "238": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "239": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "240": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "241": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "242": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "243": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "244": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "245": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "246": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "247": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "248": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "249": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "250": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "251": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "252": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "253": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "254": {
+      "job": 490049,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "255": {
+      "job": 490050,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "256": {
+      "job": 490048,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "257": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "288": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "320": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "360": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "384": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "400": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "432": {
+      "job": 490054,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "480": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "512": {
+      "job": 490051,
+      "forward": {
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "inverse": {
+        "max_abs": 0.0,
+        "different": 0
+      }
+    }
+  }
+}

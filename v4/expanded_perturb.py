@@ -1,4 +1,5 @@
 """Fixed-seed grid and redshift holdouts for the standalone perturbation adapter."""
+
 import json
 import sys
 from pathlib import Path
@@ -67,9 +68,13 @@ def run(output, fine_grid=None):
                         )
                         failed = delta > 1e-8 + 1e-4 * abs(a)
                         if failed.any():
-                            idx = np.unravel_index(np.where(failed, delta, -1).argmax(), a.shape)
+                            idx = np.unravel_index(
+                                np.where(failed, delta, -1).argmax(), a.shape
+                            )
                             fields[key]["worst_failed"] = dict(
-                                xyz=list(map(int, idx)), cpu=float(a[idx]), gpu=float(b[idx]),
+                                xyz=list(map(int, idx)),
+                                cpu=float(a[idx]),
+                                gpu=float(b[idx]),
                                 delta=float(delta[idx]),
                             )
                         if key != "density":

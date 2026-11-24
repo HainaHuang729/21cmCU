@@ -56,6 +56,11 @@ __device__ double partial_collapse(double coll, float mass, float mmin, int draw
     return fmin(coll,1.);
 }
 
+__device__ __forceinline__ bool exceeds_ionization_barrier(double photons, double xe,
+                                                           double rec_per_baryon) {
+    return photons > (1. - xe) * (1. + rec_per_baryon);
+}
+
 extern "C" __global__ void assign_ion(
     const float *density,const float *xe,const float *rec,const float *fc,const float *old_z,
     const float *tk,const int *draw,float *xhi,float *zre,float *mfp,float *gamma12,float *temp,
@@ -69,7 +74,7 @@ extern "C" __global__ void assign_ion(
     float mass=last?(float)(coll*(double)pixel*(1.+d)):0.f;
     if(coll<=fmin_coll)coll=fmin_coll;
     double recycled=(double)rec[i]/(1.+d);
-    if(coll*eff>(1.-e)*(1.+recycled)){
+    if(exceeds_ionization_barrier(coll*eff, e, recycled)){
         if(xhi[i]>1.e-7){gamma12[i]=(float)(gpref*coll);mfp[i]=radius;}
         zre[i]=old_z[i]<0.f?z:old_z[i];
         xhi[i]=0.f;
@@ -80,23 +85,41 @@ extern "C" __global__ void assign_ion(
         xhi[i]=fminf(fmaxf(neutral-e,0.f),1.f);
     }
 }
+// Match the scalar precision of the caller's native ionization model.
+#ifdef RECOMB_V432
+typedef double recomb_scalar;
+#else
+typedef float recomb_scalar;
+#endif
 extern "C" __global__ void recombine(
     const float *density,const float *gamma12,const float *xhi,
     const float *old,float *out,const double *knots,const double *values,const double *deriv,
-    int n,float z,float dt,float dz,double dz_table,double maxlog,int *nonfinite) {
+    int n,recomb_scalar z,recomb_scalar dt,recomb_scalar dz,double dz_table,double maxlog,int *nonfinite) {
     int i=blockIdx.x*blockDim.x+threadIdx.x;
     if(i>=n)return;
-    float d=(float)(1.+density[i]);
-    float ze=(float)pow((double)d,1./3.);
-    ze*=1.f+z;
-    double iz=(ze-1.)/dz_table+0.5;
+    double z_eff=z;
+#ifdef RECOMB_V432
+    // A single homogeneous update uses the stored redshift without density scaling.
+    if (density)
+#endif
+    {
+        recomb_scalar d=(recomb_scalar)(1.+density[i]);
+        recomb_scalar ze=(recomb_scalar)pow((double)d,1./3.);
+        ze*=1.f+z;
+        z_eff=ze-1.;
+    }
+    double iz=z_eff/dz_table+0.5;
     int row=max(0,min(299,(int)iz));
     double g=log((double)gamma12[i]);
     float res;
     if(g < -10.) {
         res = old[i];
     } else {
+#ifdef RECOMB_V432
+        if (g >= knots[249]) g=maxlog;
+#else
         g=fmin(g,maxlog);
+#endif
         int j=max(0,min(248,(int)((g-knots[0])/(knots[1]-knots[0]))));
         if(g<knots[j])--j;
         if(g>knots[j+1])++j;

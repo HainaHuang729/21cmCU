@@ -1,0 +1,247 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "device": "RTX A6000",
+  "rtol": 0.0001,
+  "atol": 1e-08,
+  "estimator": "Mean-subtracted brightness temperature FFT on each transverse slice, area-normalized shell power, excluding DC and modes above the transverse Nyquist wavenumber",
+  "cases": {
+    "one_thread": {
+      "gpu_slurm_job": 490425,
+      "lightcone_files": "~/ps_v432_perturb/v432-chmf-route.ExpyPb/final",
+      "seed": 12451,
+      "checks": {
+        "lightcones": {
+          "brightness_temp": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 1.3858223546492354e-06
+          },
+          "density": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "n_ion": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "neutral_fraction": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "velocity_z": {
+            "tested": 5888,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "global_quantities": {
+          "brightness_temp": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.9073486328125e-06
+          },
+          "density": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.1641532182693481e-09
+          },
+          "ionisation_rate_G12": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temperature": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.00048828125
+          },
+          "log10_mturn_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "log10_mturn_mcg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "n_ion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 2.9802322387695312e-08
+          },
+          "neutral_fraction": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 5.960464477539063e-08
+          },
+          "velocity_z": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 5.654554968624213e-26
+          },
+          "z_reion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "brightness_transverse_power": {
+          "unit": "mK^2 Mpc^2",
+          "k_unit": "Mpc^-1",
+          "k_mean": [
+            0.18058275218447997,
+            0.32274309157557207,
+            0.4545204805795038,
+            0.6104456061791994,
+            0.7686936237115864,
+            0.9116549156954069,
+            1.0563535910537356,
+            1.158634183121667
+          ],
+          "modes_per_bin": [
+            8,
+            12,
+            16,
+            32,
+            28,
+            40,
+            40,
+            18
+          ],
+          "slices": 23,
+          "tested": 184,
+          "failed": 0,
+          "max_abs": 7.863065502533573e-05
+        }
+      }
+    },
+    "two_threads": {
+      "gpu_slurm_job": 490426,
+      "lightcone_files": "~/ps_v432_perturb/v432-chmf-route.ExpyPb/two",
+      "seed": 12452,
+      "checks": {
+        "lightcones": {
+          "brightness_temp": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 2.0265579223632812e-05
+          },
+          "density": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "n_ion": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 2.1457672119140625e-06
+          },
+          "neutral_fraction": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 6.556510925292969e-07
+          },
+          "velocity_z": {
+            "tested": 5632,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "global_quantities": {
+          "brightness_temp": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 1.9073486328125e-06
+          },
+          "density": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 1.3969838619232178e-09
+          },
+          "ionisation_rate_G12": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temperature": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0009765625
+          },
+          "log10_mturn_acg": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "log10_mturn_mcg": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "n_ion": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "neutral_fraction": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 5.960464477539063e-08
+          },
+          "velocity_z": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 3.8572142821686593e-26
+          },
+          "z_reion": {
+            "tested": 2,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "brightness_transverse_power": {
+          "unit": "mK^2 Mpc^2",
+          "k_unit": "Mpc^-1",
+          "k_mean": [
+            0.31601981632284,
+            0.5648004102572511,
+            0.7954108410141316,
+            1.0682798108135991,
+            1.3452138414952763,
+            1.595396102466962,
+            1.8486187843440371,
+            2.0276098204629176
+          ],
+          "modes_per_bin": [
+            8,
+            12,
+            16,
+            32,
+            28,
+            40,
+            40,
+            18
+          ],
+          "slices": 22,
+          "tested": 176,
+          "failed": 0,
+          "max_abs": 0.0002413337831512763
+        }
+      }
+    }
+  }
+}

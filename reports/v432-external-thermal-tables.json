@@ -1,0 +1,154 @@
+{
+  "status": "passed",
+  "scope": "Same-input one-node radiation setup at z=10 with 8 shells, 16-to-8 grid and 80 Mpc box, seed 31703, one CPU thread. Compared native and CUDA in E-INTEGRAL and L-INTEGRAL. Also compared two local Lyman heating coefficients and the RECFAST neutral temperature/electron fraction at z=23.25. No trajectories.",
+  "device": "RTX A6000, node a9",
+  "job": 490613,
+  "raw": "~/ps_v432_perturb/v432-customtables.hAIo2e/result.json",
+  "probe": "v4/verify_external_tables.py",
+  "file_changes_in_fixture": {
+    "stellar_spectra.dat": "Population II photon normalization times 1.5. Other columns retained.",
+    "Lyman_alpha_heating_table.dat": "Continuum coefficient times 1.5, injected times 0.75.",
+    "recfast_LCDM.dat": "Electron fraction times 1.25, matter temperature times 0.875.",
+    "x_int_tables/*.dat": "All 14 files. Heat, Lyman and three species ionization columns scaled by 1.125, 0.875, 1.25, 0.75 and 1.5, respectively."
+  },
+  "native_input_coverage": {
+    "stellar_spectra.dat": "First 22 bands, native float32 spectral parameters.",
+    "Lyman_alpha_heating_table.dat": "101 x 101 x 51 continuum and injected double coefficients.",
+    "recfast_LCDM.dat": "First 501 rows, same float acquisition and native natural cubic interpolation.",
+    "x_int_tables": "Five float32 deposition functions, native electron fraction axis and shared last-read energy axis. All 18,332 entries compared.",
+    "kappa_eH_table.dat / kappa_pH_table.dat": "4.3.2 includes file-name macros but its three collision-rate curves use compiled spline coefficients in heating_helper_progs.c, as do the reused GPU kernels.",
+    "MHR": "recombinations.c constructs its own quadrature/spline table from the cosmological parameters and internal coefficients. There is no external MHR file input."
+  },
+  "version": "4.3.2",
+  "cases": {
+    "E-INTEGRAL": {
+      "packaged": {
+        "lya_flux_continuum_prefactor_acg": {
+          "values": 8,
+          "max_relative": 0.0
+        },
+        "lya_flux_injected_prefactor_acg": {
+          "values": 8,
+          "max_relative": 1.4432899320127035e-15
+        },
+        "freq_int_heat_tbl": {
+          "values": 112,
+          "max_relative": 1.3322676295501878e-15
+        },
+        "freq_int_ion_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15
+        },
+        "freq_int_lya_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15
+        },
+        "secondary_arrays": {
+          "values": 18332,
+          "max_relative": 0.0
+        },
+        "heating_and_recfast": {
+          "values": 4,
+          "max_relative": 4.440892098500626e-16
+        }
+      },
+      "modified": {
+        "lya_flux_continuum_prefactor_acg": {
+          "values": 8,
+          "max_relative": 0.0,
+          "changed_vs_packaged": 8
+        },
+        "lya_flux_injected_prefactor_acg": {
+          "values": 8,
+          "max_relative": 1.6653345369377348e-15,
+          "changed_vs_packaged": 8
+        },
+        "freq_int_heat_tbl": {
+          "values": 112,
+          "max_relative": 1.1102230246251565e-15,
+          "changed_vs_packaged": 112
+        },
+        "freq_int_ion_tbl": {
+          "values": 112,
+          "max_relative": 1.7763568394002505e-15,
+          "changed_vs_packaged": 112
+        },
+        "freq_int_lya_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15,
+          "changed_vs_packaged": 112
+        },
+        "secondary_arrays": {
+          "values": 18332,
+          "max_relative": 0.0,
+          "changed_vs_packaged": 15266
+        },
+        "heating_and_recfast": {
+          "values": 4,
+          "max_relative": 2.220446049250313e-16,
+          "changed_vs_packaged": 4
+        }
+      }
+    },
+    "L-INTEGRAL": {
+      "packaged": {
+        "lya_flux_continuum_prefactor_acg": {
+          "values": 8,
+          "max_relative": 0.0
+        },
+        "lya_flux_injected_prefactor_acg": {
+          "values": 8,
+          "max_relative": 1.4432899320127035e-15
+        },
+        "freq_int_heat_tbl": {
+          "values": 112,
+          "max_relative": 1.3322676295501878e-15
+        },
+        "freq_int_ion_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15
+        },
+        "freq_int_lya_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15
+        },
+        "secondary_arrays": {
+          "values": 18332,
+          "max_relative": 0.0
+        }
+      },
+      "modified": {
+        "lya_flux_continuum_prefactor_acg": {
+          "values": 8,
+          "max_relative": 0.0,
+          "changed_vs_packaged": 8
+        },
+        "lya_flux_injected_prefactor_acg": {
+          "values": 8,
+          "max_relative": 1.6653345369377348e-15,
+          "changed_vs_packaged": 8
+        },
+        "freq_int_heat_tbl": {
+          "values": 112,
+          "max_relative": 1.1102230246251565e-15,
+          "changed_vs_packaged": 112
+        },
+        "freq_int_ion_tbl": {
+          "values": 112,
+          "max_relative": 1.7763568394002505e-15,
+          "changed_vs_packaged": 112
+        },
+        "freq_int_lya_tbl": {
+          "values": 112,
+          "max_relative": 1.5543122344752192e-15,
+          "changed_vs_packaged": 112
+        },
+        "secondary_arrays": {
+          "values": 18332,
+          "max_relative": 0.0,
+          "changed_vs_packaged": 15266
+        }
+      }
+    }
+  }
+}

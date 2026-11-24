@@ -1,0 +1,583 @@
+{
+  "job": "490470",
+  "counts": {
+    "thermal_initial_conditions": 1,
+    "radiation_lyman_spectral_factors": 1,
+    "radiation_ionization_interpolation": 1,
+    "radiation_xray_optical_depth_and_frequency": 1,
+    "radiation_shell_filter": 56,
+    "radiation_shell_accumulation": 28,
+    "radiation_field_normalization": 1,
+    "thermal_constants": 1,
+    "thermal_update": 1
+  },
+  "comparisons": {
+    "initial_spin": {
+      "spin_temperature": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          29.93291664123535,
+          29.971004486083984
+        ],
+        "gpu_range": [
+          29.93291664123535,
+          29.971004486083984
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "xray_ionised_fraction": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.00017989000480156392,
+          0.00017989000480156392
+        ],
+        "gpu_range": [
+          0.00017989000480156392,
+          0.00017989000480156392
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          1.7235864400863647,
+          4.391958236694336
+        ],
+        "gpu_range": [
+          1.7235864400863647,
+          4.391958236694336
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      }
+    },
+    "setup": {
+      "zpp_avg": {
+        "tested": 40,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          9.702055038757614,
+          11.69179343334013
+        ],
+        "gpu_range": [
+          9.702055038757614,
+          11.69179343334013
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "R_values": {
+        "tested": 40,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.9305257363491002,
+          427.2813764051131
+        ],
+        "gpu_range": [
+          0.9305257363491002,
+          427.2813764051131
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "zpp_edges": {
+        "tested": 40,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          9.704110077515228,
+          11.868991824540016
+        ],
+        "gpu_range": [
+          9.704110077515228,
+          11.868991824540016
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "freq_int_heat_tbl": {
+        "tested": 560,
+        "different": 392,
+        "max_abs": 5.5220263365470826e-30,
+        "cpu_range": [
+          1.543955281959269e-16,
+          6.978881114406159e-15
+        ],
+        "gpu_range": [
+          1.543955281959267e-16,
+          6.978881114406159e-15
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 7.912480877698628e-16
+      },
+      "freq_int_ion_tbl": {
+        "tested": 560,
+        "different": 302,
+        "max_abs": 1.6263032587282567e-19,
+        "cpu_range": [
+          4.080819597818929e-07,
+          0.00017662814961810815
+        ],
+        "gpu_range": [
+          4.080819597818925e-07,
+          0.00017662814961810812
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 9.207497571845287e-16
+      },
+      "freq_int_lya_tbl": {
+        "tested": 560,
+        "different": 419,
+        "max_abs": 4.6566128730773926e-09,
+        "cpu_range": [
+          49.36847822982816,
+          5037870.0470426055
+        ],
+        "gpu_range": [
+          49.36847822982814,
+          5037870.047042605
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 9.243217529620432e-16
+      },
+      "freq_int_heat_tbl_diff": {
+        "tested": 560,
+        "different": 489,
+        "max_abs": 4.733165431326071e-30,
+        "cpu_range": [
+          -1.5806402054185557e-15,
+          1.2066384852467964e-15
+        ],
+        "gpu_range": [
+          -1.5806402054185565e-15,
+          1.2066384852467956e-15
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 2.9944609880859773e-15
+      },
+      "freq_int_ion_tbl_diff": {
+        "tested": 560,
+        "different": 300,
+        "max_abs": 1.2197274440461925e-19,
+        "cpu_range": [
+          -4.77049099068343e-05,
+          0.0
+        ],
+        "gpu_range": [
+          -4.77049099068343e-05,
+          0.0
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 2.5568174144511943e-15
+      },
+      "freq_int_lya_tbl_diff": {
+        "tested": 560,
+        "different": 382,
+        "max_abs": 4.190951585769653e-09,
+        "cpu_range": [
+          -1189769.5841912448,
+          0.0
+        ],
+        "gpu_range": [
+          -1189769.5841912446,
+          0.0
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 3.5224901035089793e-15
+      },
+      "inverse_diff": {
+        "tested": 14,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.0,
+          7587.2529296875
+        ],
+        "gpu_range": [
+          0.0,
+          7587.2529296875
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "m_xHII_low_box": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.0,
+          0.0
+        ],
+        "gpu_range": [
+          0.0,
+          0.0
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "inverse_val_box": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.6061456799507141,
+          0.6061456799507141
+        ],
+        "gpu_range": [
+          0.6061456799507141,
+          0.6061456799507141
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "lya_flux_continuum_prefactor_acg": {
+        "tested": 40,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          1.9807554596908473e-08,
+          2.3368067249680702e-08
+        ],
+        "gpu_range": [
+          1.9807554596908473e-08,
+          2.3368067249680702e-08
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "lya_flux_injected_prefactor_acg": {
+        "tested": 40,
+        "different": 25,
+        "max_abs": 3.3087224502121107e-23,
+        "cpu_range": [
+          0.0,
+          4.1761850417296286e-08
+        ],
+        "gpu_range": [
+          0.0,
+          4.176185041729625e-08
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 7.922834877167594e-16
+      },
+      "meta@NO_LIGHT": {
+        "tested": 1,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.0,
+          0.0
+        ],
+        "gpu_range": [
+          0.0,
+          0.0
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "meta@Q_HI_zp": {
+        "tested": 1,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.7743698336327461,
+          0.7743698336327461
+        ],
+        "gpu_range": [
+          0.7743698336327461,
+          0.7743698336327461
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "meta@x_e_ave_zp": {
+        "tested": 1,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.00017989000480156392,
+          0.00017989000480156392
+        ],
+        "gpu_range": [
+          0.00017989000480156392,
+          0.00017989000480156392
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "meta@source_z_max": {
+        "tested": 1,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          10.0,
+          10.0
+        ],
+        "gpu_range": [
+          10.0,
+          10.0
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      }
+    },
+    "radiation": {
+      "xray_heating_rate": {
+        "tested": 4096,
+        "different": 2683,
+        "max_abs": 1.1832913578315177e-30,
+        "cpu_range": [
+          1.2474566781240404e-15,
+          4.110735725470971e-15
+        ],
+        "gpu_range": [
+          1.2474566781240404e-15,
+          4.110735725470971e-15
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 2.878539115272235e-16
+      },
+      "xray_ionization_rate": {
+        "tested": 4096,
+        "different": 2105,
+        "max_abs": 3.611118645726067e-35,
+        "cpu_range": [
+          3.4066381691593684e-20,
+          1.1225878037689316e-19
+        ],
+        "gpu_range": [
+          3.406638169159369e-20,
+          1.1225878037689316e-19
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 3.216780579302787e-16
+      },
+      "xray_lya_flux": {
+        "tested": 4096,
+        "different": 3546,
+        "max_abs": 8.077935669463161e-28,
+        "cpu_range": [
+          1.093098552916052e-13,
+          1.5338193741578943e-12
+        ],
+        "gpu_range": [
+          1.0930985529160518e-13,
+          1.5338193741578943e-12
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 5.266549507433463e-16
+      },
+      "lya_flux_continuum": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          8.064974294994395e-11,
+          2.0397254408857286e-10
+        ],
+        "gpu_range": [
+          8.064974294994395e-11,
+          2.0397254408857286e-10
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "lya_flux_injected": {
+        "tested": 4096,
+        "different": 4096,
+        "max_abs": 1.550963648536927e-25,
+        "cpu_range": [
+          2.020816781714317e-11,
+          2.433892381111201e-10
+        ],
+        "gpu_range": [
+          2.0208167817143153e-11,
+          2.4338923811111994e-10
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 6.372359191283674e-16
+      }
+    },
+    "evolved_spin": {
+      "spin_temperature": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          4.747008323669434,
+          7.75143575668335
+        ],
+        "gpu_range": [
+          4.747008323669434,
+          7.75143575668335
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "xray_ionised_fraction": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          0.0002017087972490117,
+          0.0002523750008549541
+        ],
+        "gpu_range": [
+          0.0002017087972490117,
+          0.0002523750008549541
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "tested": 4096,
+        "different": 0,
+        "max_abs": 0.0,
+        "cpu_range": [
+          2.433863401412964,
+          6.344825267791748
+        ],
+        "gpu_range": [
+          2.433863401412964,
+          6.344825267791748
+        ],
+        "failed_strict": 0,
+        "failed_scaled": 0,
+        "max_relative_to_peak": 0.0
+      }
+    }
+  },
+  "replay_seconds": 1.387773873982951,
+  "passed_strict": true,
+  "passed_scaled": true,
+  "mode": "21cmFAST 4.3.2 CHMF-SAMPLER, ACG, spin fluctuations and inhomogeneous recombinations",
+  "reference_job": "490465",
+  "reference_trajectory": {
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "seed": 81033,
+    "nthreads": 1,
+    "nodes": [
+      10.0,
+      9.7
+    ],
+    "bounds": [
+      9.73,
+      9.92
+    ],
+    "fields": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion",
+      "spin_temperature",
+      "kinetic_temp_neutral",
+      "xray_ionised_fraction",
+      "cumulative_recombinations",
+      "xray_emissivity",
+      "sfrd_acg"
+    ],
+    "slice_count": 30,
+    "elapsed_seconds": 14.833524037036113,
+    "heat_max_redshift": 10.0
+  },
+  "catalog_counts": {
+    "9.7": 38321,
+    "10.0": 34371
+  },
+  "flags": {
+    "USE_TS_FLUCT": true,
+    "RECOMB_MODEL": "inhomogeneous",
+    "USE_UPPER_STELLAR_TURNOVER": true,
+    "USE_METALLICITY": true,
+    "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+    "USE_MCGS": false,
+    "USE_X_RAY_HEATING": true,
+    "USE_LYA_HEATING": true,
+    "LYA_MULTIPLE_SCATTERING": false
+  },
+  "test_method": "Saved physical native initial conditions, density and two consecutive nonempty EmissivityFields were replayed through native stage entry points with GPU callbacks, including interpolation from the two emission snapshots, native homogeneous Nion history, radiation, and thermal evolution. Native references came from a single complete CPU lightcone call. Shell scratch grids have no meaning before their first shell and were excluded at setup only.",
+  "strict_tolerance": "abs(diff) <= 1e-8 + 1e-4*abs(native)",
+  "scale_aware_tolerance": "abs(diff) <= 1e-4*max(abs(native), 1e-8*max(abs(native_field)))",
+  "input_emissivity": {
+    "10.0": {
+      "xray_emissivity_range": [
+        1.3909352958307863e-07,
+        55.28171920776367
+      ],
+      "sfrd_range": [
+        2.099403419813673e-17,
+        6.69729294244803e-09
+      ],
+      "xray_to_sfrd_ratio_range": [
+        207719040.0,
+        60633337856.0
+      ],
+      "reference_cumulative_recombinations_range": [
+        0.0,
+        0.07742389291524887
+      ]
+    },
+    "9.7": {
+      "xray_emissivity_range": [
+        1.68759427765508e-07,
+        32.5704345703125
+      ],
+      "sfrd_range": [
+        2.573378572551048e-17,
+        5.723465257290172e-09
+      ],
+      "xray_to_sfrd_ratio_range": [
+        183634368.0,
+        54179053568.0
+      ],
+      "reference_cumulative_recombinations_range": [
+        0.0,
+        0.18814197182655334
+      ]
+    }
+  },
+  "xray_units": "4.3.2 stores comoving X-ray luminosity density in 10^38 erg s^-1 Mpc^-3. Its R_ct accumulation multiplies the interpolated luminosity density by 1e38 exactly once. The native mass- and metallicity-dependent emissivity is read directly, never inferred from a constant times SFRD.",
+  "native_work": "This earlier run used native unconditional Nion(z) and Astropy shell edges. The CUDA tau/frequency kernels consume the native global history.",
+  "cluster_archive": "~/ps_v432_perturb/v432-halo-rays.M8d76F (native.py, replay.py, cpu.h5 and per-stage NPZ files)"
+}

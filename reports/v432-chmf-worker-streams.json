@@ -1,0 +1,299 @@
+{
+  "scope": "Per-worker CUDA streams for ordered CHMF condition preparation and stochastic catalog windows.",
+  "environment": "21cmFAST 4.3.2, RTX A6000 on a9, two native worker threads for the BINARY-SPLIT and NUMBER-LIMITED cases.",
+  "method": "One a9 allocation interleaves three uninstrumented BINARY-SPLIT catalog-only calls per path following warm-up. Shared-stream control overrides the CUDA stream factory and otherwise uses the same adapter. Each invocation verifies both ordered catalog digests against its saved CPU reference.",
+  "diagnostic": "Two further BINARY-SPLIT calls record CUDA events on each draw stream. Event intervals overlap only on the two-stream path. The elapsed catalog timer is wall time; the per-worker timing counter sums concurrent intervals.",
+  "binary_medians": {
+    "shared": {
+      "catalog_wall_seconds": 3.7325266890693456,
+      "sum_of_worker_progenitor_seconds": 3.761031090747565
+    },
+    "workers": {
+      "catalog_wall_seconds": 3.4587104819947854,
+      "sum_of_worker_progenitor_seconds": 2.5221576964249834
+    }
+  },
+  "raw_samples": [
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "shared",
+      "trace": false,
+      "elapsed": 3.45368979498744,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 3.716007188311778
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "workers",
+      "trace": false,
+      "elapsed": 3.717383975046687,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 2.633020560024306
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "workers",
+      "trace": false,
+      "elapsed": 3.3450499770697206,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 2.481069423025474
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "shared",
+      "trace": false,
+      "elapsed": 3.7325266890693456,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 3.761031090747565
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "shared",
+      "trace": false,
+      "elapsed": 3.8062934880144894,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 4.126197547069751
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "workers",
+      "trace": false,
+      "elapsed": 3.4587104819947854,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 2.5221576964249834
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "shared",
+      "trace": true,
+      "elapsed": 3.662434938014485,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 3.6921729001915082,
+      "streams": 1,
+      "windows": 60,
+      "overlapping_pairs": 0,
+      "overlap_milliseconds": 0
+    },
+    {
+      "job": "490869",
+      "case": "partition",
+      "mode": "shared",
+      "trace": false,
+      "elapsed": 2.8003319470444694,
+      "native_job": "490858",
+      "ordered_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "count": 34013,
+      "sampling_seconds": 1.5399885608348995
+    },
+    {
+      "job": "490869",
+      "case": "binary",
+      "mode": "workers",
+      "trace": true,
+      "elapsed": 3.6813373459735885,
+      "native_job": "490849",
+      "ordered_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "count": 32900,
+      "sampling_seconds": 2.9509265407687053,
+      "streams": 2,
+      "windows": 60,
+      "overlapping_pairs": 12,
+      "overlap_milliseconds": 211.3609619140625
+    },
+    {
+      "job": "490869",
+      "case": "partition",
+      "mode": "workers",
+      "trace": false,
+      "elapsed": 2.8158494159579277,
+      "native_job": "490858",
+      "ordered_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "count": 34013,
+      "sampling_seconds": 1.5515213893959299
+    }
+  ],
+  "host_tangent_regression": {
+    "job": "490867",
+    "mode": "gpu",
+    "elapsed": 2.799730495084077,
+    "grid": {
+      "count": 32908,
+      "fields_sha256": {
+        "halo_masses": "e1e9bbae436ba0c93be9201721b2fc904ca7d87c11f6a024a5811c1c046ec2fe",
+        "halo_coords": "37bf8045fb72f4ea806b23a3b93fac96ee82c6936dceee7c8536b3ce5f36d449",
+        "star_rng": "88310462c17b53fc798a78c9ffe26950d8ed1dda8cce86a0be6f2c55adbad058",
+        "sfr_rng": "208f8cca0916d4544278b1ad101d6030ec7464e7e6633ddad18246c45d5b56f8",
+        "xray_rng": "9f1fb1368091d80648a9f0c0d27caf44cfa7269edc1bb866078456422c69121f"
+      },
+      "ordered_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+    },
+    "progenitors": {
+      "count": 28499,
+      "fields_sha256": {
+        "halo_masses": "85cb2c7114e754f8b0329ed044a0a83d4492e7fd052a301591f8cfd834b48df8",
+        "halo_coords": "6e05a426977fd49f968a60f60adfac30307f418ea9b7490027dcc6d823c459ca",
+        "star_rng": "dd13ecec21666d34eee5a2add912fd4292a1b4696646620df9f2bbfb31d3ea79",
+        "sfr_rng": "95f16a5348979fe68e9fbbcea828288e6c858835ff0b2465cd691b02e2ac10ae",
+        "xray_rng": "f1b7f933b8805c78f8fb8f71792f5bfd7ad4db74a9ba8791febbe355c4e6493f"
+      },
+      "ordered_sha256": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78"
+    },
+    "report": {
+      "halo_grid_positions": 32908,
+      "halo_progenitor_positions": 28499,
+      "halo_grid_property_gaussians": 98724,
+      "halo_progenitor_property_gaussians": 85497,
+      "halo_property_host_roundings": 1,
+      "halo_property_batches": 31,
+      "halo_conditional_number_tables": 2,
+      "halo_inverse_cdf_rows": 163,
+      "halo_inverse_cdf_possible_rows": 200,
+      "dexm_density_forward_fft": 1,
+      "dexm_ordinary_radii": 10,
+      "dexm_ordinary_candidates": 0,
+      "dexm_radius_searches": 10,
+      "dexm_candidates": 0,
+      "dexm_ordinary_accepted": 0,
+      "dexm_accepted": 0,
+      "dexm_empty_property_catalogs": 1,
+      "dexm_empty_overlap_grids": 1,
+      "halo_inverse_cuda_rows": 163,
+      "halo_inverse_cuda_seconds": 0.06724821799434721,
+      "halo_cuda_gfsr_words": 479232,
+      "halo_cuda_mt_words": 519168,
+      "halo_cuda_grid_sample_conditions": 4085,
+      "halo_cuda_grid_sample_masses": 32697,
+      "halo_cuda_grid_sample_words_consumed": 462060,
+      "halo_cuda_grid_sample_high_poisson_conditions": 2390,
+      "halo_cuda_grid_sample_device_tangent_conditions": 0,
+      "halo_cuda_grid_sample_sampling_seconds": 0.717941218521446,
+      "halo_inverse_cdf_built_values": 65200,
+      "halo_grid_condition_builds": 4096,
+      "halo_grid_condition_reuses": 12,
+      "halo_cuda_progenitor_conditions_prepared": 32908,
+      "halo_cuda_progenitor_conditions": 32900,
+      "halo_cuda_progenitor_masses": 28490,
+      "halo_cuda_progenitor_words_consumed": 416920,
+      "halo_cuda_progenitor_high_poisson_conditions": 0,
+      "halo_cuda_progenitor_device_tangent_conditions": 0,
+      "halo_cuda_progenitor_sampling_seconds": 1.3370708919828758,
+      "halo_progenitor_condition_builds": 9
+    },
+    "passed": true,
+    "native_job": "490849"
+  },
+  "number_limited_regression": {
+    "case": {
+      "method": "NUMBER-LIMITED",
+      "seed": 424242,
+      "nodes": [
+        10.0,
+        10.22
+      ],
+      "fine": 32,
+      "coarse": 16,
+      "box_mpc": 24.0,
+      "threads": 2,
+      "version": "4.3.2"
+    },
+    "job": "490868",
+    "catalogs": {
+      "grid": {
+        "count": 32908,
+        "fields_sha256": {
+          "halo_masses": "e1e9bbae436ba0c93be9201721b2fc904ca7d87c11f6a024a5811c1c046ec2fe",
+          "halo_coords": "37bf8045fb72f4ea806b23a3b93fac96ee82c6936dceee7c8536b3ce5f36d449",
+          "star_rng": "88310462c17b53fc798a78c9ffe26950d8ed1dda8cce86a0be6f2c55adbad058",
+          "sfr_rng": "208f8cca0916d4544278b1ad101d6030ec7464e7e6633ddad18246c45d5b56f8",
+          "xray_rng": "9f1fb1368091d80648a9f0c0d27caf44cfa7269edc1bb866078456422c69121f"
+        },
+        "ordered_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+      },
+      "progenitors": {
+        "count": 30205,
+        "fields_sha256": {
+          "halo_masses": "8d09f5dc5173064127e4b3d2b0e9a3960dfea3ab36e64f3bebbf2a0a9a6d4f5e",
+          "halo_coords": "459524c5802222ea2b048f4a2f6501bdd17c8e0d7acf812eb70c7e9fccd289ae",
+          "star_rng": "8d51de1bcd9fd2206bfe3f860d0fb8adea19f90afb0f72ab4a955753f1251d5f",
+          "sfr_rng": "7104a40ceff5ff725278320b09763975af706f0d3aa2fc268914633d13a2cb53",
+          "xray_rng": "e008b1e5c9c8a924d59cfcab2339648eb17fdd6c4649110ccd83260f8e2912c6"
+        },
+        "ordered_sha256": "eeec32e5765c802393ba4429b21a065b17ad10d7780f1f3a963780f052b6e88e"
+      }
+    },
+    "native_cpu_job": "490593",
+    "counters": {
+      "halo_grid_positions": 32908,
+      "halo_progenitor_positions": 30205,
+      "halo_grid_property_gaussians": 98724,
+      "halo_progenitor_property_gaussians": 90615,
+      "halo_property_host_roundings": 0,
+      "halo_property_batches": 33,
+      "halo_conditional_number_tables": 2,
+      "halo_inverse_cdf_rows": 224,
+      "halo_inverse_cdf_possible_rows": 400,
+      "dexm_density_forward_fft": 1,
+      "dexm_ordinary_radii": 10,
+      "dexm_ordinary_candidates": 0,
+      "dexm_radius_searches": 10,
+      "dexm_candidates": 0,
+      "dexm_ordinary_accepted": 0,
+      "dexm_accepted": 0,
+      "dexm_empty_property_catalogs": 1,
+      "dexm_empty_overlap_grids": 1,
+      "halo_inverse_cuda_rows": 224,
+      "halo_inverse_cuda_seconds": 0.18705964589025825,
+      "halo_cuda_mt_words": 519168,
+      "halo_cuda_grid_conditions_prepared": 4096,
+      "halo_cuda_grid_resident_density": 4096,
+      "halo_cuda_gfsr_words": 479232,
+      "halo_cuda_grid_sample_conditions": 4085,
+      "halo_cuda_grid_sample_masses": 32697,
+      "halo_cuda_grid_sample_words_consumed": 462060,
+      "halo_cuda_grid_sample_high_poisson_conditions": 2390,
+      "halo_cuda_grid_sample_device_tangent_conditions": 2390,
+      "halo_cuda_grid_sample_sampling_seconds": 0.39066655514761806,
+      "halo_inverse_cdf_built_values": 89600,
+      "halo_grid_condition_builds": 12,
+      "halo_cuda_progenitor_conditions_prepared": 32908,
+      "halo_cuda_progenitor_resident_masses": 32908,
+      "halo_cuda_progenitor_conditions": 32899,
+      "halo_cuda_progenitor_masses": 30180,
+      "halo_cuda_progenitor_words_consumed": 453461,
+      "halo_cuda_progenitor_high_poisson_conditions": 0,
+      "halo_cuda_progenitor_device_tangent_conditions": 0,
+      "halo_cuda_progenitor_sampling_seconds": 0.3028951993910596,
+      "halo_progenitor_condition_builds": 10
+    },
+    "mass_limited_counts": {
+      "grid": 32908,
+      "progenitors": 30290
+    },
+    "cpu_gpu_equal": true,
+    "initial_grid_matches_native_mass_limited_sha256": true,
+    "passed": true
+  },
+  "partition_scope": "The PARTITION diagnostic uses the one-thread catalog fixture and its previously repaired CPU reference. There is no second worker to overlap.",
+  "full_lightcone": "Existing lightcone references were retained. This change was revalidated at the catalog stage."
+}

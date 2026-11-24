@@ -459,6 +459,17 @@ __device__ void Energy_Lya_heating_pair(double tk, double ts, double taugp, cons
     }
 }
 
+__device__ inline double advance_xe(double xe, double rate, double dz) {
+    const double next = xe + rate*dz;
+    if (next > 1.) return 1. - FRACT_FLOAT_ERR;
+    if (next < 0.) return 0.;
+    return next;
+}
+
+__device__ inline double advance_temperature(double temperature, double rate, double dz) {
+    return temperature < MAX_TK ? temperature + rate*dz : temperature;
+}
+
 /* One iteration of the existing Wouthuysen–Field fixed-point map. */
 __device__ inline double spin_next(
     double spin, double inv_t, double inv_t_sq, double coupling,
@@ -582,20 +593,9 @@ double high_inv=sc[23];
                                 
                             }
 
-                            //update quantities
-                            x_e += ( dxe_dzp ) * dzp; // remember dzp is negative
-                            if (x_e > 1) // can do this late in evolution if dzp is too large
-                                x_e = 1 - FRACT_FLOAT_ERR;
-                            else if (x_e < 0)
-                                x_e = 0;
-
-                            //Add CMB and Lya heating rates, and evolve
-                            if (T < MAX_TK) {
-                                
-                                    T += ( dxheat_dzp + dcomp_dzp + dspec_dzp + dadia_dzp + dCMBheat_dzp + eps_Lya_cont + eps_Lya_inj) * dzp;
-                                
-
-                            }
+                            x_e = advance_xe(x_e, dxe_dzp, dzp);
+                            T = advance_temperature(T, dxheat_dzp + dcomp_dzp + dspec_dzp + dadia_dzp
+                                                    + dCMBheat_dzp + eps_Lya_cont + eps_Lya_inj, dzp);
 
                             if(!isfinite(T)){atomicCAS(bad,0,101);return;}
                             if (T<0){ // spurious bahaviour of the trapazoidalintegrator. generally overcooling in underdensities

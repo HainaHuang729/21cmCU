@@ -1,0 +1,2346 @@
+{
+  "version": "21cmFAST 4.3.2",
+  "source_model": "CONST-ION-EFF",
+  "gpu": "RTX A6000",
+  "reference": "Native 4.3.2 CPU stage caches from jobs 490518 and 490519. Native output files were assembled from the complete saved stage caches in jobs 490522 and 490523.",
+  "native_directory": "phy-gpus:~/ps_v432_perturb/constant-eff.1GhIth",
+  "verification": "Identical native InputParameters, redshift nodes and comoving coordinates. Per-element |GPU-CPU| <= 1e-8 + 1e-4 |CPU|. Lightcone timing includes native cache writes for diagnostic comparisons.",
+  "st_lightcones": {
+    "nonthermal": {
+      "options": {
+        "SOURCE_MODEL": "CONST-ION-EFF",
+        "HMF": "ST",
+        "FILTER": "spherical-tophat",
+        "HII_FILTER": "spherical-tophat",
+        "USE_INTERPOLATION_TABLES": "hmf-interpolation",
+        "USE_TS_FLUCT": false,
+        "RECOMB_MODEL": "none",
+        "USE_X_RAY_HEATING": true,
+        "USE_LYA_HEATING": true,
+        "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+        "USE_MCGS": false,
+        "USE_METALLICITY": false,
+        "USE_UPPER_STELLAR_TURNOVER": false,
+        "USE_EXP_FILTER": false,
+        "CELL_RECOMB": false,
+        "PHOTON_CONS_TYPE": "no-photoncons",
+        "IONISE_ENTIRE_SPHERE": false,
+        "Z_HEAT_MAX": 9.0,
+        "R_BUBBLE_MAX": 12.0,
+        "HII_EFF_FACTOR": 30.0,
+        "DIM": 32,
+        "HII_DIM": 16,
+        "BOX_LEN": 24.0,
+        "N_THREADS": 1
+      },
+      "version": "4.3.2",
+      "seed": 812445,
+      "node_redshifts": [
+        9.0,
+        8.7,
+        8.4
+      ],
+      "fields": [
+        "density",
+        "velocity_z",
+        "neutral_fraction",
+        "brightness_temp",
+        "ionisation_rate_G12",
+        "z_reion",
+        "kinetic_temperature"
+      ],
+      "slices": 89,
+      "requested_bounds": [
+        8.44,
+        8.94
+      ],
+      "backend_seconds_including_cache_writes": 12.79552636994049,
+      "job": "490531",
+      "ionization": [
+        {
+          "z": 9.0,
+          "neutral_mean": 0.758337841876056,
+          "partial": 3429,
+          "ionized": 667
+        },
+        {
+          "z": 8.7,
+          "neutral_mean": 0.7034787642910487,
+          "partial": 3226,
+          "ionized": 870
+        },
+        {
+          "z": 8.4,
+          "neutral_mean": 0.6363231675240968,
+          "partial": 2948,
+          "ionized": 1148
+        }
+      ],
+      "comparison": {
+        "atol": 1e-08,
+        "rtol": 0.0001
+      },
+      "include_dvdr_in_tau21": true,
+      "apply_rsds": false,
+      "global_quantities": [
+        "brightness_temp",
+        "density",
+        "ionisation_rate_G12",
+        "kinetic_temperature",
+        "log10_mturn_acg",
+        "log10_mturn_mcg",
+        "n_ion",
+        "neutral_fraction",
+        "nion_conditional_filtered_acg",
+        "velocity_z",
+        "z_reion"
+      ],
+      "interpolation": {
+        "kinetic_temperature": "mean",
+        "ionisation_rate_G12": "mean",
+        "density": "mean",
+        "velocity_z": "mean",
+        "los_velocity": "mean",
+        "neutral_fraction": "mean",
+        "brightness_temp": "mean",
+        "z_reion": "mean_max"
+      },
+      "reduction": {
+        "cpu_threads": 1,
+        "mean_dtype": "upstream mean for each field, saved globally as float64",
+        "transverse_power_dtype": "float64",
+        "transverse_power_bins": 8
+      },
+      "source_parameters": {
+        "M_MIN_in_Mass": true,
+        "INTEGRATION_METHOD_ACGS": "GAUSS-LEGENDRE",
+        "USE_CMB_HEATING": true,
+        "USE_ADIABATIC_FLUCTUATIONS": true,
+        "LYA_MULTIPLE_SCATTERING": false,
+        "HII_EFF_FACTOR": 30.0,
+        "R_BUBBLE_MIN": 0.620350491,
+        "R_BUBBLE_MAX": 12.0,
+        "DELTA_R_HII_FACTOR": 1.1,
+        "ION_Tvir_MIN": 4.69897,
+        "X_RAY_Tvir_MIN": 4.69897,
+        "M_TURN_STELLAR_FEEDBACK": 8.7
+      },
+      "routing": {
+        "gpu-stages.json": {
+          "emission": 3,
+          "heat": 0,
+          "ion_center": 81,
+          "recombination": 0,
+          "shell_filter": 0,
+          "shell_accumulate": 0,
+          "source_table": 84,
+          "native_forward_fft_on_gpu": 0,
+          "native_inverse_fft_on_gpu": 81,
+          "native_spectral_filter_on_gpu": 78,
+          "gpu_seed_and_modes": 1,
+          "ion_filter_prepare": 3,
+          "ion_filter_extrema": 81,
+          "ion_photon_lookup": 81,
+          "radiation_units": 0,
+          "radiation_setup_grid": 0,
+          "ionized_temperature": 3,
+          "xray_frequency_integrals": 0,
+          "global_source_integrals": 0,
+          "sigma_moments": 2,
+          "mhr_table": 0,
+          "lyman_shells": 0,
+          "ion_global_source_integrals": 3,
+          "fully_neutral_box": 0,
+          "global_neutral_fraction": 0,
+          "eh_constants": 1,
+          "initial_heat": 0,
+          "thermal_constants": 0,
+          "scalar_sigma": 102,
+          "emissivity_global_source_integrals": 3,
+          "ionization_recfast": 3
+        },
+        "resident-inputs.json": {
+          "ic_fields": [
+            "hires_density",
+            "lowres_density",
+            "lowres_vx",
+            "lowres_vy",
+            "lowres_vz",
+            "lowres_vx_2LPT",
+            "lowres_vy_2LPT",
+            "lowres_vz_2LPT"
+          ],
+          "density_reads_from_device": 30
+        },
+        "source-tables.json": {},
+        "thermal-terms.json": {}
+      },
+      "missing_stages": [],
+      "products": {
+        "lightcones": {
+          "brightness_temp": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 1.287672606764545e-06
+          },
+          "density": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "ionisation_rate_G12": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temperature": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.00390625
+          },
+          "los_velocity": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "neutral_fraction": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "velocity_z": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "z_reion": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "global_quantities": {
+          "brightness_temp": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 9.5367431640625e-07
+          },
+          "density": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 4.190951585769653e-09
+          },
+          "ionisation_rate_G12": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temperature": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "log10_mturn_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "log10_mturn_mcg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "n_ion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 5.960464477539063e-08
+          },
+          "neutral_fraction": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 5.960464477539063e-08
+          },
+          "nion_conditional_filtered_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 2.9802322387695312e-08
+          },
+          "velocity_z": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 3.1705897502642906e-26
+          },
+          "z_reion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.1920928955078125e-07
+          }
+        },
+        "brightness_transverse_power": {
+          "unit": "mK^2 Mpc^2",
+          "k_unit": "Mpc^-1",
+          "k_mean": [
+            0.31601981632284,
+            0.5648004102572511,
+            0.7954108410141316,
+            1.0682798108135991,
+            1.3452138414952763,
+            1.595396102466962,
+            1.8486187843440371,
+            2.0276098204629176
+          ],
+          "modes_per_bin": [
+            8,
+            12,
+            16,
+            32,
+            28,
+            40,
+            40,
+            18
+          ],
+          "slices": 89,
+          "tested": 712,
+          "failed": 0,
+          "max_abs": 1.4878132333251415e-05
+        }
+      },
+      "cached_fields": [
+        {
+          "kind": "PerturbedField",
+          "z": 8.4,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.4,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.4,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 3.3306690738754696e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.7,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.7,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.7,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.00390625
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.220446049250313e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 9.0,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 9.0,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 9.0,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.7755575615628914e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_density",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vx_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vy_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vz_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vx",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vx_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vy",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vy_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vz",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vz_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      ],
+      "reference_job": "490518",
+      "passed": true
+    },
+    "thermal": {
+      "options": {
+        "SOURCE_MODEL": "CONST-ION-EFF",
+        "HMF": "ST",
+        "FILTER": "spherical-tophat",
+        "HII_FILTER": "spherical-tophat",
+        "USE_INTERPOLATION_TABLES": "hmf-interpolation",
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "USE_X_RAY_HEATING": true,
+        "USE_LYA_HEATING": true,
+        "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+        "USE_MCGS": false,
+        "USE_METALLICITY": false,
+        "USE_UPPER_STELLAR_TURNOVER": false,
+        "USE_EXP_FILTER": false,
+        "CELL_RECOMB": false,
+        "PHOTON_CONS_TYPE": "no-photoncons",
+        "IONISE_ENTIRE_SPHERE": false,
+        "Z_HEAT_MAX": 9.0,
+        "R_BUBBLE_MAX": 12.0,
+        "HII_EFF_FACTOR": 30.0,
+        "DIM": 32,
+        "HII_DIM": 16,
+        "BOX_LEN": 24.0,
+        "N_THREADS": 1
+      },
+      "version": "4.3.2",
+      "seed": 812445,
+      "node_redshifts": [
+        9.0,
+        8.7,
+        8.4
+      ],
+      "fields": [
+        "density",
+        "velocity_z",
+        "neutral_fraction",
+        "brightness_temp",
+        "ionisation_rate_G12",
+        "z_reion",
+        "kinetic_temperature",
+        "cumulative_recombinations",
+        "mean_free_path",
+        "spin_temperature",
+        "kinetic_temp_neutral",
+        "xray_ionised_fraction",
+        "tau_21"
+      ],
+      "slices": 89,
+      "requested_bounds": [
+        8.44,
+        8.94
+      ],
+      "backend_seconds_including_cache_writes": 7.073336702072993,
+      "job": "490549",
+      "ionization": [
+        {
+          "z": 9.0,
+          "neutral_mean": 0.7581884927525664,
+          "partial": 3429,
+          "ionized": 667,
+          "max_recombinations": 0.10159611701965332
+        },
+        {
+          "z": 8.7,
+          "neutral_mean": 0.7063346716947763,
+          "partial": 3249,
+          "ionized": 847,
+          "max_recombinations": 0.2577192187309265
+        },
+        {
+          "z": 8.4,
+          "neutral_mean": 0.6475499875726882,
+          "partial": 3022,
+          "ionized": 1074,
+          "max_recombinations": 0.4208160936832428
+        }
+      ],
+      "comparison": {
+        "atol": 1e-08,
+        "rtol": 0.0001
+      },
+      "include_dvdr_in_tau21": true,
+      "apply_rsds": false,
+      "global_quantities": [
+        "brightness_temp",
+        "cumulative_recombinations",
+        "density",
+        "ionisation_rate_G12",
+        "kinetic_temp_neutral",
+        "kinetic_temperature",
+        "log10_mturn_acg",
+        "log10_mturn_mcg",
+        "mean_free_path",
+        "n_ion",
+        "neutral_fraction",
+        "nion_conditional_filtered_acg",
+        "sfrd_acg",
+        "spin_temperature",
+        "tau_21",
+        "velocity_z",
+        "xray_emissivity",
+        "xray_ionised_fraction",
+        "z_reion"
+      ],
+      "interpolation": {
+        "brightness_temp": "mean",
+        "tau_21": "mean",
+        "spin_temperature": "mean",
+        "velocity_z": "mean",
+        "cumulative_recombinations": "mean",
+        "kinetic_temperature": "mean",
+        "density": "mean",
+        "kinetic_temp_neutral": "mean",
+        "neutral_fraction": "mean",
+        "mean_free_path": "mean",
+        "xray_ionised_fraction": "mean",
+        "z_reion": "mean_max",
+        "ionisation_rate_G12": "mean",
+        "los_velocity": "mean"
+      },
+      "reduction": {
+        "cpu_threads": 1,
+        "mean_dtype": "upstream mean for each field, saved globally as float64",
+        "transverse_power_dtype": "float64",
+        "transverse_power_bins": 8
+      },
+      "source_parameters": {
+        "M_MIN_in_Mass": true,
+        "INTEGRATION_METHOD_ACGS": "GAUSS-LEGENDRE",
+        "USE_CMB_HEATING": true,
+        "USE_ADIABATIC_FLUCTUATIONS": true,
+        "LYA_MULTIPLE_SCATTERING": false,
+        "HII_EFF_FACTOR": 30.0,
+        "R_BUBBLE_MIN": 0.620350491,
+        "R_BUBBLE_MAX": 12.0,
+        "DELTA_R_HII_FACTOR": 1.1,
+        "ION_Tvir_MIN": 4.69897,
+        "X_RAY_Tvir_MIN": 4.69897,
+        "M_TURN_STELLAR_FEEDBACK": 8.7
+      },
+      "routing": {
+        "gpu-stages.json": {
+          "emission": 3,
+          "heat": 2,
+          "ion_center": 81,
+          "recombination": 3,
+          "shell_filter": 126,
+          "shell_accumulate": 63,
+          "source_table": 87,
+          "native_forward_fft_on_gpu": 0,
+          "native_inverse_fft_on_gpu": 0,
+          "native_spectral_filter_on_gpu": 0,
+          "gpu_seed_and_modes": 1,
+          "ion_filter_prepare": 9,
+          "ion_filter_extrema": 81,
+          "ion_photon_lookup": 81,
+          "radiation_units": 2,
+          "radiation_setup_grid": 2,
+          "ionized_temperature": 3,
+          "xray_frequency_integrals": 2,
+          "global_source_integrals": 2,
+          "sigma_moments": 2,
+          "mhr_table": 1,
+          "lyman_shells": 2,
+          "ion_global_source_integrals": 3,
+          "fully_neutral_box": 0,
+          "global_neutral_fraction": 3,
+          "eh_constants": 1,
+          "initial_heat": 1,
+          "thermal_constants": 2,
+          "scalar_sigma": 108,
+          "emissivity_global_source_integrals": 3,
+          "ionization_recfast": 0,
+          "ion_filter_resident_radius": 81,
+          "emissivity_mean_normalization": 3
+        },
+        "resident-inputs.json": {
+          "ic_fields": [
+            "hires_density",
+            "lowres_density",
+            "lowres_vx",
+            "lowres_vy",
+            "lowres_vz",
+            "lowres_vx_2LPT",
+            "lowres_vy_2LPT",
+            "lowres_vz_2LPT"
+          ],
+          "density_reads_from_device": 33,
+          "ionization_spectrum_reads_from_device": 243
+        },
+        "source-tables.json": {},
+        "thermal-terms.json": {}
+      },
+      "missing_stages": [],
+      "products": {
+        "lightcones": {
+          "brightness_temp": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 1.9073486328125e-06
+          },
+          "cumulative_recombinations": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "density": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "ionisation_rate_G12": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temp_neutral": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "kinetic_temperature": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.00390625
+          },
+          "los_velocity": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "mean_free_path": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "neutral_fraction": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "spin_temperature": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "tau_21": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "velocity_z": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "xray_ionised_fraction": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "z_reion": {
+            "tested": 22784,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "global_quantities": {
+          "brightness_temp": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 9.5367431640625e-07
+          },
+          "cumulative_recombinations": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 3.725290298461914e-09
+          },
+          "density": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 4.190951585769653e-09
+          },
+          "ionisation_rate_G12": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.862645149230957e-09
+          },
+          "kinetic_temp_neutral": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 3.814697265625e-06
+          },
+          "kinetic_temperature": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0009765625
+          },
+          "log10_mturn_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "log10_mturn_mcg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "mean_free_path": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.1920928955078125e-07
+          },
+          "n_ion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 5.960464477539063e-08
+          },
+          "neutral_fraction": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "nion_conditional_filtered_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 2.9802322387695312e-08
+          },
+          "sfrd_acg": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.1102230246251565e-16
+          },
+          "spin_temperature": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "tau_21": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 4.656612873077393e-10
+          },
+          "velocity_z": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 3.1705897502642906e-26
+          },
+          "xray_emissivity": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "xray_ionised_fraction": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 1.1641532182693481e-10
+          },
+          "z_reion": {
+            "tested": 3,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        },
+        "brightness_transverse_power": {
+          "unit": "mK^2 Mpc^2",
+          "k_unit": "Mpc^-1",
+          "k_mean": [
+            0.31601981632284,
+            0.5648004102572511,
+            0.7954108410141316,
+            1.0682798108135991,
+            1.3452138414952763,
+            1.595396102466962,
+            1.8486187843440371,
+            2.0276098204629176
+          ],
+          "modes_per_bin": [
+            8,
+            12,
+            16,
+            32,
+            28,
+            40,
+            40,
+            18
+          ],
+          "slices": 89,
+          "tested": 712,
+          "failed": 0,
+          "max_abs": 4.911499900117633e-06
+        }
+      },
+      "cached_fields": [
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.4,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.4,
+          "field": "tau_21",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "sfrd_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "xray_emissivity",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.4,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "cumulative_recombinations",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "mean_free_path",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 3.3306690738754696e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.4,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "lya_flux_continuum",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.2407709188295415e-24
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "lya_flux_injected",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.4475660719677984e-24
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "xray_heating_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.5146129380243427e-28
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "xray_ionization_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.5407439555097887e-33
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "xray_lya_flux",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 2.5849394142282115e-26
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.4,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 8.881784197001252e-16
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.4,
+          "field": "kinetic_temp_neutral",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.4,
+          "field": "spin_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.4,
+          "field": "xray_ionised_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.4,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 8.881784197001252e-16
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.4,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.4,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.7,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 8.7,
+          "field": "tau_21",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "sfrd_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "xray_emissivity",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 8.7,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "cumulative_recombinations",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.00390625
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "mean_free_path",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.220446049250313e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 8.7,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "lya_flux_continuum",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "lya_flux_injected",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.2407709188295415e-24
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "xray_heating_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 6.310887241768094e-29
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "xray_ionization_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 7.703719777548943e-34
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "xray_lya_flux",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 1.6155871338926322e-26
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 8.7,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 5.551115123125783e-16
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.7,
+          "field": "kinetic_temp_neutral",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.7,
+          "field": "spin_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.7,
+          "field": "xray_ionised_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 8.7,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 5.551115123125783e-16
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.7,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 8.7,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 9.0,
+          "field": "brightness_temp",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "BrightnessTemp",
+          "z": 9.0,
+          "field": "tau_21",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "n_ion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "sfrd_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "xray_emissivity",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "log10_mturn_acg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "EmissivityFields",
+          "z": 9.0,
+          "field": "log10_mturn_mcg_ave",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "cumulative_recombinations",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "ionisation_rate_G12",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "kinetic_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "mean_free_path",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "neutral_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_conditional_filtered_acg",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "z_reion",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "log10_mturn_ave_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "log10_mturn_ave_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_unconditional_acg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.7755575615628914e-16
+        },
+        {
+          "kind": "IonizedBox",
+          "z": 9.0,
+          "field": "nion_unconditional_mcg",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "lya_flux_continuum",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "lya_flux_injected",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "xray_heating_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "xray_ionization_rate",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "xray_lya_flux",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "RadiationFields",
+          "z": 9.0,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 9.0,
+          "field": "kinetic_temp_neutral",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 9.0,
+          "field": "spin_temperature",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 9.0,
+          "field": "xray_ionised_fraction",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "TsBox",
+          "z": 9.0,
+          "field": "Q_HI",
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 9.0,
+          "field": "density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "PerturbedField",
+          "z": 9.0,
+          "field": "velocity_z",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_density",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vx_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vy_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "hires_vz_2LPT",
+          "tested": 32768,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_density",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vx",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vx_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vy",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vy_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vz",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        {
+          "kind": "InitialConditions",
+          "z": -1.0,
+          "field": "lowres_vz_2LPT",
+          "tested": 4096,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      ],
+      "reference_job": "490519",
+      "passed": true
+    }
+  },
+  "ps_coeval_reference_job": "490530",
+  "ps_coeval": {
+    "job": "490548",
+    "cases": {
+      "early_neutral": {
+        "45.0": {
+          "fields": {
+            "neutral_fraction": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "ionisation_rate_G12": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "z_reion": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "kinetic_temperature": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "nion_conditional_filtered_acg": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            }
+          },
+          "neutral_fraction_range": [
+            0.9997870326042175,
+            0.9997870326042175
+          ],
+          "fully_ionized": 0,
+          "partial": 4096,
+          "nion_unconditional_acg": {
+            "tested": 1,
+            "failed": 0,
+            "max_abs": 1.313717310304516e-46
+          },
+          "stages": {
+            "sigma_moments": 2,
+            "ion_global_source_integrals": 1,
+            "fully_neutral_box": 1,
+            "eh_constants": 1,
+            "scalar_sigma": 31,
+            "ionization_recfast": 2
+          }
+        }
+      },
+      "cell_recombinations": {
+        "9.0": {
+          "fields": {
+            "neutral_fraction": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "ionisation_rate_G12": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "z_reion": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "mean_free_path": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "cumulative_recombinations": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "kinetic_temperature": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "nion_conditional_filtered_acg": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            }
+          },
+          "neutral_fraction_range": [
+            0.0,
+            0.9980741143226624
+          ],
+          "fully_ionized": 274,
+          "partial": 3822,
+          "nion_unconditional_acg": {
+            "tested": 1,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "stages": {
+            "ion_center": 27,
+            "recombination": 1,
+            "source_table": 27,
+            "ion_filter_prepare": 1,
+            "ion_filter_extrema": 27,
+            "ion_photon_lookup": 27,
+            "ionized_temperature": 1,
+            "sigma_moments": 2,
+            "mhr_table": 1,
+            "ion_global_source_integrals": 1,
+            "global_neutral_fraction": 1,
+            "eh_constants": 1,
+            "scalar_sigma": 31,
+            "ionization_recfast": 1,
+            "ion_filter_resident_radius": 27
+          }
+        },
+        "8.7": {
+          "fields": {
+            "neutral_fraction": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "ionisation_rate_G12": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "z_reion": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "mean_free_path": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "cumulative_recombinations": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            },
+            "kinetic_temperature": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.00390625
+            },
+            "nion_conditional_filtered_acg": {
+              "tested": 4096,
+              "failed": 0,
+              "max_abs": 0.0
+            }
+          },
+          "neutral_fraction_range": [
+            0.0,
+            0.9970570802688599
+          ],
+          "fully_ionized": 389,
+          "partial": 3707,
+          "nion_unconditional_acg": {
+            "tested": 1,
+            "failed": 0,
+            "max_abs": 1.6653345369377348e-16
+          },
+          "stages": {
+            "ion_center": 27,
+            "recombination": 1,
+            "source_table": 27,
+            "ion_filter_prepare": 1,
+            "ion_filter_extrema": 27,
+            "ion_photon_lookup": 27,
+            "ionized_temperature": 1,
+            "sigma_moments": 2,
+            "mhr_table": 1,
+            "ion_global_source_integrals": 1,
+            "global_neutral_fraction": 1,
+            "eh_constants": 1,
+            "scalar_sigma": 31,
+            "ionization_recfast": 1,
+            "ion_filter_resident_radius": 27
+          }
+        }
+      }
+    },
+    "passed": true
+  },
+  "earlier_e_integral_regression": {
+    "job": "490521",
+    "host": "a9",
+    "backend_tree": "/home/user/hnhuang/ps_v432_perturb/constant-gpu.11XWPj/v4",
+    "version": "4.3.2",
+    "seed": 93217,
+    "dims": [
+      48,
+      16
+    ],
+    "box_mpc": 52.0,
+    "threads": 2,
+    "Z_HEAT_MAX": 16.7,
+    "input_node_redshifts": [
+      17.0,
+      16.3,
+      15.6
+    ],
+    "requested_redshift_bounds": [
+      15.72,
+      16.21
+    ],
+    "elapsed_seconds": {
+      "cpu": 7.2524107550270855,
+      "gpu": 15.412444911082275
+    },
+    "tolerance": {
+      "abs": 1e-08,
+      "rel": 0.0001
+    },
+    "timer": "Wall time of each direct run_lightcone call through full return; excludes validation and disk I/O after return.",
+    "sha256": {
+      "gpu_lightcone.py": "c380c96293e71d43b4806cd38c7b90817e93873c81110cf47c916ecac8fd7d37",
+      "evolution_backend.py": "af84ec7d3e9642a8c34a6634be018240e4b0e0ff0bd0387a1f3840794fe6ace2",
+      "evolution_grid.cu": "1dd791ce290741ea67221e3e8e27f75a10e7a5481a88be991ffa4ef0da131c28",
+      "perturb.py": "aed486cfef8d97f5a9f291cd636fadde30dc8d10d17df10c4e7c06aec5925980"
+    },
+    "slices": 19,
+    "first_last_distance_mpc": [
+      10539.43107416792,
+      10597.93107416792
+    ],
+    "first_last_slice_redshift": [
+      15.720000000013028,
+      16.236304965634144
+    ],
+    "coordinates_equal": true,
+    "expected_shape": [
+      16,
+      16,
+      19
+    ],
+    "fields": {
+      "brightness_temp": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          -77.9307861328125,
+          -3.274009943008423
+        ],
+        "gpu_range": [
+          -77.9307861328125,
+          -3.2740097045898438
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 3.814697265625e-06,
+        "max_fraction_of_tolerance": 0.0015069956027071497
+      },
+      "neutral_fraction": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          0.5555313229560852,
+          0.9984493255615234
+        ],
+        "gpu_range": [
+          0.5555313229560852,
+          0.9984493255615234
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 0.0,
+        "max_fraction_of_tolerance": 0.0
+      },
+      "xray_ionised_fraction": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          0.00018752178584691137,
+          0.00023494518245570362
+        ],
+        "gpu_range": [
+          0.00018752178584691137,
+          0.00023494518245570362
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 0.0,
+        "max_fraction_of_tolerance": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          4.814756870269775,
+          9.827160835266113
+        ],
+        "gpu_range": [
+          4.814756870269775,
+          9.827160835266113
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 0.0,
+        "max_fraction_of_tolerance": 0.0
+      },
+      "spin_temperature": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          15.645796775817871,
+          42.694679260253906
+        ],
+        "gpu_range": [
+          15.645796775817871,
+          42.694679260253906
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 0.0,
+        "max_fraction_of_tolerance": 0.0
+      },
+      "cumulative_recombinations": {
+        "shape": [
+          16,
+          16,
+          19
+        ],
+        "finite": true,
+        "native_range": [
+          0.0,
+          0.0
+        ],
+        "gpu_range": [
+          0.0,
+          0.0
+        ],
+        "failed_voxels": 0,
+        "failed_slices": 0,
+        "max_abs": 0.0,
+        "max_fraction_of_tolerance": 0.0
+      }
+    },
+    "selected_gpu_calls": {
+      "gpu_seed_and_modes": 1,
+      "initial_heat": 1,
+      "heat": 2,
+      "shell_accumulate": 54,
+      "xray_frequency_integrals": 2
+    },
+    "passed": true
+  }
+}

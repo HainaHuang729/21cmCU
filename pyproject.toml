@@ -1,0 +1,135 @@
+[build-system]
+requires = ["setuptools>=78.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "21cmfast-gpu"
+version = "0.1.0"
+description = "CUDA adapter dependencies for 21cmFAST 4.3.2"
+readme = "v4/README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "21cmfast>=4.3.2",
+    "numpy>=2",
+    "astropy>=7",
+    "scipy",
+    "h5py",
+]
+
+[project.optional-dependencies]
+cuda12 = ["cupy-cuda12x"]
+
+[project.urls]
+Repository = "https://github.com/HainaHuang729/21cmFAST-GPU"
+Upstream = "https://github.com/21cmfast/21cmFAST"
+
+[dependency-groups]
+test = ["pytest>=8"]
+
+# Install dependencies for the source-checkout adapter and its shared CUDA assets.
+[tool.setuptools]
+packages = []
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["v4"]
+markers = ["gpu: requires a usable CUDA device and CuPy"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+  "*.ipynb",  # include these later
+  "devel/filter_valgrind.py",
+]
+
+[tool.ruff.lint]
+extend-select = [
+  "UP",   # pyupgrade
+  "E",    # pycodestyle
+  "W",    # pycodestyle warning
+  "F",    # pyflakes
+  "C90",  # mccabe complexity
+  "I",    # isort
+  "N",    # pep8-naming
+  "D",    # docstyle
+  # "ANN"   # type annotations
+  "B",    # bugbear
+  "A",    # builtins
+  "C4",   # comprehensions
+  "DTZ",  # datetime
+  "FA",   # future annotations
+  "PIE",  # flake8-pie
+  "T",    # print statements
+  "PT",   # pytest-style
+  "Q",    # quotes
+  "SIM",  # simplify
+  "PTH",  # use Pathlib
+  "ERA",  # kill commented code
+  "NPY",  # numpy-specific rules
+  "PERF", # performance
+  # "FURB", # refurb
+  "RUF",  # ruff-specific rules
+]
+ignore = [
+    "DTZ007",   # use %z in strptime
+    "DTZ005",
+    "E203",
+    "E266",
+    "E501",
+    "F403",
+    #"F401",
+    "E231",
+    # Naming upper/lowercase -- too hard right now.
+    "N803",
+    # Naming upper/lowercase -- too hard right now.
+    "N806",
+    # Naming upper/lowercase -- too hard right now.
+    "N802",
+    # Naming mixed case
+    "N815",
+    # Docstring in imperative mood. This should *not* be the case for @property's, but can't ignore them atm.
+#    "D401",
+    # Module shadowing a builtin
+    "A005",
+    "RUF009",
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "D103",  # ignore missing docstring in tests
+    "DTZ",   # ignore datetime in tests
+    "T",     # print statements
+    # `pytest.fixture` is listed in lint.pydocstyle.property-decorators (so that
+    # fixtures get the relaxed docstring treatment properties get), but that
+    # option is also consulted by PLR0206, which then wrongly treats pytest
+    # fixtures as properties and flags their (perfectly normal) parameters.
+    "PLR0206",
+]
+"devel/*.py" = [
+  "T",
+]
+"docs/conf.py" = [
+    "A",  # conf.py can shadow builtins
+    "ERA",
+]
+"src/py21cmfast/cli.py" = [
+    "D103",  # ignore missing docstrings
+    "T",     # print statements
+]
+"build_cffi.py" = [
+    "T",     # print statements
+]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = 'numpy'
+property-decorators = [
+    "property",
+    "functools.cached_property",
+    "pytest.fixture"
+]
+[tool.ruff.lint.mccabe]
+max-complexity = 20

@@ -1,4 +1,5 @@
-# Conda environment specification for 21cmFAST-GPU (Linux x86_64 + CUDA)
+# Conda environment for the 21cmFAST v3 pipeline (Linux x86_64 + CUDA).
+# See v4/README.md for the 21cmFAST 4.3.2 adapter setup.
 # Usage:
 #   conda env create -f environment.yml
 #   conda activate 21cmfast-gpu

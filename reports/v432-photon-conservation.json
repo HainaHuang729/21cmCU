@@ -1,0 +1,863 @@
+{
+  "version": "21cmFAST 4.3.2",
+  "passed": true,
+  "cluster_directory": "~/ps_v432_perturb/v432-photons.t0HCRZ",
+  "comparison": "The unmodified native 4.3.2 C API and the CUDA adapter receive the same paired redshifts and neutral fractions. The high-level native calibration loop is bypassed in both cases.",
+  "native_reference_job": "490645",
+  "per_node_gpu_job": "490656",
+  "public_lightcone_job": "490660",
+  "thermal_single_node_gpu_job": "490665",
+  "failure_cleanup_job": "490672",
+  "hardware": "NVIDIA RTX A6000",
+  "seed": 378991,
+  "fine_dim": 16,
+  "hii_dim": 8,
+  "box_mpc": 24.0,
+  "openmp_threads": 1,
+  "enabled": {
+    "E-INTEGRAL": [
+      "z-photoncons",
+      "f-photoncons",
+      "alpha-photoncons"
+    ],
+    "CONST-ION-EFF": [
+      "z-photoncons"
+    ]
+  },
+  "calibration_histories": {
+    "nonthermal": "61 actual CPU ionization boxes per model, z=4.5..19.5 with spacing 0.25, R_BUBBLE_MAX=12 Mpc. Each model's saved samples are reused across its corrected cases.",
+    "thermal": "31 actual CPU calibration boxes per model, z=4.5..19.5 with spacing 0.5, R_BUBBLE_MAX=15 Mpc as specified by upstream with recombinations. Each model's samples are reused across its corrected cases."
+  },
+  "scenarios": {
+    "single_node": "z=8 with matching native matter field for every mode; corrected neutral fractions also compared to the corresponding uncorrected native field.",
+    "thermal_single_node": "z=8 with matching native 2LPT matter fields at 8.3 and 8, shared nonuniform specified X-ray ionization, kinetic temperature, and previous recombinations. Compares ionization, temperature, cumulative recombinations, rates, and emitted fields, without evolving a full thermal lightcone.",
+    "public_lightcone": "Two native redshift nodes (8.3, 8.0) on E-INTEGRAL with z-photoncons. Four output cubes and all six returned history arrays compared after ordinary run_lightcone finalization.",
+    "state_ownership": "An independent CPU calibration stays live during GPU fits, stepping and public-driver finalization. Forced invalid analytic history also exercises cleanup and the next GPU run in the same process."
+  },
+  "upstream_limits": [
+    "The automatic 4.3.2 Python calibration appends a redshift after its final simulated box and passes one extra neutral fraction to C. PhotonCalibration requires correctly paired inputs taken from real calibration boxes or explicitly provided by the caller.",
+    "Upstream calibrate_photon_cons omits CONST-ION-EFF from its source selector. Its C analytic history and ionization kernel implement the redshift correction. Constant efficiency has no fitted escape-fraction power law.",
+    "The native smoothing look-ahead reads beyond its array for some curves. The private source stops at the same boundary that makes upstream replace that tentative value with the unsmoothed sample. Invalid native table extrapolations and failed fits raise through the public driver.",
+    "No Lagrangian photon mode is enabled. Upstream forbids redshift correction there and its simplified Lagrangian calibration call lacks the required EmissivityFields."
+  ],
+  "precision": "Per-value abs(GPU-CPU) <= 1e-8 + 1e-4 abs(CPU). Finite/nonfinite masks in the native alpha fitting diagnostics checked separately.",
+  "cases": {
+    "CONST-ION-EFF-z-photoncons": {
+      "job": "490656",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 5.551115123125783e-16
+        }
+      },
+      "fits": {
+        "z_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_calibration": {
+          "tested": 51,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_calibration": {
+          "tested": 51,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_photoncons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "delta_z_photon_cons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "preserved_outer_native_state": true,
+      "original": 8.0,
+      "corrected": 7.853902816772461,
+      "no_correction_max_abs_xhi": 0.870628833770752,
+      "mean_xhi": 0.3158830404281616,
+      "stage_calls": {
+        "ion_center": 20,
+        "source_table": 20,
+        "ion_filter_prepare": 1,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "ion_global_source_integrals": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 5049,
+        "ionization_recfast": 1,
+        "ion_filter_resident_radius": 20
+      }
+    },
+    "CONST-ION-EFF-z-photoncons-thermal": {
+      "job": "490665",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "mean_free_path": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "cumulative_recombinations": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 4.440892098500626e-16
+        },
+        "emit_sfrd_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_xray_emissivity": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_n_ion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "recombined_cells": 257,
+      "stage_calls": {
+        "emission": 1,
+        "ion_center": 20,
+        "recombination": 1,
+        "source_table": 22,
+        "ion_filter_prepare": 3,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "ion_global_source_integrals": 1,
+        "global_neutral_fraction": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 5052,
+        "emissivity_global_source_integrals": 1,
+        "ion_filter_resident_radius": 20,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "E-INTEGRAL-alpha-photoncons": {
+      "job": "490672",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 1.5543122344752192e-15
+        }
+      },
+      "fits": {
+        "z_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_photoncons": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_alpha": {
+          "tested": 1488,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "alpha_ratio": {
+          "tested": 35,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "alpha_diff": {
+          "tested": 40,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "alpha_reverse": {
+          "tested": 47,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "alpha_arr": {
+          "tested": 31,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "fit_yint": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "fit_slope": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "found_alpha": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "preserved_outer_native_state": true,
+      "original": -0.5,
+      "corrected": -0.7363270939235335,
+      "no_correction_max_abs_xhi": 0.7719561457633972,
+      "mean_xhi": 0.0,
+      "stage_calls": {
+        "ion_center": 20,
+        "source_table": 20,
+        "ion_filter_prepare": 1,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 122,
+        "ion_global_source_integrals": 1,
+        "eh_constants": 61,
+        "scalar_sigma": 54,
+        "ionization_recfast": 1,
+        "ion_filter_resident_radius": 20
+      }
+    },
+    "E-INTEGRAL-alpha-photoncons-thermal": {
+      "job": "490665",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "mean_free_path": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "cumulative_recombinations": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.220446049250313e-15
+        },
+        "emit_sfrd_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_xray_emissivity": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_n_ion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "recombined_cells": 512,
+      "stage_calls": {
+        "emission": 1,
+        "ion_center": 20,
+        "recombination": 1,
+        "source_table": 22,
+        "ion_filter_prepare": 3,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 122,
+        "mhr_table": 1,
+        "ion_global_source_integrals": 1,
+        "global_neutral_fraction": 1,
+        "eh_constants": 61,
+        "scalar_sigma": 55,
+        "emissivity_global_source_integrals": 1,
+        "ion_filter_resident_radius": 20,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "E-INTEGRAL-f-photoncons": {
+      "job": "490656",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 1.7763568394002505e-15
+        }
+      },
+      "fits": {
+        "z_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_photoncons": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_ratio": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "fesc_target": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "fit_yint": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "fit_slope": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "preserved_outer_native_state": true,
+      "original": 0.19952623149688797,
+      "corrected": 0.2977294615464393,
+      "no_correction_max_abs_xhi": 0.7719561457633972,
+      "mean_xhi": 0.0,
+      "stage_calls": {
+        "ion_center": 20,
+        "source_table": 20,
+        "ion_filter_prepare": 1,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "ion_global_source_integrals": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 23,
+        "ionization_recfast": 1,
+        "ion_filter_resident_radius": 20
+      }
+    },
+    "E-INTEGRAL-f-photoncons-thermal": {
+      "job": "490665",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "mean_free_path": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "cumulative_recombinations": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.6645352591003757e-15
+        },
+        "emit_sfrd_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_xray_emissivity": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_n_ion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "recombined_cells": 512,
+      "stage_calls": {
+        "emission": 1,
+        "ion_center": 20,
+        "recombination": 1,
+        "source_table": 22,
+        "ion_filter_prepare": 3,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "ion_global_source_integrals": 1,
+        "global_neutral_fraction": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 24,
+        "emissivity_global_source_integrals": 1,
+        "ion_filter_resident_radius": 20,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "E-INTEGRAL-z-photoncons": {
+      "job": "490656",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 2.4424906541753444e-15
+        }
+      },
+      "fits": {
+        "z_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_photoncons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "delta_z_photon_cons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "preserved_outer_native_state": true,
+      "original": 8.0,
+      "corrected": 7.512967109680176,
+      "no_correction_max_abs_xhi": 0.7719561457633972,
+      "mean_xhi": 0.0,
+      "stage_calls": {
+        "ion_center": 20,
+        "source_table": 20,
+        "ion_filter_prepare": 1,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "ion_global_source_integrals": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 23,
+        "ionization_recfast": 1,
+        "ion_filter_resident_radius": 20
+      }
+    },
+    "E-INTEGRAL-z-photoncons-thermal": {
+      "job": "490665",
+      "passed": true,
+      "fields": {
+        "neutral_fraction": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "ionisation_rate_G12": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_reion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "mean_free_path": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "cumulative_recombinations": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nion_unconditional_acg": {
+          "tested": 1,
+          "failed": 0,
+          "max_abs": 1.7763568394002505e-15
+        },
+        "emit_sfrd_acg": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_xray_emissivity": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "emit_n_ion": {
+          "tested": 512,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "recombined_cells": 512,
+      "stage_calls": {
+        "emission": 1,
+        "ion_center": 20,
+        "recombination": 1,
+        "source_table": 22,
+        "ion_filter_prepare": 3,
+        "ion_filter_extrema": 20,
+        "ion_photon_lookup": 20,
+        "ionized_temperature": 1,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "ion_global_source_integrals": 1,
+        "global_neutral_fraction": 1,
+        "eh_constants": 1,
+        "scalar_sigma": 24,
+        "emissivity_global_source_integrals": 1,
+        "ion_filter_resident_radius": 20,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "public": {
+      "job": "490660",
+      "fields": {
+        "neutral_fraction": {
+          "tested": 1408,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "brightness_temp": {
+          "tested": 1408,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temperature": {
+          "tested": 1408,
+          "failed": 0,
+          "max_abs": 0.00390625
+        },
+        "n_ion": {
+          "tested": 1408,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "histories": {
+        "z_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "Q_analytic": {
+          "tested": 836,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "z_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_calibration": {
+          "tested": 48,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "nf_photoncons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "delta_z_photon_cons": {
+          "tested": 141,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "restored_outer_native_state": true,
+      "passed": true,
+      "stage_calls": {
+        "emission": 2,
+        "ion_center": 40,
+        "source_table": 42,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 2,
+        "ion_filter_extrema": 40,
+        "ion_photon_lookup": 40,
+        "ionized_temperature": 2,
+        "sigma_moments": 2,
+        "ion_global_source_integrals": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 47,
+        "emissivity_global_source_integrals": 2,
+        "ionization_recfast": 2,
+        "ion_filter_resident_radius": 40,
+        "emissivity_mean_normalization": 2
+      }
+    }
+  },
+  "input_and_failure_checks": {
+    "job": "490672",
+    "passed": true,
+    "guards": [
+      "length",
+      "redshift order",
+      "nonfinite",
+      "wrong seed",
+      "unsupported constant escape-fraction slope",
+      "failed native spline setup"
+    ],
+    "restored_native_after_failure": true,
+    "subsequent_gpu_alpha_passed": true
+  },
+  "native_to_device": {
+    "redshift_mode": "Upstream adjust_redshifts_for_photoncons supplies the effective source redshift and the ratio of growth factors. The CUDA source and ionization dispatch receives those values. The original observation redshift is retained for the final temperature and recombination updates.",
+    "escape_fraction_modes": "The 4.3.2 fit changes ALPHA_ESC or linear F_ESC10_ACG in ScalingConstants. Conditional and global CUDA mass integrals use those values to supply photons per baryon to the v3 exceeds_ionization_barrier device helper."
+  }
+}

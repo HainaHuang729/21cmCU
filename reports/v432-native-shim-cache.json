@@ -1,0 +1,300 @@
+{
+  "cluster": "a9, NVIDIA RTX A6000",
+  "upstream": "21cmFAST 4.3.2",
+  "scope": "Only the native host C shims are cached. CUDA kernels retain their separate compiler cache. Warm runs revalidate dependency inputs and load independent per-context ELF images.",
+  "method": "Measure entering and exiting real E-INTEGRAL or CHMF hook contexts in fresh Python processes on the same allocated node with imports and CUDA device context already initialized. Cold is an absent matching artifact. Warm is the identical supplied source, compiler, options and upstream binary in a subsequent process. Wall time of first public run includes additional driver startup.",
+  "cache_key_inputs": [
+    "generated translation unit names and bytes",
+    "expanded C and transitive includes, including external include paths",
+    "compiler/version/target macros, assembler and linker tools",
+    "compiler flags, CPPFLAGS, link search environment, native extension path and SHA-256"
+  ],
+  "raw_cluster_directory": "~/ps_v432_perturb/v432-shim-cache.K0YosQ",
+  "backend_entry": {
+    "chmf": {
+      "cold": {
+        "job": "490457",
+        "mode": "chmf",
+        "trial": "final-cold",
+        "compile": [
+          [
+            "evolution.so",
+            2.052247371058911
+          ],
+          [
+            "sampler.so",
+            1.338448063004762
+          ],
+          [
+            "halo_grid.so",
+            0.6781278760172427
+          ]
+        ],
+        "preprocess": [
+          0.14224991691298783,
+          0.11460315797012299,
+          0.05729989893734455
+        ],
+        "entry_seconds": 4.669868519064039,
+        "exit_seconds": 0.0029211590299382806
+      },
+      "warm": {
+        "job": "490457",
+        "mode": "chmf",
+        "trial": "final-warm",
+        "compile": [],
+        "preprocess": [
+          0.14836001105140895,
+          0.11952359694987535,
+          0.15346617507748306
+        ],
+        "entry_seconds": 0.8895142829278484,
+        "exit_seconds": 0.016240419005043805
+      },
+      "cold_over_warm": 5.249908414840854
+    },
+    "eulerian": {
+      "cold": {
+        "job": "490457",
+        "mode": "eulerian",
+        "trial": "final-cold",
+        "compile": [
+          [
+            "evolution.so",
+            6.191722632967867
+          ]
+        ],
+        "preprocess": [
+          0.5852793590165675
+        ],
+        "entry_seconds": 7.863012692076154,
+        "exit_seconds": 0.004934069933369756
+      },
+      "warm": {
+        "job": "490457",
+        "mode": "eulerian",
+        "trial": "final-warm",
+        "compile": [],
+        "preprocess": [
+          1.4168219129787758
+        ],
+        "entry_seconds": 2.505020927055739,
+        "exit_seconds": 0.0051352729788050056
+      },
+      "cold_over_warm": 3.1389009996486927
+    }
+  },
+  "invalidation_and_concurrency": {
+    "parallel_results": [
+      23,
+      23,
+      23,
+      23
+    ],
+    "private_state_and_warm_hit": [
+      60,
+      23,
+      0
+    ],
+    "nested_header_recompiled": true,
+    "flags_recompiled": true,
+    "source_recompiled": true,
+    "compiler_recompiled": true,
+    "native_abi_recompiled": true,
+    "corruption_rebuilt": true
+  },
+  "eulerian_cached_numerical": {
+    "job": "490456",
+    "geometry": "48^3 to 16^3, 42 Mpc, seed 12451, one thread, high-resolution 2LPT, perturbed field at z 9.1",
+    "arrays": {
+      "lowres_density": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_density": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vx": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vy": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vz": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vx_2LPT": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vy_2LPT": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "hires_vz_2LPT": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "density": {
+        "different": 0,
+        "max_abs": 0.0
+      },
+      "velocity_z": {
+        "different": 0,
+        "max_abs": 0.0
+      }
+    }
+  },
+  "chmf_cached_numerical": {
+    "job": "490452",
+    "reference_job": "490426",
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "seed": 12452,
+    "nthreads": 2,
+    "nodes": [
+      9.3,
+      9.1
+    ],
+    "bounds": [
+      9.113,
+      9.24
+    ],
+    "slice_count": 22,
+    "inputs_equal": true,
+    "coordinates_equal": true,
+    "catalogs_equal": true,
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "fields": {
+      "brightness_temp": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 2.0265579223632812e-05
+      },
+      "density": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "los_velocity": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 2.1457672119140625e-06
+      },
+      "neutral_fraction": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 6.556510925292969e-07
+      },
+      "velocity_z": {
+        "tested": 5632,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "global_quantities": {
+      "brightness_temp": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.9073486328125e-06
+      },
+      "density": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.3969838619232178e-09
+      },
+      "ionisation_rate_G12": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temperature": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0009765625
+      },
+      "log10_mturn_acg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "log10_mturn_mcg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "neutral_fraction": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      },
+      "velocity_z": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 3.8572142821686593e-26
+      },
+      "z_reion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "brightness_transverse_power": {
+      "unit": "mK^2 Mpc^2",
+      "k_unit": "Mpc^-1",
+      "k_mean": [
+        0.31601981632284,
+        0.5648004102572511,
+        0.7954108410141316,
+        1.0682798108135991,
+        1.3452138414952763,
+        1.595396102466962,
+        1.8486187843440371,
+        2.0276098204629176
+      ],
+      "modes_per_bin": [
+        8,
+        12,
+        16,
+        32,
+        28,
+        40,
+        40,
+        18
+      ],
+      "slices": 22,
+      "tested": 176,
+      "failed": 0,
+      "max_abs": 0.00020727130277009564
+    },
+    "passed": true,
+    "halo_counts_per_epoch": [
+      {
+        "z": 9.1,
+        "n": 49398
+      },
+      {
+        "z": 9.3,
+        "n": 46223
+      }
+    ]
+  },
+  "numerical_test_note": "The archived numerical runs used the same source and build flags. Subsequent key strengthening to include raw source bytes in addition to expanded C changes artifact names only. The final key and cache loading were rechecked by the timing and invalidation tests.",
+  "passed": true
+}

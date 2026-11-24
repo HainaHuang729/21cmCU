@@ -1,0 +1,351 @@
+{
+  "scope": "Persistent scratch and output buffers for the ordered 21cmFAST 4.3.2 CHMF CUDA sampling windows.",
+  "environment": "RTX A6000 on a9, glibc 2.39, GSL 2.7",
+  "mechanism": "Each worker retains its device arrays and pinned buffers across catalogs. Metadata returns the committed condition count, word cursor, high-mean count and stored masses. The host then submits only committed payload copies to the same stream and synchronizes once. A zero-mass window fills native offsets with zero without copying a payload.",
+  "measurement": "Same allocation and process alternate the archived source snapshot and candidate after their warm-ups, with the same scientific inputs and unchanged native CPU references. Stage counters sum worker seconds and can overlap. The small sample reports an observed difference for these catalog calls.",
+  "medians": {
+    "binary": {
+      "original": {
+        "samples": 3,
+        "catalog_wall_median_s": 3.3309242449468,
+        "progenitor_sum_worker_median_s": 2.5396378037985414,
+        "grid_sum_worker_median_s": 0.7393747597234324
+      },
+      "reuse": {
+        "samples": 3,
+        "catalog_wall_median_s": 2.032461308990605,
+        "progenitor_sum_worker_median_s": 2.311604403075762,
+        "grid_sum_worker_median_s": 0.6922118128277361
+      }
+    },
+    "partition": {
+      "original": {
+        "samples": 2,
+        "catalog_wall_median_s": 2.9614797240355983,
+        "progenitor_sum_worker_median_s": 1.6020828204927966,
+        "grid_sum_worker_median_s": 0.6683423226932064
+      },
+      "reuse": {
+        "samples": 2,
+        "catalog_wall_median_s": 2.7631598104489967,
+        "progenitor_sum_worker_median_s": 1.5899205837631598,
+        "grid_sum_worker_median_s": 0.6366063175955787
+      }
+    }
+  },
+  "samples": [
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "original",
+      "warmup": false,
+      "elapsed": 3.351064643007703,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.591312268283218,
+      "grid_sampling_seconds": 0.7136806569760665,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "reuse",
+      "warmup": false,
+      "elapsed": 2.1412291870219633,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.356980038108304,
+      "grid_sampling_seconds": 0.6997697015758604,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "reuse",
+      "warmup": false,
+      "elapsed": 2.032461308990605,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.311604403075762,
+      "grid_sampling_seconds": 0.6907037120545283,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "original",
+      "warmup": false,
+      "elapsed": 2.9211086239665747,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.5396378037985414,
+      "grid_sampling_seconds": 0.7393747597234324,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "original",
+      "warmup": false,
+      "elapsed": 3.3309242449468,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.4811088506830856,
+      "grid_sampling_seconds": 0.870462799211964,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "binary",
+      "version": "reuse",
+      "warmup": false,
+      "elapsed": 2.0048999839928,
+      "native_job": "490849",
+      "grid_hash": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+      "progenitor_hash": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78",
+      "sampling_seconds": 2.3080169380409643,
+      "grid_sampling_seconds": 0.6922118128277361,
+      "committed": 32900,
+      "words": 416920
+    },
+    {
+      "job": "490870",
+      "case": "partition",
+      "version": "original",
+      "warmup": false,
+      "elapsed": 3.0172910330584273,
+      "native_job": "490858",
+      "grid_hash": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b",
+      "progenitor_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "sampling_seconds": 1.618732289527543,
+      "grid_sampling_seconds": 0.632582574384287,
+      "committed": 34013,
+      "words": 608958
+    },
+    {
+      "job": "490870",
+      "case": "partition",
+      "version": "reuse",
+      "warmup": false,
+      "elapsed": 2.776312842965126,
+      "native_job": "490858",
+      "grid_hash": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b",
+      "progenitor_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "sampling_seconds": 1.5551663844380528,
+      "grid_sampling_seconds": 0.646700169891119,
+      "committed": 34013,
+      "words": 608958
+    },
+    {
+      "job": "490870",
+      "case": "partition",
+      "version": "reuse",
+      "warmup": false,
+      "elapsed": 2.7500067779328674,
+      "native_job": "490858",
+      "grid_hash": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b",
+      "progenitor_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "sampling_seconds": 1.6246747830882668,
+      "grid_sampling_seconds": 0.6265124653000385,
+      "committed": 34013,
+      "words": 608958
+    },
+    {
+      "job": "490870",
+      "case": "partition",
+      "version": "original",
+      "warmup": false,
+      "elapsed": 2.9056684150127694,
+      "native_job": "490858",
+      "grid_hash": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b",
+      "progenitor_hash": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc",
+      "sampling_seconds": 1.5854333514580503,
+      "grid_sampling_seconds": 0.7041020710021257,
+      "committed": 34013,
+      "words": 608958
+    }
+  ],
+  "prefix_boundary_verification": {
+    "job": "490873",
+    "prefix_tests": [
+      {
+        "conditions": [
+          1,
+          1,
+          1
+        ],
+        "words_available": 30,
+        "capacity": 3,
+        "committed_metadata": [
+          3,
+          30,
+          0,
+          3
+        ]
+      },
+      {
+        "conditions": [
+          0,
+          0,
+          0
+        ],
+        "words_available": 0,
+        "capacity": 3,
+        "committed_metadata": [
+          3,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "conditions": [
+          1,
+          1,
+          1
+        ],
+        "words_available": 15,
+        "capacity": 3,
+        "committed_metadata": [
+          1,
+          10,
+          0,
+          1
+        ]
+      },
+      {
+        "conditions": [
+          1,
+          1,
+          1
+        ],
+        "words_available": 30,
+        "capacity": 1,
+        "committed_metadata": [
+          1,
+          10,
+          0,
+          1
+        ]
+      },
+      {
+        "conditions": [
+          1,
+          1,
+          1
+        ],
+        "words_available": 5,
+        "capacity": 3,
+        "committed_metadata": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "passed": true
+  },
+  "number_limited_regression": {
+    "case": {
+      "method": "NUMBER-LIMITED",
+      "seed": 424242,
+      "nodes": [
+        10.0,
+        10.22
+      ],
+      "fine": 32,
+      "coarse": 16,
+      "box_mpc": 24.0,
+      "threads": 2,
+      "version": "4.3.2"
+    },
+    "job": "490872",
+    "catalogs": {
+      "grid": {
+        "count": 32908,
+        "fields_sha256": {
+          "halo_masses": "e1e9bbae436ba0c93be9201721b2fc904ca7d87c11f6a024a5811c1c046ec2fe",
+          "halo_coords": "37bf8045fb72f4ea806b23a3b93fac96ee82c6936dceee7c8536b3ce5f36d449",
+          "star_rng": "88310462c17b53fc798a78c9ffe26950d8ed1dda8cce86a0be6f2c55adbad058",
+          "sfr_rng": "208f8cca0916d4544278b1ad101d6030ec7464e7e6633ddad18246c45d5b56f8",
+          "xray_rng": "9f1fb1368091d80648a9f0c0d27caf44cfa7269edc1bb866078456422c69121f"
+        },
+        "ordered_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+      },
+      "progenitors": {
+        "count": 30205,
+        "fields_sha256": {
+          "halo_masses": "8d09f5dc5173064127e4b3d2b0e9a3960dfea3ab36e64f3bebbf2a0a9a6d4f5e",
+          "halo_coords": "459524c5802222ea2b048f4a2f6501bdd17c8e0d7acf812eb70c7e9fccd289ae",
+          "star_rng": "8d51de1bcd9fd2206bfe3f860d0fb8adea19f90afb0f72ab4a955753f1251d5f",
+          "sfr_rng": "7104a40ceff5ff725278320b09763975af706f0d3aa2fc268914633d13a2cb53",
+          "xray_rng": "e008b1e5c9c8a924d59cfcab2339648eb17fdd6c4649110ccd83260f8e2912c6"
+        },
+        "ordered_sha256": "eeec32e5765c802393ba4429b21a065b17ad10d7780f1f3a963780f052b6e88e"
+      }
+    },
+    "native_cpu_job": "490593",
+    "counters": {
+      "halo_grid_positions": 32908,
+      "halo_progenitor_positions": 30205,
+      "halo_grid_property_gaussians": 98724,
+      "halo_progenitor_property_gaussians": 90615,
+      "halo_property_host_roundings": 0,
+      "halo_property_batches": 33,
+      "halo_conditional_number_tables": 2,
+      "halo_inverse_cdf_rows": 224,
+      "halo_inverse_cdf_possible_rows": 400,
+      "dexm_density_forward_fft": 1,
+      "dexm_ordinary_radii": 10,
+      "dexm_ordinary_candidates": 0,
+      "dexm_radius_searches": 10,
+      "dexm_candidates": 0,
+      "dexm_ordinary_accepted": 0,
+      "dexm_accepted": 0,
+      "dexm_empty_property_catalogs": 1,
+      "dexm_empty_overlap_grids": 1,
+      "halo_inverse_cuda_rows": 224,
+      "halo_inverse_cuda_seconds": 0.18855223595164716,
+      "halo_cuda_mt_words": 519168,
+      "halo_cuda_grid_conditions_prepared": 4096,
+      "halo_cuda_grid_resident_density": 4096,
+      "halo_cuda_gfsr_words": 479232,
+      "halo_cuda_grid_sample_conditions": 4085,
+      "halo_cuda_grid_sample_masses": 32697,
+      "halo_cuda_grid_sample_words_consumed": 462060,
+      "halo_cuda_grid_sample_high_poisson_conditions": 2390,
+      "halo_cuda_grid_sample_device_tangent_conditions": 2390,
+      "halo_cuda_grid_sample_sampling_seconds": 0.3189189110416919,
+      "halo_inverse_cdf_built_values": 89600,
+      "halo_grid_condition_builds": 12,
+      "halo_cuda_progenitor_conditions_prepared": 32908,
+      "halo_cuda_progenitor_resident_masses": 32908,
+      "halo_cuda_progenitor_conditions": 32899,
+      "halo_cuda_progenitor_masses": 30180,
+      "halo_cuda_progenitor_words_consumed": 453461,
+      "halo_cuda_progenitor_high_poisson_conditions": 0,
+      "halo_cuda_progenitor_device_tangent_conditions": 0,
+      "halo_cuda_progenitor_sampling_seconds": 0.25052818725816905,
+      "halo_progenitor_condition_builds": 10
+    },
+    "mass_limited_counts": {
+      "grid": 32908,
+      "progenitors": 30290
+    },
+    "cpu_gpu_equal": true,
+    "initial_grid_matches_native_mass_limited_sha256": true,
+    "passed": true
+  },
+  "lightcone_scope": "The buffer change was tested at the catalog and kernel levels. It reuses the existing upstream CPU records and did not evolve a new complete lightcone."
+}

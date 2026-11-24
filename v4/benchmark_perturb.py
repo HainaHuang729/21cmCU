@@ -1,4 +1,5 @@
 """Run inside a v4.3.2 checkout with its upstream tests on PYTHONPATH."""
+
 import argparse
 import json
 from pathlib import Path

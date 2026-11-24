@@ -1,0 +1,1177 @@
+{
+  "version": "4.3.2",
+  "gpu": "NVIDIA RTX A6000",
+  "cluster_directory": "~/ps_v432_perturb/angular.pIQalq",
+  "comparison": "Per input value |CUDA - native| <= 1e-8 + 1e-4 |native|, with a separate velocity comparison after conversion to km/s.",
+  "cpu_reference_job": 490571,
+  "full_gpu_coeval_job": 490578,
+  "history": "The first full GPU run computed and saved the coevals. One near-zero velocity failed after conversion to km/s. The three Cartesian velocity inputs at all three nodes were compared against the CPU cache and matched bit for bit. The final replay used the saved GPU coevals and the public driver, with zero IC, emission, thermal, barrier and recombination calls.",
+  "angular_quadrature": "128 directions, 8 Gauss-Legendre latitudes and 16 uniform longitudes. C_l from the sampled sky at l=1..5 in every one of the 80 output channels; 4 RSD subcells.",
+  "slice_tests": {
+    "job": "490587",
+    "cases": [
+      {
+        "order": 0,
+        "tile_first": false,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 120,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 0,
+        "tile_first": true,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 90,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 0,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 120,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": false,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 636,
+            "max_abs": 4.440892098500626e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 646,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 598,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 652,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": true,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 78,
+            "max_abs": 3.3306690738754696e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 364,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 550,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 636,
+            "max_abs": 4.440892098500626e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 646,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 598,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 652,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 3,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 906,
+            "max_abs": 1.3322676295501878e-15
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 896,
+            "max_abs": 1.3322676295501878e-15
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 870,
+            "max_abs": 1.5543122344752192e-15
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 884,
+            "max_abs": 1.5543122344752192e-15
+          }
+        }
+      },
+      {
+        "order": 5,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 1016,
+            "max_abs": 1.3905543383430086e-14
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 994,
+            "max_abs": 1.1157741397482823e-14
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 1012,
+            "max_abs": 1.0658141036401503e-14
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 1004,
+            "max_abs": 1.3433698597964394e-14
+          }
+        }
+      }
+    ],
+    "passed": true
+  },
+  "shared_rectilinear": {
+    "v4_values_exact": 360,
+    "v3_values_exact": 48,
+    "job": "490589"
+  },
+  "full_sky": {
+    "job": "490586",
+    "version": "4.3.2",
+    "nodes": [
+      9.0,
+      8.7,
+      8.4
+    ],
+    "seed": 812445,
+    "shape": [
+      128,
+      80
+    ],
+    "options": {
+      "SOURCE_MODEL": "CONST-ION-EFF",
+      "HMF": "ST",
+      "FILTER": "spherical-tophat",
+      "HII_FILTER": "spherical-tophat",
+      "USE_INTERPOLATION_TABLES": "hmf-interpolation",
+      "USE_TS_FLUCT": true,
+      "RECOMB_MODEL": "inhomogeneous",
+      "USE_X_RAY_HEATING": true,
+      "USE_LYA_HEATING": true,
+      "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+      "USE_MCGS": false,
+      "USE_METALLICITY": false,
+      "USE_UPPER_STELLAR_TURNOVER": false,
+      "USE_EXP_FILTER": false,
+      "CELL_RECOMB": false,
+      "PHOTON_CONS_TYPE": "no-photoncons",
+      "IONISE_ENTIRE_SPHERE": false,
+      "Z_HEAT_MAX": 9.0,
+      "R_BUBBLE_MAX": 12.0,
+      "HII_EFF_FACTOR": 30.0,
+      "DIM": 32,
+      "HII_DIM": 16,
+      "BOX_LEN": 24.0,
+      "N_THREADS": 1,
+      "KEEP_3D_VELOCITIES": true
+    },
+    "requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "z_reion",
+      "kinetic_temperature",
+      "density"
+    ],
+    "coordinates": [
+      9262.138468960835,
+      9263.638468960835,
+      9265.138468960835,
+      9266.638468960835,
+      9268.138468960835,
+      9269.638468960835,
+      9271.138468960835,
+      9272.638468960835,
+      9274.138468960835,
+      9275.638468960835,
+      9277.138468960835,
+      9278.638468960835,
+      9280.138468960835,
+      9281.638468960835,
+      9283.138468960835,
+      9284.638468960835,
+      9286.138468960835,
+      9287.638468960835,
+      9289.138468960835,
+      9290.638468960835,
+      9292.138468960835,
+      9293.638468960835,
+      9295.138468960835,
+      9296.638468960835,
+      9298.138468960835,
+      9299.638468960835,
+      9301.138468960835,
+      9302.638468960835,
+      9304.138468960835,
+      9305.638468960835,
+      9307.138468960835,
+      9308.638468960835,
+      9310.138468960835,
+      9311.638468960835,
+      9313.138468960835,
+      9314.638468960835,
+      9316.138468960835,
+      9317.638468960835,
+      9319.138468960835,
+      9320.638468960835,
+      9322.138468960835,
+      9323.638468960835,
+      9325.138468960835,
+      9326.638468960835,
+      9328.138468960835,
+      9329.638468960835,
+      9331.138468960835,
+      9332.638468960835,
+      9334.138468960835,
+      9335.638468960835,
+      9337.138468960835,
+      9338.638468960835,
+      9340.138468960835,
+      9341.638468960835,
+      9343.138468960835,
+      9344.638468960835,
+      9346.138468960835,
+      9347.638468960835,
+      9349.138468960835,
+      9350.638468960835,
+      9352.138468960835,
+      9353.638468960835,
+      9355.138468960835,
+      9356.638468960835,
+      9358.138468960835,
+      9359.638468960835,
+      9361.138468960835,
+      9362.638468960835,
+      9364.138468960835,
+      9365.638468960835,
+      9367.138468960835,
+      9368.638468960835,
+      9370.138468960835,
+      9371.638468960835,
+      9373.138468960835,
+      9374.638468960835,
+      9376.138468960835,
+      9377.638468960835,
+      9379.138468960835,
+      9380.638468960835
+    ],
+    "latitude": [
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -1.2880392632010997,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.921759746334117,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.5533407873047432,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      -0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.18447924790276524,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.5533407873047432,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      0.921759746334117,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997,
+      1.2880392632010997
+    ],
+    "longitude": [
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862,
+      0.0,
+      0.39269908169872414,
+      0.7853981633974483,
+      1.1780972450961724,
+      1.5707963267948966,
+      1.9634954084936207,
+      2.356194490192345,
+      2.748893571891069,
+      3.141592653589793,
+      3.5342917352885173,
+      3.9269908169872414,
+      4.319689898685965,
+      4.71238898038469,
+      5.105088062083414,
+      5.497787143782138,
+      5.890486225480862
+    ],
+    "rotation": [
+      [
+        0.9362933635841995,
+        0.28962947762551555,
+        0.19866933079506122
+      ],
+      [
+        -0.19828206785239944,
+        0.902786239352479,
+        -0.3816559020950483
+      ],
+      [
+        -0.2898947375796307,
+        0.3179493225754375,
+        0.9027010963754601
+      ]
+    ],
+    "origin": [
+      -7.25,
+      2.7,
+      19.3
+    ],
+    "from_saved_coevals": true,
+    "cpu_job": "490571",
+    "lightcones": {
+      "brightness_temp": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "brightness_temp_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 1.9073486328125e-06,
+        "different": 2144
+      },
+      "density": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "density_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 1.1920928955078125e-07,
+        "different": 2512
+      },
+      "kinetic_temperature": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.00390625,
+        "different": 239
+      },
+      "kinetic_temperature_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0078125,
+        "different": 2470
+      },
+      "los_velocity": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "los_velocity_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 3.308722450212111e-24,
+        "different": 2353
+      },
+      "neutral_fraction": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "neutral_fraction_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 1.1920928955078125e-07,
+        "different": 2007
+      },
+      "tau_21": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "tau_21_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 9.313225746154785e-10,
+        "different": 2104
+      },
+      "z_reion": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "z_reion_with_rsds": {
+        "tested": 10240,
+        "failed": 0,
+        "max_abs": 9.5367431640625e-07,
+        "different": 2379
+      }
+    },
+    "global_quantities": {
+      "brightness_temp": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 9.5367431640625e-07,
+        "different": 2
+      },
+      "cumulative_recombinations": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.725290298461914e-09,
+        "different": 2
+      },
+      "density": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 4.190951585769653e-09,
+        "different": 3
+      },
+      "ionisation_rate_G12": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09,
+        "different": 2
+      },
+      "kinetic_temp_neutral": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.814697265625e-06,
+        "different": 2
+      },
+      "kinetic_temperature": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0009765625,
+        "different": 1
+      },
+      "log10_mturn_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "log10_mturn_mcg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "mean_free_path": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1920928955078125e-07,
+        "different": 3
+      },
+      "n_ion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08,
+        "different": 1
+      },
+      "neutral_fraction": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "nion_conditional_filtered_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 2.9802322387695312e-08,
+        "different": 2
+      },
+      "sfrd_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1102230246251565e-16,
+        "different": 2
+      },
+      "spin_temperature": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "tau_21": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 4.656612873077393e-10,
+        "different": 1
+      },
+      "velocity_x": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1955344790805478e-25,
+        "different": 3
+      },
+      "velocity_y": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.360421238496675e-25,
+        "different": 3
+      },
+      "velocity_z": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 3.1705897502642906e-26,
+        "different": 3
+      },
+      "xray_emissivity": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "xray_ionised_fraction": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1641532182693481e-10,
+        "different": 2
+      },
+      "z_reion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "los_velocity_km_per_second": {
+      "tested": 10240,
+      "failed": 0,
+      "max_abs": 0.0,
+      "different": 0
+    },
+    "cuda_slice_counts": {
+      "brightness_temp": 84,
+      "los_velocity": 84,
+      "neutral_fraction": 84,
+      "z_reion": 84,
+      "kinetic_temperature": 84,
+      "density": 84,
+      "tau_21": 84
+    },
+    "brightness_angular_power": {
+      "brightness_temp": {
+        "tested": 400,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "brightness_temp_with_rsds": {
+        "tested": 400,
+        "failed": 0,
+        "max_abs": 1.1066135492399098e-06,
+        "different": 400
+      }
+    },
+    "passed": true
+  },
+  "passed": true,
+  "cosmotile_versions": {
+    "0.3.0": "Full comparison and four interpolation orders with periodic spline prefiltering for orders 3 and 5.",
+    "0.2.5": "Separate slice comparison using an isolated install of the oldest required cosmotile version. The native interpolator explicitly disables spline prefiltering for all orders."
+  },
+  "cosmotile_0_2_5_slice_tests": {
+    "job": "490601",
+    "cases": [
+      {
+        "order": 0,
+        "tile_first": false,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 120,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 0,
+        "tile_first": true,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 90,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 0,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 120,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": false,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 636,
+            "max_abs": 4.440892098500626e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 646,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 598,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 652,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": true,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 78,
+            "max_abs": 3.3306690738754696e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 364,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 550,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 1,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 636,
+            "max_abs": 4.440892098500626e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 646,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 598,
+            "max_abs": 4.440892098500626e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 652,
+            "max_abs": 4.440892098500626e-16
+          }
+        }
+      },
+      {
+        "order": 3,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 744,
+            "max_abs": 3.3306690738754696e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 712,
+            "max_abs": 4.440892098500626e-16
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 664,
+            "max_abs": 3.3306690738754696e-16
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 752,
+            "max_abs": 3.3306690738754696e-16
+          }
+        }
+      },
+      {
+        "order": 5,
+        "tile_first": null,
+        "fields": {
+          "density": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 982,
+            "max_abs": 9.992007221626409e-16
+          },
+          "los_velocity": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 960,
+            "max_abs": 1.1102230246251565e-15
+          },
+          "z_reion": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 942,
+            "max_abs": 1.2212453270876722e-15
+          },
+          "wide": {
+            "tested": 1024,
+            "failed": 0,
+            "different": 994,
+            "max_abs": 1.1379786002407855e-15
+          }
+        }
+      }
+    ],
+    "passed": true
+  },
+  "rectilinear_shared_velocity_regression": {
+    "v4_values_exact": 360,
+    "v3_values_exact": 48,
+    "dual_velocity_values_exact": 120,
+    "dual_velocity_cuda_gathers_per_node_pair": 1,
+    "job": "490604"
+  }
+}

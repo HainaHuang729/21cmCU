@@ -1,0 +1,1005 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "passed": true,
+      "seed": 424242,
+      "dim": 16,
+      "hii_dim": 8,
+      "threads": 1,
+      "box_len_Mpc": 20.0,
+      "resampling_ratio": 2.0,
+      "top_hat_filter": true,
+      "mean_streaming_speed_km_s": 27.03787078273112,
+      "knots": 231,
+      "last_k_inverse_Mpc": 1119.4378834671513,
+      "k_max_for_class_inverse_Mpc": 20.0,
+      "speed_unit": "km/s",
+      "power_at_zero": [
+        0.0,
+        0.0
+      ],
+      "velocity_power": {
+        "interpolation": {
+          "values": 463,
+          "unequal": 437,
+          "max_abs": 5.204170427930421e-18,
+          "max_relative_nonzero": 7.569875058656602e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        },
+        "log_tail": {
+          "values": 3,
+          "unequal": 2,
+          "max_abs": 2.938735877055719e-39,
+          "max_relative_nonzero": 3.9612021047752416e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        }
+      },
+      "fields": {
+        "gaussian": {
+          "shape": [
+            8,
+            8,
+            8
+          ],
+          "min": 0.40749937295913696,
+          "max": 15.575296401977539,
+          "mean_km_s": 7.078095141216181,
+          "field": {
+            "values": 512,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        },
+        "dc": {
+          "shape": [
+            8,
+            8,
+            8
+          ],
+          "min": 0.0,
+          "max": 0.0,
+          "mean_km_s": 0.0,
+          "field": {
+            "values": 512,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        },
+        "x": {
+          "shape": [
+            8,
+            8,
+            8
+          ],
+          "min": 0.5352870225906372,
+          "max": 2.1411478519439697,
+          "mean_km_s": 1.4261188358068466,
+          "field": {
+            "values": 512,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        },
+        "y": {
+          "shape": [
+            8,
+            8,
+            8
+          ],
+          "min": 0.5352870225906372,
+          "max": 2.1411478519439697,
+          "mean_km_s": 1.4261188358068466,
+          "field": {
+            "values": 512,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        },
+        "z": {
+          "shape": [
+            8,
+            8,
+            8
+          ],
+          "min": 0.5352870225906372,
+          "max": 2.1411478519439697,
+          "mean_km_s": 1.4261188060045242,
+          "field": {
+            "values": 512,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 512,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        }
+      },
+      "stages": {
+        "emission": 0,
+        "heat": 0,
+        "ion_center": 0,
+        "recombination": 0,
+        "shell_filter": 0,
+        "shell_accumulate": 0,
+        "source_table": 0,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 0,
+        "native_spectral_filter_on_gpu": 0,
+        "gpu_seed_and_modes": 5,
+        "ion_filter_prepare": 0,
+        "ion_filter_extrema": 0,
+        "ion_photon_lookup": 0,
+        "radiation_units": 0,
+        "radiation_setup_grid": 0,
+        "ionized_temperature": 0,
+        "xray_frequency_integrals": 0,
+        "global_source_integrals": 0,
+        "sigma_moments": 1,
+        "mhr_table": 0,
+        "lyman_shells": 0,
+        "ion_global_source_integrals": 0,
+        "fully_neutral_box": 0,
+        "global_neutral_fraction": 0,
+        "eh_constants": 1,
+        "initial_heat": 0,
+        "thermal_constants": 0,
+        "scalar_sigma": 0,
+        "emissivity_global_source_integrals": 0,
+        "ionization_recfast": 0,
+        "ion_filter_resident_radius": 0,
+        "homogeneous_recombination": 0,
+        "emissivity_mean_normalization": 0
+      },
+      "job": "490715"
+    },
+    {
+      "passed": true,
+      "seed": 7654321,
+      "dim": 16,
+      "hii_dim": 16,
+      "threads": 2,
+      "box_len_Mpc": 20.0,
+      "resampling_ratio": 1.0,
+      "top_hat_filter": false,
+      "mean_streaming_speed_km_s": 27.03787078273112,
+      "knots": 231,
+      "last_k_inverse_Mpc": 1119.4378834671513,
+      "k_max_for_class_inverse_Mpc": 20.0,
+      "speed_unit": "km/s",
+      "power_at_zero": [
+        0.0,
+        0.0
+      ],
+      "velocity_power": {
+        "interpolation": {
+          "values": 463,
+          "unequal": 437,
+          "max_abs": 5.204170427930421e-18,
+          "max_relative_nonzero": 7.569875058656602e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        },
+        "log_tail": {
+          "values": 3,
+          "unequal": 2,
+          "max_abs": 2.938735877055719e-39,
+          "max_relative_nonzero": 3.9612021047752416e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        }
+      },
+      "fields": {
+        "gaussian": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "min": 0.21195265650749207,
+          "max": 17.113391876220703,
+          "mean_km_s": 7.095533304025594,
+          "field": {
+            "values": 4096,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        }
+      },
+      "stages": {
+        "emission": 0,
+        "heat": 0,
+        "ion_center": 0,
+        "recombination": 0,
+        "shell_filter": 0,
+        "shell_accumulate": 0,
+        "source_table": 0,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 0,
+        "native_spectral_filter_on_gpu": 0,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 0,
+        "ion_filter_extrema": 0,
+        "ion_photon_lookup": 0,
+        "radiation_units": 0,
+        "radiation_setup_grid": 0,
+        "ionized_temperature": 0,
+        "xray_frequency_integrals": 0,
+        "global_source_integrals": 0,
+        "sigma_moments": 1,
+        "mhr_table": 0,
+        "lyman_shells": 0,
+        "ion_global_source_integrals": 0,
+        "fully_neutral_box": 0,
+        "global_neutral_fraction": 0,
+        "eh_constants": 1,
+        "initial_heat": 0,
+        "thermal_constants": 0,
+        "scalar_sigma": 0,
+        "emissivity_global_source_integrals": 0,
+        "ionization_recfast": 0,
+        "ion_filter_resident_radius": 0,
+        "homogeneous_recombination": 0,
+        "emissivity_mean_normalization": 0
+      },
+      "job": "490711"
+    },
+    {
+      "passed": true,
+      "seed": 512324,
+      "dim": 24,
+      "hii_dim": 16,
+      "threads": 1,
+      "box_len_Mpc": 20.0,
+      "resampling_ratio": 1.5,
+      "top_hat_filter": true,
+      "mean_streaming_speed_km_s": 27.03787078273112,
+      "knots": 231,
+      "last_k_inverse_Mpc": 1119.4378834671513,
+      "k_max_for_class_inverse_Mpc": 20.0,
+      "speed_unit": "km/s",
+      "power_at_zero": [
+        0.0,
+        0.0
+      ],
+      "velocity_power": {
+        "interpolation": {
+          "values": 463,
+          "unequal": 437,
+          "max_abs": 5.204170427930421e-18,
+          "max_relative_nonzero": 7.569875058656602e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        },
+        "log_tail": {
+          "values": 3,
+          "unequal": 2,
+          "max_abs": 2.938735877055719e-39,
+          "max_relative_nonzero": 3.9612021047752416e-16,
+          "failed": 0,
+          "unit_scale": 1.0
+        }
+      },
+      "fields": {
+        "gaussian": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "min": 0.588919997215271,
+          "max": 18.37890625,
+          "mean_km_s": 8.990514252669527,
+          "field": {
+            "values": 4096,
+            "unequal": 0,
+            "max_abs": 0.0,
+            "max_relative_nonzero": 0.0,
+            "failed": 0,
+            "unit_scale": 1.0
+          },
+          "density_and_displacements": {
+            "lowres_density": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_density": {
+              "values": 13824,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vx_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vy_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "lowres_vz_2LPT": {
+              "values": 4096,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vx_2LPT": {
+              "values": 13824,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vy_2LPT": {
+              "values": 13824,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            },
+            "hires_vz_2LPT": {
+              "values": 13824,
+              "unequal": 0,
+              "max_abs": 0.0,
+              "max_relative_nonzero": 0.0,
+              "failed": 0,
+              "unit_scale": 1.0
+            }
+          },
+          "stored_field_nonidentical": 0
+        }
+      },
+      "stages": {
+        "emission": 0,
+        "heat": 0,
+        "ion_center": 0,
+        "recombination": 0,
+        "shell_filter": 0,
+        "shell_accumulate": 0,
+        "source_table": 0,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 0,
+        "native_spectral_filter_on_gpu": 0,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 0,
+        "ion_filter_extrema": 0,
+        "ion_photon_lookup": 0,
+        "radiation_units": 0,
+        "radiation_setup_grid": 0,
+        "ionized_temperature": 0,
+        "xray_frequency_integrals": 0,
+        "global_source_integrals": 0,
+        "sigma_moments": 1,
+        "mhr_table": 0,
+        "lyman_shells": 0,
+        "ion_global_source_integrals": 0,
+        "fully_neutral_box": 0,
+        "global_neutral_fraction": 0,
+        "eh_constants": 1,
+        "initial_heat": 0,
+        "thermal_constants": 0,
+        "scalar_sigma": 0,
+        "emissivity_global_source_integrals": 0,
+        "ionization_recfast": 0,
+        "ion_filter_resident_radius": 0,
+        "homogeneous_recombination": 0,
+        "emissivity_mean_normalization": 0
+      },
+      "job": "490711"
+    }
+  ],
+  "version": "4.3.2",
+  "classy": "3.3.4.0",
+  "gpu": "NVIDIA RTX A6000",
+  "convention": "Each Fourier velocity component uses the same complex density mode with i*k_i/k times sqrt(P_vcb/P_m), times native c in km/s. At unequal grid sizes the high-resolution top hat and inverse FFT precede nearest-cell resampling. The squared components accumulate into float x, y, z; sqrt and division by box volume give lowres_vcb.",
+  "scope": "Seeded or supplied initial fields and the velocity power spectrum; no lightcone",
+  "jobs": [
+    "490711",
+    "490715"
+  ]
+}

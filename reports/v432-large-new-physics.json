@@ -1,0 +1,4265 @@
+{
+  "scope": "Paired large-box 21cmFAST 4.3.2 CUDA vs CPU acceptance for molecular cooling + CLASS FLUCTS + Lya multiple scattering, BBKS + Gaussian filter, and 96^3 thermal CHMF-SAMPLER.",
+  "host": "a8",
+  "job": "491022",
+  "device": "NVIDIA RTX A6000",
+  "tolerance": "abs(GPU - CPU) <= 1e-8 + 1e-4 * abs(CPU)",
+  "cases": [
+    {
+      "name": "case1_e_integral_class_flucts_mcgs_lya_192",
+      "dim": 192,
+      "hii_dim": 64,
+      "box_len_Mpc": 200.0,
+      "threads": 2,
+      "nodes": [
+        20.0,
+        18.5,
+        17.1,
+        15.8,
+        14.6,
+        13.5,
+        12.5,
+        11.6,
+        10.8,
+        10.0
+      ],
+      "cpu": {
+        "elapsed_seconds": 248.8853059289977,
+        "save_fsync_seconds": 0.39639637898653746,
+        "class_solver_seconds": 52.40318511100486,
+        "elapsed_excl_class_seconds": 196.48212081799284,
+        "class_solver_calls": 1,
+        "slice_count": 360,
+        "catalogs": []
+      },
+      "gpu": {
+        "elapsed_seconds": 47.95793767401483,
+        "save_fsync_seconds": 0.39470670209266245,
+        "class_solver_seconds": 0,
+        "elapsed_excl_class_seconds": 47.95793767401483,
+        "class_solver_calls": 0,
+        "slice_count": 360,
+        "catalogs": []
+      },
+      "warm_gpu_seconds": null,
+      "speedup_excl_class": 4.096967683505149,
+      "inputs_equal": true,
+      "catalogs_equal": null,
+      "vcb_ic_check": {
+        "cells": 262144,
+        "min_km_s": 0.4452040493488312,
+        "max_km_s": 71.00940704345703,
+        "different": 0
+      },
+      "lightcones": {
+        "J_21_LW": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 7.62939453125e-06
+        },
+        "brightness_temp": {
+          "tested": 1474560,
+          "failed": 37,
+          "max_abs": 3.0517578125e-05
+        },
+        "cumulative_recombinations": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "density": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 3.0517578125e-05
+        },
+        "los_velocity": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "n_ion": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "neutral_fraction": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "sfrd_acg": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 5.551115123125783e-17
+        },
+        "sfrd_mcg": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 4.163336342344337e-17
+        },
+        "spin_temperature": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 3.0517578125e-05
+        },
+        "tau_21": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 1.1175870895385742e-08
+        },
+        "velocity_z": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_emissivity": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 9.5367431640625e-07
+        },
+        "xray_ionised_fraction": {
+          "tested": 1474560,
+          "failed": 0,
+          "max_abs": 4.656612873077393e-10
+        }
+      },
+      "global_quantities": {
+        "J_21_LW": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 2.9802322387695312e-08
+        },
+        "brightness_temp": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.9073486328125e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 4.656612873077393e-10
+        },
+        "density": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 4.656612873077393e-10
+        },
+        "ionisation_rate_G12": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.862645149230957e-09
+        },
+        "kinetic_temp_neutral": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "kinetic_temperature": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 6.103515625e-05
+        },
+        "log10_mturn_acg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 2.6073365688716876e-11
+        },
+        "log10_mturn_mcg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.6694201576683554e-11
+        },
+        "mean_free_path": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "n_ion": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 7.450580596923828e-09
+        },
+        "neutral_fraction": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.1920928955078125e-07
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.4901161193847656e-08
+        },
+        "nion_conditional_filtered_mcg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "sfrd_acg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.3877787807814457e-17
+        },
+        "sfrd_mcg": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.734723475976807e-18
+        },
+        "spin_temperature": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 7.62939453125e-06
+        },
+        "tau_21": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 9.313225746154785e-10
+        },
+        "velocity_z": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 3.783850217983105e-26
+        },
+        "xray_emissivity": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "xray_ionised_fraction": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 1.1641532182693481e-10
+        },
+        "z_reion": {
+          "tested": 10,
+          "failed": 0,
+          "max_abs": 2.9802322387695312e-08
+        }
+      },
+      "brightness_transverse_power": {
+        "slices": 360,
+        "tested": 11520,
+        "failed": 0,
+        "max_abs": 0.0023251816019183025
+      },
+      "scaled_molecular_fields": {
+        "sfrd_acg": {
+          "peak": 4.1589947841202957e-07,
+          "max_abs": 5.551115123125783e-17,
+          "tested": 1474560,
+          "failed": 0
+        },
+        "sfrd_mcg": {
+          "peak": 1.3590688296982734e-10,
+          "max_abs": 4.163336342344337e-17,
+          "tested": 1474560,
+          "failed": 0
+        },
+        "xray_emissivity": {
+          "peak": 3623.5244140625,
+          "max_abs": 9.5367431640625e-07,
+          "tested": 1474560,
+          "failed": 0
+        },
+        "J_21_LW": {
+          "peak": 236.8301544189453,
+          "max_abs": 7.62939453125e-06,
+          "tested": 1474560,
+          "failed": 0
+        }
+      },
+      "missing_required_counters": [],
+      "dispatch_counters": {
+        "emission": 0,
+        "heat": 9,
+        "ion_center": 350,
+        "recombination": 10,
+        "shell_filter": 1041,
+        "shell_accumulate": 347,
+        "source_table": 0,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 0,
+        "native_spectral_filter_on_gpu": 0,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 40,
+        "ion_filter_extrema": 1400,
+        "ion_photon_lookup": 0,
+        "radiation_units": 9,
+        "radiation_setup_grid": 9,
+        "ionized_temperature": 10,
+        "xray_frequency_integrals": 0,
+        "global_source_integrals": 0,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 9,
+        "ion_global_source_integrals": 0,
+        "fully_neutral_box": 0,
+        "global_neutral_fraction": 10,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 9,
+        "scalar_sigma": 389,
+        "emissivity_global_source_integrals": 0,
+        "ionization_recfast": 0,
+        "ion_filter_resident_radius": 350,
+        "homogeneous_recombination": 0,
+        "mcg_xray_optical_depth_and_frequency": 9,
+        "radiation_lya_scattering_filter": 694,
+        "emissivity_mean_normalization": 0,
+        "mcg_turnover_grids": 10,
+        "mcg_turnover_cells": 2621440,
+        "subgrid_sfrd_acg_2d_tables": 10,
+        "subgrid_sfrd_mcg_2d_tables": 10,
+        "subgrid_nion_acg_2d_tables": 10,
+        "subgrid_nion_mcg_2d_tables": 10,
+        "eulerian_mcg_emissivity_cells": 2621440,
+        "eulerian_mcg_global_integrals": 40,
+        "eulerian_mcg_ion_turnover_grids": 10,
+        "eulerian_mcg_ion_global_nion_acg": 27,
+        "eulerian_mcg_ion_global_nion_mcg": 21,
+        "eulerian_mcg_ion_global_nion": 10,
+        "eulerian_mcg_ion_turnover_forward_fft": 20,
+        "eulerian_mcg_ion_filter_radius": 350,
+        "ion_mcg_current_tables": 700,
+        "ion_mcg_radius_history": 350,
+        "eulerian_mcg_ion_ion_center": 350,
+        "radiation_mcg_global_nion": 9,
+        "ion_mcg_previous_tables": 630,
+        "ion_mcg_radius_previous_correction": 315,
+        "thermal_update": 9,
+        "radiation_shell_filter": 1041,
+        "radiation_shell_accumulation": 347,
+        "radiation_field_normalization": 9,
+        "radiation_ionization_interpolation": 9,
+        "radiation_xray_optical_depth_and_frequency": 0,
+        "radiation_global_nion": 0,
+        "radiation_lyman_spectral_factors": 9,
+        "thermal_initial_conditions": 1,
+        "ionization_mhr_table": 1,
+        "ionization_cumulative_recombinations": 10,
+        "mcg_lw_shells": 347,
+        "mcg_spin_lw": 9,
+        "mcg_lw_normalizations": 9,
+        "radiation_lya_scattering_window_reuses": 338
+      },
+      "passed": false,
+      "failure_reason": "lightcones/brightness_temp failed=37 max_abs=3.0517578125e-05",
+      "diagnostics": {
+        "failing_lightcone_fields": {
+          "brightness_temp": {
+            "failed": 37,
+            "max_abs": 3.0517578125e-05,
+            "max_ratio": 31.259892654234104,
+            "cpu_abs_at_failed": [
+              0.00040014737169258296,
+              0.0051445323042571545,
+              0.020778967067599297
+            ],
+            "top_sites": [
+              {
+                "xyz": [
+                  9,
+                  30,
+                  79
+                ],
+                "z": 11.465348359345134,
+                "T_CMB": 33.97430695339516,
+                "cpu": 0.0007495070458389819,
+                "gpu": 0.0007521625957451761,
+                "abs_diff": 2.65554990619421e-06,
+                "tol": 8.495070458389818e-08,
+                "ratio": 31.259892654234104,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.130149841308594,
+                    "gpu": 35.13015365600586,
+                    "diff": 3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.008989530615508556,
+                    "gpu": 0.008989529684185982,
+                    "diff": -9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.853559672832489,
+                    "gpu": 0.853559672832489,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.0509946346282959,
+                    "gpu": -0.0509946346282959,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -3.133949526537313e-18,
+                    "gpu": -3.133949526537313e-18,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -3.133949526537313e-18,
+                    "gpu": -3.133949526537313e-18,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.32002639770508,
+                    "gpu": 35.32002639770508,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.001018820214085281,
+                    "gpu": 0.001018820214085281,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 2.246095895767212,
+                    "gpu": 2.246095895767212,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 1.0689105850447689e-11,
+                    "gpu": 1.0689105850447689e-11,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 3.0380076926350696e-11,
+                    "gpu": 3.0380076926350696e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  20,
+                  46,
+                  39
+                ],
+                "z": 10.799348647170042,
+                "T_CMB": 32.159124737861944,
+                "cpu": -0.0009764473070390522,
+                "gpu": -0.0009745046263560653,
+                "abs_diff": 1.9426806829869747e-06,
+                "tol": 1.0764473070390523e-07,
+                "ratio": 18.047150754927724,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 32.167152404785156,
+                    "gpu": 32.16715621948242,
+                    "diff": 3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.006601630710065365,
+                    "gpu": 0.00660162977874279,
+                    "diff": -9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.9595857858657837,
+                    "gpu": 0.9595857858657837,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.3624674379825592,
+                    "gpu": -0.3624674379825592,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": 6.460475136919219e-17,
+                    "gpu": 6.460475136919219e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": 6.460475136919219e-17,
+                    "gpu": 6.460475136919219e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 32.168643951416016,
+                    "gpu": 32.16864776611328,
+                    "diff": 3.814697265625e-06
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0009841994615271688,
+                    "gpu": 0.0009841994615271688,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.5238690376281738,
+                    "gpu": 1.5238689184188843,
+                    "diff": -1.1920928955078125e-07
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 0.0,
+                    "gpu": 0.0,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 4.334788170773374e-12,
+                    "gpu": 4.334788170773374e-12,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  4,
+                  11,
+                  51
+                ],
+                "z": 10.993438370721341,
+                "T_CMB": 32.688116279401015,
+                "cpu": -0.0007865424267947674,
+                "gpu": -0.0007851310656405985,
+                "abs_diff": 1.4113611541688442e-06,
+                "tol": 8.865424267947674e-08,
+                "ratio": 15.919837692049578,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 34.335235595703125,
+                    "gpu": 34.335235595703125,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008183260448276997,
+                    "gpu": 0.008183259516954422,
+                    "diff": -9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.8895195126533508,
+                    "gpu": 0.8895195126533508,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.15516851842403412,
+                    "gpu": -0.15516851842403412,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -2.1108808816850912e-17,
+                    "gpu": -2.1108808816850912e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -2.1108808816850912e-17,
+                    "gpu": -2.1108808816850912e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 34.58741760253906,
+                    "gpu": 34.58741760253906,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010155682684853673,
+                    "gpu": 0.0010155682684853673,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.7180135250091553,
+                    "gpu": 1.7180135250091553,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 2.2162504036832287e-12,
+                    "gpu": 2.2162504036832287e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 1.8436951618183706e-11,
+                    "gpu": 1.8436951618183706e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  54,
+                  61,
+                  57
+                ],
+                "z": 11.09229451435618,
+                "T_CMB": 32.957548698877766,
+                "cpu": 0.00040014737169258296,
+                "gpu": 0.00039967201882973313,
+                "abs_diff": 4.753528628498316e-07,
+                "tol": 5.001473716925829e-08,
+                "ratio": 9.504255940427267,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 37.55984115600586,
+                    "gpu": 37.559837341308594,
+                    "diff": -3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.004327516537159681,
+                    "gpu": 0.004327516537159681,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.32054129242897034,
+                    "gpu": 0.32054129242897034,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": 0.23151153326034546,
+                    "gpu": 0.23151153326034546,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": 1.2023554931297213e-17,
+                    "gpu": 1.2023554931297213e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": 1.2023554931297213e-17,
+                    "gpu": 1.2023554931297213e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 38.21881103515625,
+                    "gpu": 38.218807220458984,
+                    "diff": -3.814697265625e-06
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010649033356457949,
+                    "gpu": 0.0010649033356457949,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 2.014294147491455,
+                    "gpu": 2.014294147491455,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 1.770017812874336e-11,
+                    "gpu": 1.770017812874336e-11,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 2.538680099473112e-10,
+                    "gpu": 2.538680099473112e-10,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  28,
+                  46,
+                  45
+                ],
+                "z": 10.895800376877892,
+                "T_CMB": 32.42200392718069,
+                "cpu": -0.0016015507280826569,
+                "gpu": -0.001600018353201449,
+                "abs_diff": 1.532374881207943e-06,
+                "tol": 1.701550728082657e-07,
+                "ratio": 9.005754902968159,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 33.40168762207031,
+                    "gpu": 33.40169143676758,
+                    "diff": 3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.007350698579102755,
+                    "gpu": 0.00735069764778018,
+                    "diff": -9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.9412444829940796,
+                    "gpu": 0.9412444829940796,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.2795964479446411,
+                    "gpu": -0.2795964479446411,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": 6.400726226913288e-17,
+                    "gpu": 6.400726226913288e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": 6.400726226913288e-17,
+                    "gpu": 6.400726226913288e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 33.545257568359375,
+                    "gpu": 33.545257568359375,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010053639998659492,
+                    "gpu": 0.001005364116281271,
+                    "diff": 1.1641532182693481e-10
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.6522573232650757,
+                    "gpu": 1.6522573232650757,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 3.7664917842614165e-13,
+                    "gpu": 3.7664917842614165e-13,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 7.743298190143744e-12,
+                    "gpu": 7.743298190143744e-12,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  43,
+                  44,
+                  60
+                ],
+                "z": 11.142137373945726,
+                "T_CMB": 33.09339541268908,
+                "cpu": -0.0010814047418534756,
+                "gpu": -0.0010803514160215855,
+                "abs_diff": 1.0533258318901062e-06,
+                "tol": 1.1814047418534756e-07,
+                "ratio": 8.91587611403667,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.39725875854492,
+                    "gpu": 35.39725875854492,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008378745056688786,
+                    "gpu": 0.008378745056688786,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.743510365486145,
+                    "gpu": 0.743510365486145,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": 0.0280008427798748,
+                    "gpu": 0.0280008427798748,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -3.242227716874688e-17,
+                    "gpu": -3.242227716874688e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -3.242227716874688e-17,
+                    "gpu": -3.242227716874688e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.753231048583984,
+                    "gpu": 35.753231048583984,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010257490212097764,
+                    "gpu": 0.0010257490212097764,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.913938045501709,
+                    "gpu": 1.913938045501709,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 8.317690286530066e-12,
+                    "gpu": 8.317690286530066e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 6.305622690661039e-11,
+                    "gpu": 6.305622690661039e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  42,
+                  21,
+                  54
+                ],
+                "z": 11.042729000326792,
+                "T_CMB": 32.82245789039067,
+                "cpu": 0.0006188476691022515,
+                "gpu": 0.0006194281741045415,
+                "abs_diff": 5.805050022900105e-07,
+                "tol": 7.188476691022515e-08,
+                "ratio": 8.075493977952057,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 34.6773567199707,
+                    "gpu": 34.6773567199707,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008106959983706474,
+                    "gpu": 0.008106959983706474,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.9081350564956665,
+                    "gpu": 0.9081350564956665,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.18188779056072235,
+                    "gpu": -0.18188779056072235,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -7.122763580932456e-17,
+                    "gpu": -7.122763580932456e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -7.122763580932456e-17,
+                    "gpu": -7.122763580932456e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 34.96350860595703,
+                    "gpu": 34.96350860595703,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.001026865909807384,
+                    "gpu": 0.001026865909807384,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.8170937299728394,
+                    "gpu": 1.8170937299728394,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 1.8228615231846712e-12,
+                    "gpu": 1.8228615231846712e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 1.4749678908798636e-11,
+                    "gpu": 1.4749678908798636e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  20,
+                  18,
+                  55
+                ],
+                "z": 11.059199027373788,
+                "T_CMB": 32.86734694910726,
+                "cpu": -0.0008603445021435618,
+                "gpu": -0.0008610084187239408,
+                "abs_diff": 6.639165803790092e-07,
+                "tol": 9.603445021435618e-08,
+                "ratio": 6.913316824296875,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 36.076053619384766,
+                    "gpu": 36.076053619384766,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.005600191652774811,
+                    "gpu": 0.005600191652774811,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.42973271012306213,
+                    "gpu": 0.42973271012306213,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": 0.1907879263162613,
+                    "gpu": 0.1907879263162613,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": 1.3728156625267902e-17,
+                    "gpu": 1.3728156625267902e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": 1.3728156625267902e-17,
+                    "gpu": 1.3728156625267902e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 36.5430908203125,
+                    "gpu": 36.5430908203125,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010280150454491377,
+                    "gpu": 0.0010280150454491377,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.866287112236023,
+                    "gpu": 1.8662869930267334,
+                    "diff": -1.1920928955078125e-07
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 1.0932977613509198e-11,
+                    "gpu": 1.0932977613509198e-11,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 1.9543471008187652e-10,
+                    "gpu": 1.9543471008187652e-10,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  41,
+                  59,
+                  60
+                ],
+                "z": 11.142137373945726,
+                "T_CMB": 33.09339541268908,
+                "cpu": -0.0014107095776125789,
+                "gpu": -0.0014117439277470112,
+                "abs_diff": 1.0343501344323158e-06,
+                "tol": 1.510709577612579e-07,
+                "ratio": 6.846783456995959,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.30096435546875,
+                    "gpu": 35.30096435546875,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008602580986917019,
+                    "gpu": 0.008602580986917019,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.8119158744812012,
+                    "gpu": 0.8119158744812012,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.0337066724896431,
+                    "gpu": -0.0337066724896431,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -7.028423962943028e-17,
+                    "gpu": -7.028423962943028e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -7.028423962943028e-17,
+                    "gpu": -7.028423962943028e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.647300720214844,
+                    "gpu": 35.647300720214844,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010223259450867772,
+                    "gpu": 0.0010223259450867772,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.9179054498672485,
+                    "gpu": 1.9179054498672485,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 4.506578270280226e-12,
+                    "gpu": 4.506578270280226e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 4.0480216401128644e-11,
+                    "gpu": 4.0480216401128644e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  11,
+                  9,
+                  52
+                ],
+                "z": 11.0097889462328,
+                "T_CMB": 32.73267977295749,
+                "cpu": -0.0017663344042375684,
+                "gpu": -0.0017674866830930114,
+                "abs_diff": 1.1522788554430008e-06,
+                "tol": 1.8663344042375685e-07,
+                "ratio": 6.174021401666908,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 34.4638671875,
+                    "gpu": 34.4638671875,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008037103340029716,
+                    "gpu": 0.008037104271352291,
+                    "diff": 9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.909460723400116,
+                    "gpu": 0.909460723400116,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.18896248936653137,
+                    "gpu": -0.18896248936653137,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": 4.042652510770198e-18,
+                    "gpu": 4.042652510770198e-18,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": 4.042652510770198e-18,
+                    "gpu": 4.042652510770198e-18,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 34.73146057128906,
+                    "gpu": 34.7314567565918,
+                    "diff": -3.814697265625e-06
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010235374793410301,
+                    "gpu": 0.0010235374793410301,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.759424090385437,
+                    "gpu": 1.759424090385437,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 1.7605806135884139e-12,
+                    "gpu": 1.7605806135884139e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 1.4312192923859879e-11,
+                    "gpu": 1.4312192923859879e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  17,
+                  16,
+                  68
+                ],
+                "z": 11.276686383523804,
+                "T_CMB": 33.460108738294124,
+                "cpu": 0.00172881456092,
+                "gpu": 0.0017279357416555285,
+                "abs_diff": 8.788192644715309e-07,
+                "tol": 1.8288145609200003e-07,
+                "ratio": 4.805403911643364,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.58338165283203,
+                    "gpu": 35.58338165283203,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.007840652018785477,
+                    "gpu": 0.007840652018785477,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.9435397386550903,
+                    "gpu": 0.9435397386550903,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.24573852121829987,
+                    "gpu": -0.24573852121829987,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -4.68868437420493e-17,
+                    "gpu": -4.68868437420493e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -4.68868437420493e-17,
+                    "gpu": -4.68868437420493e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.92104721069336,
+                    "gpu": 35.92104721069336,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010507006663829088,
+                    "gpu": 0.0010507006663829088,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 2.188185214996338,
+                    "gpu": 2.188185214996338,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 2.142240161304154e-12,
+                    "gpu": 2.142240161304154e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 7.885265357332472e-12,
+                    "gpu": 7.885265357332472e-12,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  21,
+                  11,
+                  73
+                ],
+                "z": 11.361949913402766,
+                "T_CMB": 33.692494488979236,
+                "cpu": -0.002632361836731434,
+                "gpu": -0.0026335183065384626,
+                "abs_diff": 1.1564698070287704e-06,
+                "tol": 2.732361836731434e-07,
+                "ratio": 4.232491434634397,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.5103874206543,
+                    "gpu": 35.5103874206543,
+                    "diff": 0.0
+                  },
+                  "tau_21": {
+                    "cpu": 0.008874946273863316,
+                    "gpu": 0.008874946273863316,
+                    "diff": 0.0
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.8078769445419312,
+                    "gpu": 0.8078769445419312,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.006713781971484423,
+                    "gpu": -0.006713781971484423,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -5.6594777686037e-17,
+                    "gpu": -5.6594777686037e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -5.6594777686037e-17,
+                    "gpu": -5.6594777686037e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.80678939819336,
+                    "gpu": 35.80678939819336,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010235742665827274,
+                    "gpu": 0.0010235742665827274,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 2.1532187461853027,
+                    "gpu": 2.1532187461853027,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 8.914726595810052e-12,
+                    "gpu": 8.914726595810052e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 4.404281106484831e-11,
+                    "gpu": 4.404281106484831e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  13,
+                  10,
+                  132
+                ],
+                "z": 12.438375648468002,
+                "T_CMB": 36.62629282989953,
+                "cpu": 0.0023509040474891663,
+                "gpu": 0.002350019058212638,
+                "abs_diff": 8.849892765283585e-07,
+                "tol": 2.4509040474891664e-07,
+                "ratio": 3.610868721829349,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 38.3794059753418,
+                    "gpu": 38.37940216064453,
+                    "diff": -3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.0027683605439960957,
+                    "gpu": 0.0027683607768267393,
+                    "diff": 2.3283064365386963e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.17453137040138245,
+                    "gpu": 0.17453137040138245,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": 0.3766777217388153,
+                    "gpu": 0.3766777217388153,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -5.528904992806489e-17,
+                    "gpu": -5.528904992806489e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -5.528904992806489e-17,
+                    "gpu": -5.528904992806489e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 38.60329055786133,
+                    "gpu": 38.60329055786133,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010409299284219742,
+                    "gpu": 0.0010409299284219742,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 3.5273451805114746,
+                    "gpu": 3.5273451805114746,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 4.921574606187029e-11,
+                    "gpu": 4.921574606187029e-11,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 4.249631202490889e-10,
+                    "gpu": 4.249631202490889e-10,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  13,
+                  35,
+                  81
+                ],
+                "z": 11.500170817912831,
+                "T_CMB": 34.06921556422142,
+                "cpu": 0.008070128038525581,
+                "gpu": 0.008067532442510128,
+                "abs_diff": 2.5955960154533386e-06,
+                "tol": 8.170128038525582e-07,
+                "ratio": 3.1769343187940438,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.139251708984375,
+                    "gpu": 35.13924789428711,
+                    "diff": -3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.00821548979729414,
+                    "gpu": 0.008215490728616714,
+                    "diff": 9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.6614689826965332,
+                    "gpu": 0.6614689826965332,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": 0.11790764331817627,
+                    "gpu": 0.11790764331817627,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -5.653814559257916e-17,
+                    "gpu": -5.653814559257916e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -5.653814559257916e-17,
+                    "gpu": -5.653814559257916e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.31112289428711,
+                    "gpu": 35.31112289428711,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.0010048124240711331,
+                    "gpu": 0.0010048124240711331,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 2.2083005905151367,
+                    "gpu": 2.2083005905151367,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 2.4432159420606503e-11,
+                    "gpu": 2.4432159420606503e-11,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 9.948110391011511e-11,
+                    "gpu": 9.948110391011511e-11,
+                    "diff": 0.0
+                  }
+                }
+              },
+              {
+                "xyz": [
+                  35,
+                  57,
+                  57
+                ],
+                "z": 11.09229451435618,
+                "T_CMB": 32.957548698877766,
+                "cpu": 0.007472386118024588,
+                "gpu": 0.007470455951988697,
+                "abs_diff": 1.9301660358905792e-06,
+                "tol": 7.572386118024588e-07,
+                "ratio": 2.548953534337341,
+                "siblings": {
+                  "spin_temperature": {
+                    "cpu": 35.08926773071289,
+                    "gpu": 35.089263916015625,
+                    "diff": -3.814697265625e-06
+                  },
+                  "tau_21": {
+                    "cpu": 0.008489073254168034,
+                    "gpu": 0.008489074185490608,
+                    "diff": 9.313225746154785e-10
+                  },
+                  "neutral_fraction": {
+                    "cpu": 0.8644832372665405,
+                    "gpu": 0.8644832372665405,
+                    "diff": 0.0
+                  },
+                  "density": {
+                    "cpu": -0.10179238021373749,
+                    "gpu": -0.10179238021373749,
+                    "diff": 0.0
+                  },
+                  "los_velocity": {
+                    "cpu": -6.331200703811471e-17,
+                    "gpu": -6.331200703811471e-17,
+                    "diff": 0.0
+                  },
+                  "velocity_z": {
+                    "cpu": -6.331200703811471e-17,
+                    "gpu": -6.331200703811471e-17,
+                    "diff": 0.0
+                  },
+                  "kinetic_temp_neutral": {
+                    "cpu": 35.423316955566406,
+                    "gpu": 35.423316955566406,
+                    "diff": 0.0
+                  },
+                  "xray_ionised_fraction": {
+                    "cpu": 0.001026977552101016,
+                    "gpu": 0.001026977552101016,
+                    "diff": 0.0
+                  },
+                  "J_21_LW": {
+                    "cpu": 1.8878309726715088,
+                    "gpu": 1.8878309726715088,
+                    "diff": 0.0
+                  },
+                  "sfrd_mcg": {
+                    "cpu": 3.3041657517690615e-12,
+                    "gpu": 3.3041657517690615e-12,
+                    "diff": 0.0
+                  },
+                  "sfrd_acg": {
+                    "cpu": 2.5775010598083625e-11,
+                    "gpu": 2.5775010598083625e-11,
+                    "diff": 0.0
+                  }
+                }
+              }
+            ],
+            "ts_minus_tcmb_abs_at_failed": [
+              0.008027666923211996,
+              2.0594915538077814,
+              5.310793359663876
+            ]
+          }
+        },
+        "coeval_diffs": [
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.0000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 10.0,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 19586,
+                "max_abs": 2.86102294921875e-06,
+                "peak": 15.107049942016602,
+                "failed_strict": 0,
+                "failed_scaled": 9
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 24795,
+                "max_abs": 6.984919309616089e-10,
+                "peak": 0.004022256471216679,
+                "failed_strict": 0,
+                "failed_scaled": 9
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.0000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 10.0,
+            "fields": {
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 386,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 4524.68798828125,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 94,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 24.645244598388672,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.0000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 10.0,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 11257,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9666879177093506,
+                "failed_strict": 0,
+                "failed_scaled": 9
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 194,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 0.6183732151985168,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "cumulative_recombinations": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 58,
+                "max_abs": 1.1920928955078125e-07,
+                "peak": 3.2527782917022705,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 6380,
+                "max_abs": 0.001953125,
+                "peak": 45894.359375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2816406,
+                "max_abs": 2.0489096641540527e-08,
+                "peak": 0.0381072461605072,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.0000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 10.0,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.319256097077711e-21,
+                "peak": 1.9797979905391425e-12,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.6347293414942915e-26,
+                "peak": 1.3613460596298291e-17,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 5.1850752995317585e-19,
+                "peak": 2.101332707348472e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 235960,
+                "max_abs": 1.3159288281272552e-07,
+                "peak": 287.25677777799126,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 190893,
+                "max_abs": 3.354584372921044e-17,
+                "peak": 3.13544553514194e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 260795,
+                "max_abs": 3.829743086698133e-17,
+                "peak": 4.025414357074354e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.0000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 10.0,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 19690,
+                "max_abs": 6.103515625e-05,
+                "peak": 3966.27734375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 22491,
+                "max_abs": 4.656612873077393e-10,
+                "peak": 0.03865524381399155,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 20850,
+                "max_abs": 6.103515625e-05,
+                "peak": 4466.6357421875,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2044,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 287.25677490234375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.8000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 10.8,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 25349,
+                "max_abs": 2.86102294921875e-06,
+                "peak": 13.308876991271973,
+                "failed_strict": 15,
+                "failed_scaled": 153
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 25476,
+                "max_abs": 1.862645149230957e-09,
+                "peak": 0.008308657445013523,
+                "failed_strict": 0,
+                "failed_scaled": 9
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.8000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 10.8,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 4,
+                "max_abs": 2.7755575615628914e-17,
+                "peak": 1.7946680941349769e-07,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 660,
+                "max_abs": 4.76837158203125e-07,
+                "peak": 1499.7994384765625,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 228,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 16.772518157958984,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.8000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 10.8,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 11119,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9814310669898987,
+                "failed_strict": 0,
+                "failed_scaled": 9
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 155,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 0.576554000377655,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "cumulative_recombinations": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 43,
+                "max_abs": 1.1920928955078125e-07,
+                "peak": 2.864156723022461,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7818,
+                "max_abs": 0.00390625,
+                "peak": 47349.19140625,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2783608,
+                "max_abs": 2.0489096641540527e-08,
+                "peak": 0.03709522634744644,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.8000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 10.8,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.7869364630854658e-21,
+                "peak": 6.770345081328101e-13,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.17967568753255e-26,
+                "peak": 5.907050349465781e-18,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.4050885715218836e-19,
+                "peak": 9.61629251244836e-11,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262143,
+                "max_abs": 1.8214229058344245e-07,
+                "peak": 117.99235190943372,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.826302047799594e-17,
+                "peak": 1.3586291662317169e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.546087501543988e-17,
+                "peak": 1.646564716495323e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/10.8000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 10.8,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 18914,
+                "max_abs": 3.0517578125e-05,
+                "peak": 1361.9739990234375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 17759,
+                "max_abs": 4.656612873077393e-10,
+                "peak": 0.01735307276248932,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 22096,
+                "max_abs": 3.0517578125e-05,
+                "peak": 1497.9197998046875,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 12354,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 117.99235534667969,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/11.6000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 11.6,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 29645,
+                "max_abs": 4.76837158203125e-06,
+                "peak": 16.02621078491211,
+                "failed_strict": 12,
+                "failed_scaled": 164
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 27666,
+                "max_abs": 2.7939677238464355e-09,
+                "peak": 0.015005071647465229,
+                "failed_strict": 0,
+                "failed_scaled": 6
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/11.6000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 11.6,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 28,
+                "max_abs": 2.220446049250313e-16,
+                "peak": 7.589800787854983e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 681,
+                "max_abs": 4.163336342344337e-17,
+                "peak": 1.0360250851659814e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 600,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 731.1281127929688,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 271,
+                "max_abs": 1.1920928955078125e-07,
+                "peak": 12.057868003845215,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/11.6000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 11.6,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 10084,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9895339012145996,
+                "failed_strict": 0,
+                "failed_scaled": 6
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 97,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 0.5657989978790283,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "cumulative_recombinations": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 24,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 2.512495756149292,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7869,
+                "max_abs": 0.001953125,
+                "peak": 48958.640625,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2620339,
+                "max_abs": 2.2351741790771484e-08,
+                "peak": 0.0362776517868042,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/11.6000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 11.6,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.4941485229912654e-21,
+                "peak": 3.208817771089237e-13,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.212306887099173e-26,
+                "peak": 3.688850804091091e-18,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.3292166899934216e-19,
+                "peak": 6.418128964217821e-11,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.0639943087985557e-07,
+                "peak": 58.76070972989674,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.418476578916464e-17,
+                "peak": 7.075090843070142e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.9662111432470615e-17,
+                "peak": 8.250511992425058e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/11.6000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 11.6,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 23180,
+                "max_abs": 7.62939453125e-06,
+                "peak": 612.960205078125,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 22005,
+                "max_abs": 2.3283064365386963e-10,
+                "peak": 0.009739206172525883,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 24949,
+                "max_abs": 1.52587890625e-05,
+                "peak": 664.8746337890625,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 21849,
+                "max_abs": 3.814697265625e-06,
+                "peak": 58.76070785522461,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/12.5000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 12.5,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 22017,
+                "max_abs": 1.1444091796875e-05,
+                "peak": 41.263126373291016,
+                "failed_strict": 1,
+                "failed_scaled": 4
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 21701,
+                "max_abs": 5.587935447692871e-09,
+                "peak": 0.025443708524107933,
+                "failed_strict": 0,
+                "failed_scaled": 3
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/12.5000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 12.5,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 55,
+                "max_abs": 1.3877787807814457e-17,
+                "peak": 3.4271661064622094e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 263,
+                "max_abs": 2.7755575615628914e-17,
+                "peak": 1.171556740509061e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 320,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 325.9837646484375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 195,
+                "max_abs": 1.1920928955078125e-07,
+                "peak": 8.52161693572998,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/12.5000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 12.5,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 8161,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9944549202919006,
+                "failed_strict": 0,
+                "failed_scaled": 3
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 57,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 0.5531637072563171,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "cumulative_recombinations": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 2.1391549110412598,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7258,
+                "max_abs": 0.00390625,
+                "peak": 50941.109375,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2418182,
+                "max_abs": 2.0489096641540527e-08,
+                "peak": 0.0362776517868042,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/12.5000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 12.5,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 8.472165688294868e-22,
+                "peak": 1.4079443295803619e-13,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.2478050420692336e-26,
+                "peak": 2.0753659104737218e-18,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.341175426939943e-19,
+                "peak": 3.8986659246749796e-11,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.339595243621261e-07,
+                "peak": 31.443348318963036,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.2336609130085316e-17,
+                "peak": 3.941556466010133e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.0651779534296483e-17,
+                "peak": 4.2598274565692205e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/12.5000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 12.5,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 17933,
+                "max_abs": 3.814697265625e-06,
+                "peak": 267.90216064453125,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 17426,
+                "max_abs": 1.1641532182693481e-10,
+                "peak": 0.005167831666767597,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 23548,
+                "max_abs": 7.62939453125e-06,
+                "peak": 284.7783203125,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 19796,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 31.443347930908203,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/13.5000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 13.5,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 19849,
+                "max_abs": 1.9073486328125e-05,
+                "peak": 66.72523498535156,
+                "failed_strict": 0,
+                "failed_scaled": 1
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 19518,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 0.0360734798014164,
+                "failed_strict": 0,
+                "failed_scaled": 1
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/13.5000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 13.5,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2,
+                "max_abs": 1.734723475976807e-18,
+                "peak": 1.6319104290118958e-08,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 614,
+                "max_abs": 3.469446951953614e-17,
+                "peak": 1.2954323724834182e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 579,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 152.87777709960938,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 312,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 6.176614761352539,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/13.5000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 13.5,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 6250,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9970982670783997,
+                "failed_strict": 0,
+                "failed_scaled": 1
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 12,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 0.5158115029335022,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "cumulative_recombinations": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 1.7491517066955566,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 5971,
+                "max_abs": 0.001953125,
+                "peak": 53747.3828125,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2161594,
+                "max_abs": 2.0489096641540527e-08,
+                "peak": 0.03514563664793968,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/13.5000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 13.5,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.319118279922125e-22,
+                "peak": 6.749470000219089e-14,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 9.200518826552676e-27,
+                "peak": 1.1965530114134066e-18,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.5705182143735518e-19,
+                "peak": 2.4413844326251997e-11,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.681502125374436e-08,
+                "peak": 17.715749554094273,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.496036569346555e-18,
+                "peak": 2.2839430885934726e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.301602952493572e-18,
+                "peak": 2.409557588518612e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/13.5000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 13.5,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 18116,
+                "max_abs": 3.814697265625e-06,
+                "peak": 125.16606140136719,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 16084,
+                "max_abs": 5.820766091346741e-11,
+                "peak": 0.0027579977177083492,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 17523,
+                "max_abs": 3.814697265625e-06,
+                "peak": 130.3052520751953,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 8794,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 17.715749740600586,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/14.6000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 14.6,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 11781,
+                "max_abs": 2.288818359375e-05,
+                "peak": 78.1597671508789,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 11441,
+                "max_abs": 1.1175870895385742e-08,
+                "peak": 0.0420379675924778,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/14.6000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 14.6,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 37,
+                "max_abs": 1.3877787807814457e-17,
+                "peak": 7.934504608897441e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 780,
+                "max_abs": 2.0816681711721685e-17,
+                "peak": 1.38574068886399e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 585,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 73.76878356933594,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 449,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 4.4273600578308105,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/14.6000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 14.6,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 4791,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9980186820030212,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "ionisation_rate_G12": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 5,
+                "max_abs": 1.4901161193847656e-08,
+                "peak": 0.48009130358695984,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 4860,
+                "max_abs": 0.001953125,
+                "peak": 57843.18359375,
+                "failed_strict": 0,
+                "failed_scaled": 10
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 1903240,
+                "max_abs": 1.4901161193847656e-08,
+                "peak": 0.03363145887851715,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/14.6000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 14.6,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.953247747524241e-22,
+                "peak": 3.4053248792181044e-14,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 8.066637008851419e-27,
+                "peak": 6.948163154674584e-19,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.7908514545500748e-19,
+                "peak": 1.542398256156357e-11,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.63529254979278e-08,
+                "peak": 10.14974147724707,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 5.527450860988409e-18,
+                "peak": 1.3350525078481453e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 4.482692595679691e-18,
+                "peak": 1.3626901862000239e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/14.6000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 14.6,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 12111,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 61.74563217163086,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 8467,
+                "max_abs": 5.820766091346741e-11,
+                "peak": 0.0014740771148353815,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 13476,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 62.754817962646484,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 21105,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 10.149741172790527,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/15.8000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 15.8,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 8380,
+                "max_abs": 3.0517578125e-05,
+                "peak": 77.77096557617188,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7666,
+                "max_abs": 1.1175870895385742e-08,
+                "peak": 0.043349139392375946,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/15.8000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 15.8,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 59,
+                "max_abs": 6.938893903907228e-18,
+                "peak": 3.679249127586104e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 488,
+                "max_abs": 1.734723475976807e-17,
+                "peak": 1.4671765191653918e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 390,
+                "max_abs": 2.384185791015625e-07,
+                "peak": 34.8354606628418,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 344,
+                "max_abs": 1.4901161193847656e-08,
+                "peak": 2.6930975914001465,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/15.8000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 15.8,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3469,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9978551268577576,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3522,
+                "max_abs": 0.001953125,
+                "peak": 62268.734375,
+                "failed_strict": 0,
+                "failed_scaled": 116
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 1521198,
+                "max_abs": 1.30385160446167e-08,
+                "peak": 0.031637679785490036,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/15.8000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 15.8,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.2302525946181228e-22,
+                "peak": 1.7166154494452647e-14,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.026952604638828e-27,
+                "peak": 3.927437729174213e-19,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 6.539767471026664e-20,
+                "peak": 9.491972062901195e-12,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.6939891428767737e-08,
+                "peak": 5.6162946027448815,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.612069433170007e-18,
+                "peak": 7.492166120664988e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 3.671200542655937e-18,
+                "peak": 7.677127488797441e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/15.8000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 15.8,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 9142,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 32.82505416870117,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 7282,
+                "max_abs": 2.9103830456733704e-11,
+                "peak": 0.0007930241990834475,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 8038,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 32.1633415222168,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 20465,
+                "max_abs": 1.1920928955078125e-07,
+                "peak": 5.6162943840026855,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/17.1000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 17.1,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 5675,
+                "max_abs": 2.288818359375e-05,
+                "peak": 83.33167266845703,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 5548,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 0.046770129352808,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/17.1000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 17.1,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 28,
+                "max_abs": 3.469446951953614e-18,
+                "peak": 1.6494243748610415e-09,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "sfrd_mcg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 266,
+                "max_abs": 1.0408340855860843e-17,
+                "peak": 1.3553561051260488e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 228,
+                "max_abs": 1.7881393432617188e-07,
+                "peak": 16.057876586914062,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 221,
+                "max_abs": 1.4901161193847656e-08,
+                "peak": 1.5064113140106201,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/17.1000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 17.1,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2266,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9976526498794556,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 2386,
+                "max_abs": 0.00146484375,
+                "peak": 67089.75,
+                "failed_strict": 0,
+                "failed_scaled": 360
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 1075928,
+                "max_abs": 1.0244548320770264e-08,
+                "peak": 0.02724306657910347,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/17.1000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 17.1,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 9.319417332246784e-23,
+                "peak": 8.596556730636997e-15,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.4769864150023217e-27,
+                "peak": 2.1548862028935916e-19,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 5.0860396002172966e-20,
+                "peak": 5.678698707011596e-12,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.5981791889885244e-08,
+                "peak": 3.0170582350643183,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 1.9907994069104224e-18,
+                "peak": 4.0201227302515694e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 2.1244130543819776e-18,
+                "peak": 4.1938755838365183e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/17.1000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 17.1,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 4597,
+                "max_abs": 1.9073486328125e-06,
+                "peak": 23.952354431152344,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3106,
+                "max_abs": 2.9103830456733704e-11,
+                "peak": 0.00044533281470648944,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3358,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 18.810440063476562,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 16989,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 3.0170581340789795,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/18.5000/165fb361f043baaf5a79074e29309cd4/BrightnessTemp.h5",
+            "struct": "BrightnessTemp",
+            "redshift": 18.5,
+            "fields": {
+              "brightness_temp": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3937,
+                "max_abs": 1.52587890625e-05,
+                "peak": 79.85049438476562,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "tau_21": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3901,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 0.046484317630529404,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/18.5000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 18.5,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 61,
+                "max_abs": 8.673617379884035e-19,
+                "peak": 7.076514374482201e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 14,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 7.472994804382324,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 72,
+                "max_abs": 1.862645149230957e-09,
+                "peak": 0.7750988006591797,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/18.5000/165fb361f043baaf5a79074e29309cd4/IonizedBox.h5",
+            "struct": "IonizedBox",
+            "redshift": 18.5,
+            "fields": {
+              "neutral_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 1067,
+                "max_abs": 5.960464477539063e-08,
+                "peak": 0.9974323511123657,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 1104,
+                "max_abs": 0.001220703125,
+                "peak": 16405.421875,
+                "failed_strict": 0,
+                "failed_scaled": 379
+              },
+              "nion_conditional_filtered_mcg": {
+                "shape": [
+                  35,
+                  64,
+                  64,
+                  64
+                ],
+                "different": 560853,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 0.022017398849129677,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/18.5000/165fb361f043baaf5a79074e29309cd4/RadiationFields.h5",
+            "struct": "RadiationFields",
+            "redshift": 18.5,
+            "fields": {
+              "xray_heating_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 261973,
+                "max_abs": 2.0725396647364704e-23,
+                "peak": 4.413568874814653e-15,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionization_rate": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 261928,
+                "max_abs": 5.578003490380698e-28,
+                "peak": 1.187952095466377e-19,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_lya_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262023,
+                "max_abs": 1.4165861385437702e-20,
+                "peak": 3.413247330827906e-12,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lyw_flux": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262144,
+                "max_abs": 6.0178375060893075e-09,
+                "peak": 1.5942279101000747,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_continuum": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262134,
+                "max_abs": 1.0549494083363582e-18,
+                "peak": 2.057753662207282e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "lya_flux_injected": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 262137,
+                "max_abs": 7.553769732981634e-19,
+                "peak": 2.193548609564074e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/18.5000/165fb361f043baaf5a79074e29309cd4/TsBox.h5",
+            "struct": "TsBox",
+            "redshift": 18.5,
+            "fields": {
+              "spin_temperature": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 3370,
+                "max_abs": 3.814697265625e-06,
+                "peak": 39.135616302490234,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_ionised_fraction": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 734,
+                "max_abs": 1.4551915228366852e-11,
+                "peak": 0.00027493314701132476,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "kinetic_temp_neutral": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 639,
+                "max_abs": 9.5367431640625e-07,
+                "peak": 13.4951810836792,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "J_21_LW": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 15172,
+                "max_abs": 2.9802322387695312e-08,
+                "peak": 1.594227910041809,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          },
+          {
+            "relpath": "65e0f59a76ccfd6d2cc7196265c7b49e/129887/3750be6b2c6627eb81eee37c08eda804/20.0000/165fb361f043baaf5a79074e29309cd4/EmissivityFields.h5",
+            "struct": "EmissivityFields",
+            "redshift": 20.0,
+            "fields": {
+              "sfrd_acg": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 68,
+                "max_abs": 8.673617379884035e-19,
+                "peak": 2.874537274877298e-10,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "xray_emissivity": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 21,
+                "max_abs": 7.450580596923828e-09,
+                "peak": 3.343315839767456,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              },
+              "n_ion": {
+                "shape": [
+                  64,
+                  64,
+                  64
+                ],
+                "different": 66,
+                "max_abs": 1.862645149230957e-09,
+                "peak": 0.3598136603832245,
+                "failed_strict": 0,
+                "failed_scaled": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "case2_e_integral_bbks_gaussian_192",
+      "dim": 192,
+      "hii_dim": 64,
+      "box_len_Mpc": 200.0,
+      "threads": 2,
+      "nodes": [
+        35.34948737823401,
+        33.95143017137886,
+        32.6071443955566,
+        31.314561918804422,
+        30.071694152696548,
+        28.876628992977455,
+        27.727527877862947,
+        26.622622959483593,
+        25.560214384118833,
+        24.538667677037346,
+        23.556411227920528,
+        22.611933873000503,
+        21.703782570192782,
+        20.83056016364691,
+        19.990923234275883,
+        19.183580032957572,
+        18.407288493228428,
+        17.660854320411957,
+        16.943129154242268,
+        16.25300880215602,
+        15.589431540534633,
+        14.951376481283305,
+        14.33786200123395,
+        13.747944231955715,
+        13.180715607649724,
+        12.635303468893968,
+        12.110868720090355,
+        11.606604538548416,
+        11.121735133219627,
+        10.65551455117272,
+        10.207225529973773,
+        9.776178394205548,
+        9.361709994428407,
+        8.963182686950395,
+        8.579983352836917,
+        8.211522454650883,
+        7.857233129472002,
+        7.516570316800001,
+        7.18900992,
+        6.874048,
+        6.5712,
+        6.28,
+        6.0
+      ],
+      "cpu": {
+        "elapsed_seconds": 63.75928927992936,
+        "save_fsync_seconds": 0.38271549495402724,
+        "class_solver_seconds": 0,
+        "elapsed_excl_class_seconds": 63.75928927992936,
+        "class_solver_calls": 0,
+        "slice_count": 650,
+        "catalogs": []
+      },
+      "gpu": {
+        "elapsed_seconds": 14.964468507096171,
+        "save_fsync_seconds": 0.3825332560809329,
+        "class_solver_seconds": 0,
+        "elapsed_excl_class_seconds": 14.964468507096171,
+        "class_solver_calls": 0,
+        "slice_count": 650,
+        "catalogs": []
+      },
+      "warm_gpu_seconds": 11.553378724958748,
+      "speedup_excl_class": 5.518670407834053,
+      "inputs_equal": true,
+      "catalogs_equal": null,
+      "vcb_ic_check": null,
+      "lightcones": {
+        "brightness_temp": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 1.52587890625e-05
+        },
+        "cumulative_recombinations": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "los_velocity": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "neutral_fraction": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "spin_temperature": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "tau_21": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "xray_ionised_fraction": {
+          "tested": 2662400,
+          "failed": 0,
+          "max_abs": 0.0
+        }
+      },
+      "global_quantities": {
+        "brightness_temp": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 3.814697265625e-06
+        },
+        "cumulative_recombinations": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 1.4901161193847656e-08
+        },
+        "density": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 1.1641532182693481e-09
+        },
+        "ionisation_rate_G12": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "kinetic_temp_neutral": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 0.001953125
+        },
+        "kinetic_temperature": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 0.001953125
+        },
+        "log10_mturn_acg": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "log10_mturn_mcg": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 0.0
+        },
+        "mean_free_path": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 2.86102294921875e-06
+        },
+        "n_ion": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 1.4901161193847656e-08
+        },
+        "neutral_fraction": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 1.7881393432617188e-07
+        },
+        "nion_conditional_filtered_acg": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 2.384185791015625e-07
+        },
+        "sfrd_acg": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 2.7755575615628914e-17
+        },
+        "spin_temperature": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 0.000244140625
+        },
+        "tau_21": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "velocity_x": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 8.271806125530277e-25
+        },
+        "velocity_y": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 3.6431489869278856e-25
+        },
+        "velocity_z": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 9.875276355918714e-26
+        },
+        "xray_emissivity": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 1.9073486328125e-06
+        },
+        "xray_ionised_fraction": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 3.725290298461914e-09
+        },
+        "z_reion": {
+          "tested": 43,
+          "failed": 0,
+          "max_abs": 9.5367431640625e-07
+        }
+      },
+      "brightness_transverse_power": {
+        "slices": 650,
+        "tested": 20800,
+        "failed": 0,
+        "max_abs": 0.0027998934383504093
+      },
+      "scaled_molecular_fields": null,
+      "missing_required_counters": [],
+      "dispatch_counters": {
+        "emission": 43,
+        "heat": 42,
+        "ion_center": 792,
+        "recombination": 36,
+        "shell_filter": 3262,
+        "shell_accumulate": 1631,
+        "source_table": 878,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 0,
+        "native_spectral_filter_on_gpu": 0,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 108,
+        "ion_filter_extrema": 792,
+        "ion_photon_lookup": 792,
+        "radiation_units": 42,
+        "radiation_setup_grid": 42,
+        "ionized_temperature": 36,
+        "xray_frequency_integrals": 42,
+        "global_source_integrals": 42,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 42,
+        "ion_global_source_integrals": 43,
+        "fully_neutral_box": 7,
+        "global_neutral_fraction": 36,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 42,
+        "scalar_sigma": 1117,
+        "emissivity_global_source_integrals": 43,
+        "ionization_recfast": 0,
+        "ion_filter_resident_radius": 792,
+        "homogeneous_recombination": 0,
+        "mcg_xray_optical_depth_and_frequency": 0,
+        "radiation_lya_scattering_filter": 0,
+        "emissivity_mean_normalization": 43
+      },
+      "passed": true,
+      "failure_reason": null
+    }
+  ],
+  "prior_archived_reference": {
+    "jobs": {
+      "primary": "490940",
+      "case3_1t": "490946"
+    },
+    "host": "a9",
+    "case2_prior_warm_gpu_seconds": 49.934815718908794,
+    "archived_case3_entries": [
+      {
+        "name": "case3_chmf_thermal_96",
+        "dim": 96,
+        "hii_dim": 32,
+        "box_len_Mpc": 84.0,
+        "threads": 2,
+        "nodes": [
+          11.5,
+          11.0,
+          10.5,
+          10.0,
+          9.5
+        ],
+        "cpu_elapsed_seconds": 27.35886914806906,
+        "gpu_elapsed_seconds": 63.20285550702829,
+        "warm_gpu_seconds": null,
+        "passed": false,
+        "failure_reason": "lightcones/brightness_temp failed=1 max_abs=0.00023651123046875; lightcones/neutral_fraction failed=1 max_abs=1.4007091522216797e-06; lightcones/tau_21 failed=1 max_abs=9.499490261077881e-08"
+      },
+      {
+        "name": "case3_chmf_thermal_96_1t",
+        "dim": 96,
+        "hii_dim": 32,
+        "box_len_Mpc": 84.0,
+        "threads": 1,
+        "nodes": [
+          11.5,
+          11.0,
+          10.5,
+          10.0,
+          9.5
+        ],
+        "cpu_elapsed_seconds": 47.68846083199605,
+        "gpu_elapsed_seconds": 78.74402028205805,
+        "warm_gpu_seconds": 74.1461039299611,
+        "passed": true,
+        "failure_reason": null
+      }
+    ],
+    "note": "Updated 96^3 CHMF-SAMPLER 1T/2T/8T hybrid and 1T prefix results on a8 (job 491022) are recorded in reports/v432-chmf-multithread-and-speed.json."
+  }
+}

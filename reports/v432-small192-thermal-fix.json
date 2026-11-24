@@ -1,0 +1,187 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "fixture": "Eulerian atomic cooling, inhomogeneous recombinations, two CPU threads, high-resolution perturbation, three velocities",
+  "node": "a8",
+  "accelerator": "RTX A6000",
+  "dim": 192,
+  "hii_dim": 64,
+  "box_len_Mpc": 200,
+  "seed": 424242,
+  "cpu_reference": "~/ps_v432_perturb/evolution-window/timing-192",
+  "cpu_reference_reused": true,
+  "gpu_output": "~/ps_v432_perturb/xhii192-IagOTn/timing-192",
+  "ic_hash": "e1c57a3b99dea586cc8a87e56947eda430d2570a6121c7dd1123f3766babc161",
+  "redshift_nodes": 43,
+  "matching_ic_nodes_and_distances": true,
+  "field_tolerance": {
+    "atol": 1e-08,
+    "rtol": 0.0001
+  },
+  "thermal_replay": {
+    "before_cutoff_fix": {
+      "jobs": [
+        490366,
+        490368
+      ],
+      "replace_only_heat_rate": {
+        "exact_spin": 124,
+        "exact_brightness": 61,
+        "strict_brightness_pass": 62,
+        "max_abs_brightness": 4.98257577419281e-08,
+        "different_from_gpu": 62
+      },
+      "replace_all_radiation_rates_except_heat": {
+        "exact_spin": 41,
+        "exact_brightness": 0,
+        "strict_brightness_pass": 0,
+        "max_abs_brightness": 3.073364496231079e-06,
+        "different_from_gpu": 0
+      }
+    },
+    "after_cutoff_fix": {
+      "jobs": [
+        490377
+      ],
+      "replace_only_heat_rate": {
+        "exact_spin": 28,
+        "exact_brightness": 13,
+        "strict_brightness_pass": 14,
+        "max_abs_brightness": 4.98257577419281e-08,
+        "different_from_gpu": 14
+      },
+      "replace_all_radiation_rates_except_heat": {
+        "exact_spin": 9,
+        "exact_brightness": 0,
+        "strict_brightness_pass": 0,
+        "max_abs_brightness": 3.4961849451065063e-06,
+        "different_from_gpu": 0
+      }
+    }
+  },
+  "cutoff": {
+    "jobs": [
+      490369,
+      490370
+    ],
+    "nodes": 32,
+    "shells_per_node": 40,
+    "cosmological_prefactor_before": 3.659321551484265e+17,
+    "cosmological_prefactor_after": 3.659321476196327e+17,
+    "max_relative_error_before": 2.310988294829987e-08,
+    "max_relative_error_after": 4.454410868385896e-16
+  },
+  "frequency_quadrature_fixed_native_cutoffs": {
+    "job": 490374,
+    "count": 53760,
+    "by_channel": {
+      "heat": 8.688030921233724e-16,
+      "ion": 9.030438904661447e-16,
+      "lya": 8.5205962944874415e-16
+    }
+  },
+  "xHII_interpolation": {
+    "jobs": [
+      490376,
+      490378,
+      490380
+    ],
+    "inverse_interval_indices_changed": [
+      0,
+      1,
+      12
+    ],
+    "max_relative_width_error_before": 1.1518555702122777e-07,
+    "two_thread_exact_widths_indices_weights_at": [
+      33.95143017137886,
+      17.660854320411957,
+      9.361709994428407
+    ],
+    "one_thread_exact_widths_indices_weights_at": [
+      33.95143017137886
+    ]
+  },
+  "runs": {
+    "original": {
+      "job": 490365,
+      "brightness_over_tolerance": 62
+    },
+    "correct_dtdz": {
+      "job": 490372,
+      "brightness_over_tolerance": 14
+    },
+    "correct_dtdz_and_interpolation_width": {
+      "job": 490379,
+      "brightness_over_tolerance": 0
+    }
+  },
+  "fields": {
+    "brightness_temp": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 3.0517578125e-05,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "neutral_fraction": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 5.960464477539063e-08,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "xray_ionised_fraction": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 5.820766091346741e-11,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "kinetic_temp_neutral": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 6.103515625e-05,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "spin_temperature": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 3.0517578125e-05,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "cumulative_recombinations": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 0.0,
+      "failed": 0,
+      "failed_slices": 0
+    }
+  },
+  "ps32": {
+    "tested": 1376,
+    "failed": 0,
+    "max_abs": 2.6288717691613783e-07,
+    "max_relative_nonzero": 7.955882625940851e-09
+  },
+  "gpu_seconds": 28.24285865901038,
+  "cpu_reference_seconds": 65.77935682691168
+}

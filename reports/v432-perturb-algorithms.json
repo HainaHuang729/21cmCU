@@ -1,0 +1,489 @@
+{
+  "version": "4.3.2",
+  "device": "NVIDIA RTX A6000",
+  "remote": "~/ps_v432_perturb/alg-perturb.LOylHk",
+  "tolerance": {
+    "atol": 1e-08,
+    "rtol": 0.0001,
+    "velocity_scale": 1e+16
+  },
+  "precision_fix": "Round Python BOX_LEN to the 4.3.2 C float before evaluating the displacement, mode spacing and filter radius.",
+  "stages": {
+    "jobs": {
+      "before": 490609,
+      "after": 490610
+    },
+    "verifier": "v4/verify_perturb_algorithms.py",
+    "redshifts": [
+      6.5,
+      14.3
+    ],
+    "configurations": [
+      {
+        "threads": 1,
+        "seed": 1850877075,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": false,
+        "smooth": false,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 1,
+        "seed": 1850877075,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": false,
+        "smooth": true,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 1,
+        "seed": 424242,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": true,
+        "smooth": false,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 1,
+        "seed": 424242,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": true,
+        "smooth": true,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 1,
+        "seed": 1850877075,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": false,
+        "smooth": false,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 1,
+        "seed": 1850877075,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": false,
+        "smooth": true,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 1,
+        "seed": 424242,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": true,
+        "smooth": false,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 1,
+        "seed": 424242,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": true,
+        "smooth": true,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 2,
+        "seed": 1850877075,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": false,
+        "smooth": false,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 2,
+        "seed": 1850877075,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": false,
+        "smooth": true,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 2,
+        "seed": 424242,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": true,
+        "smooth": false,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 2,
+        "seed": 424242,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": true,
+        "smooth": true,
+        "algorithm": "LINEAR",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 2,
+        "seed": 1850877075,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": false,
+        "smooth": false,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": false
+      },
+      {
+        "threads": 2,
+        "seed": 1850877075,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": false,
+        "smooth": true,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 2,
+        "seed": 424242,
+        "dim": 32,
+        "hii_dim": 16,
+        "box_len": 24.0,
+        "high": true,
+        "smooth": false,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": true
+      },
+      {
+        "threads": 2,
+        "seed": 424242,
+        "dim": 48,
+        "hii_dim": 24,
+        "box_len": 47.7,
+        "high": true,
+        "smooth": true,
+        "algorithm": "ZELDOVICH",
+        "keep_3d_velocities": false
+      }
+    ],
+    "before": {
+      "initial": {
+        "tested": 3225600,
+        "nonidentical": 0,
+        "failed": 0
+      },
+      "perturb": {
+        "tested": 860160,
+        "nonidentical": 501044,
+        "failed": 407
+      }
+    },
+    "after": {
+      "initial": {
+        "tested": 3225600,
+        "nonidentical": 0,
+        "failed": 0
+      },
+      "perturb": {
+        "tested": 860160,
+        "nonidentical": 0,
+        "failed": 0
+      }
+    }
+  },
+  "first_public_node": {
+    "scope": "First generate_lightcone yield at z=9, nonthermal source, followed by generator.close(). The driver prepares matter and requested catalogs at z=9 and z=8.7. Native and GPU first-node products include initial conditions, perturbation, emissivity, ionization and brightness.",
+    "jobs": {
+      "Eulerian": 490614,
+      "Lagrangian": 490615
+    },
+    "redshifts": [
+      9.0,
+      8.7
+    ],
+    "released_node": 9.0,
+    "seed": 12451,
+    "threads": 1,
+    "provenance": "Current public Eulerian guard; Lagrangian copy changed only the accepted algorithm names. Full per-field measurements and native arrays are in the remote directory.",
+    "cases": [
+      {
+        "source": "E-INTEGRAL",
+        "algorithm": "LINEAR",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": true,
+        "fields": 16,
+        "tested": 180224,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.3297542929649353
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "E-INTEGRAL",
+        "algorithm": "ZELDOVICH",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": false,
+        "fields": 16,
+        "tested": 94208,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.3297542929649353
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "E-INTEGRAL",
+        "algorithm": "2LPT",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": true,
+        "fields": 19,
+        "tested": 278528,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.3297542929649353
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "CONST-ION-EFF",
+        "algorithm": "LINEAR",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": true,
+        "fields": 16,
+        "tested": 180224,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9999671578407288
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "CONST-ION-EFF",
+        "algorithm": "ZELDOVICH",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": false,
+        "fields": 16,
+        "tested": 94208,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9980182647705078
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "L-INTEGRAL",
+        "algorithm": "LINEAR",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": true,
+        "fields": 15,
+        "tested": 176128,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9996687173843384
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "L-INTEGRAL",
+        "algorithm": "ZELDOVICH",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": false,
+        "fields": 15,
+        "tested": 90112,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9999635815620422
+        ],
+        "catalog_counts": [],
+        "catalogs_match": true
+      },
+      {
+        "source": "DEXM-ESF",
+        "algorithm": "LINEAR",
+        "dim": 48,
+        "hii_dim": 16,
+        "box_mpc": 39.7,
+        "high": true,
+        "fields": 15,
+        "tested": 487424,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9970789551734924
+        ],
+        "catalog_counts": [
+          7,
+          4
+        ],
+        "catalogs_match": true
+      },
+      {
+        "source": "DEXM-ESF",
+        "algorithm": "ZELDOVICH",
+        "dim": 48,
+        "hii_dim": 16,
+        "box_mpc": 39.7,
+        "high": false,
+        "fields": 15,
+        "tested": 167936,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9999503493309021
+        ],
+        "catalog_counts": [
+          7,
+          4
+        ],
+        "catalogs_match": true
+      },
+      {
+        "source": "CHMF-SAMPLER",
+        "algorithm": "LINEAR",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": true,
+        "fields": 15,
+        "tested": 176128,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.999981164932251
+        ],
+        "catalog_counts": [
+          53504,
+          48580
+        ],
+        "catalogs_match": true
+      },
+      {
+        "source": "CHMF-SAMPLER",
+        "algorithm": "ZELDOVICH",
+        "dim": 32,
+        "hii_dim": 16,
+        "box_mpc": 23.7,
+        "high": false,
+        "fields": 15,
+        "tested": 90112,
+        "nonidentical": 0,
+        "failed": 0,
+        "brightness_nonidentical": 0,
+        "neutral_range": [
+          0.0,
+          0.9999955296516418
+        ],
+        "catalog_counts": [
+          53504,
+          48580
+        ],
+        "catalogs_match": true
+      }
+    ]
+  },
+  "after_native_velocity_growth_fix": [
+    {
+      "job": "490621",
+      "source": "E-INTEGRAL",
+      "algorithm": "2LPT",
+      "cpu_reference_reused": true,
+      "tested": 278528,
+      "failed": 0,
+      "nonidentical": 0,
+      "catalog_counts": [],
+      "catalogs_match": true
+    },
+    {
+      "job": "490622",
+      "source": "CHMF-SAMPLER",
+      "algorithm": "ZELDOVICH",
+      "cpu_reference_reused": true,
+      "tested": 90112,
+      "failed": 0,
+      "nonidentical": 0,
+      "catalog_counts": [
+        53504,
+        48580
+      ],
+      "catalogs_match": true
+    }
+  ]
+}

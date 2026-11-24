@@ -1,0 +1,295 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "device": "NVIDIA RTX A6000",
+  "status": "PASS",
+  "validation_scope": {
+    "entry_point": "py21cmfast.compute_emissivity_fields at one redshift on matched initial conditions and halo catalogues",
+    "gpu_stage": "Sampled atomic-cooling halo displacement, halo properties and stable cloud-in-cell deposition in sum_halos_onto_grid",
+    "native_stages": "Catalogue sampling, Gaussian scatter draws, sub-resolution halo integral and final field normalization are upstream CPU operations in this comparison.",
+    "exclusions": [
+      "Lightcone and coeval evolution",
+      "Ionization and thermal evolution",
+      "Power spectra",
+      "MCG and reionization-photoheating-feedback models",
+      "Performance comparisons"
+    ]
+  },
+  "common_parameters": {
+    "redshift": 8.0,
+    "random_seed": 424242,
+    "BOX_LEN_Mpc": 40.0,
+    "DIM": 48,
+    "HII_DIM": 24,
+    "NON_CUBIC_FACTOR": 1.0,
+    "voxels_per_output_field": 13824,
+    "SOURCE_MODEL": "CHMF-SAMPLER",
+    "SAMPLER_MIN_MASS_Msun": 100000000,
+    "POWER_SPECTRUM": "EH",
+    "PERTURB_ALGORITHM": "2LPT",
+    "PERTURB_ON_HIGH_RES": false,
+    "USE_MCGS": false,
+    "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+    "USE_UPPER_STELLAR_TURNOVER": true,
+    "USE_METALLICITY": true,
+    "other_inputs": "Unmodified upstream defaults."
+  },
+  "comparison": {
+    "reference": "Same installed 4.3.2 native extension with no CUDA hook; CPU and CUDA consume the same initial conditions, masses, positions and three saved scatter draws within each case.",
+    "outputs": "Every allocated field, all 13824 voxels per field, checked for finite differences.",
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "failed": "Count with abs(GPU-CPU) > atol + rtol * abs(CPU).",
+    "different": "Count of numerically unequal float32 output values.",
+    "max_relative": "Maximum abs(GPU-CPU)/abs(CPU) over nonzero CPU values; named max_rel in synthetic cases.",
+    "sampled_cells": "Real catalogue only: voxels where a separate native run with all catalogue masses set to zero changed this field.",
+    "nonzero": "Synthetic catalogue only: count of nonzero CPU output voxels, including the sub-resolution contribution."
+  },
+  "synthetic_catalogue": {
+    "slurm_job": 490405,
+    "source_result": "validation.json",
+    "N_THREADS": 1,
+    "EXTRA_EMISSIVITY_FIELDS": false,
+    "numpy_rng_seed": 432,
+    "mass_distribution_Msun": "Uniform from 2.5e8 to 4e11. The first entry has mass zero.",
+    "position_distribution_Mpc": "Uniform over [0, 40) in each dimension. Set the first 23 entries to [40, 0.25, 39.75] in the populated test for a periodic, shared-cell case.",
+    "scatter_draws": "Three independent NumPy standard-normal float32 arrays, passed unchanged to both implementations.",
+    "reported_counters": {
+      "halo_grid_calls": 4,
+      "halo_grid_halos": 514
+    },
+    "counter_version": "This job counted an empty catalogue as a hook call. Two of its four calls processed 257 entries each. The final counter schema records two nonempty calls and two empty catalogues separately for this set.",
+    "cases": [
+      {
+        "USE_TS_FLUCT": false,
+        "RECOMB_MODEL": "none",
+        "catalogue_entries": 0,
+        "positive_mass_entries": 0,
+        "fields": {
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          }
+        }
+      },
+      {
+        "USE_TS_FLUCT": false,
+        "RECOMB_MODEL": "none",
+        "catalogue_entries": 257,
+        "positive_mass_entries": 256,
+        "fields": {
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          }
+        }
+      },
+      {
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "catalogue_entries": 0,
+        "positive_mass_entries": 0,
+        "fields": {
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          }
+        }
+      },
+      {
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "catalogue_entries": 257,
+        "positive_mass_entries": 256,
+        "fields": {
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 0,
+            "nonzero": 13824,
+            "max_rel": 0.0
+          }
+        }
+      }
+    ]
+  },
+  "upstream_sampled_catalogues": {
+    "producer": "py21cmfast.determine_halo_catalog, called once per thread setting using the same IC seed. Native GSL streams are thread-specific; compare CPU and GPU within each case.",
+    "cases": [
+      {
+        "slurm_job": 490407,
+        "source_result": "real.json",
+        "N_THREADS": 1,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "catalogue_entries": 334723,
+        "reported_counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 334723
+        },
+        "fields": {
+          "halo_number": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "halo_mass_density": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "stellar_mass_density_acg": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "sfrd_acg": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "xray_emissivity": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "n_ion": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          },
+          "fesc_weighted_sfrd": {
+            "sampled_cells": 13819,
+            "different": 0,
+            "failed": 0,
+            "max_relative": 0.0
+          }
+        }
+      },
+      {
+        "slurm_job": 490415,
+        "source_result": "real-omp2.json",
+        "N_THREADS": 2,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "catalogue_entries": 335723,
+        "reported_counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 335723,
+          "halo_grid_empty": 0
+        },
+        "fields": {
+          "halo_number": {
+            "sampled_cells": 13812,
+            "different": 157,
+            "failed": 0,
+            "max_relative": 1.9850322612405678e-07
+          },
+          "halo_mass_density": {
+            "sampled_cells": 13812,
+            "different": 647,
+            "failed": 0,
+            "max_relative": 8.917397177141176e-07
+          },
+          "stellar_mass_density_acg": {
+            "sampled_cells": 13812,
+            "different": 832,
+            "failed": 0,
+            "max_relative": 1.192341637356922e-06
+          },
+          "sfrd_acg": {
+            "sampled_cells": 13812,
+            "different": 820,
+            "failed": 0,
+            "max_relative": 1.2971246945734604e-06
+          },
+          "xray_emissivity": {
+            "sampled_cells": 13812,
+            "different": 855,
+            "failed": 0,
+            "max_relative": 1.6834617879426065e-06
+          },
+          "n_ion": {
+            "sampled_cells": 13812,
+            "different": 858,
+            "failed": 0,
+            "max_relative": 1.536132761195566e-06
+          },
+          "fesc_weighted_sfrd": {
+            "sampled_cells": 13812,
+            "different": 822,
+            "failed": 0,
+            "max_relative": 1.5447118631138134e-06
+          }
+        }
+      }
+    ]
+  },
+  "results": {
+    "synthetic": "All allocated output values matched exactly in each of the four cases.",
+    "sampled_single_thread": "All seven output fields matched exactly in 13824 voxels; 13819 voxels in each field changed in the zero-mass control.",
+    "sampled_two_threads": "All seven fields passed in 13824 voxels; 13812 voxels in each field changed in the zero-mass control. Peak relative error across the fields was 1.6834617879426065e-6 in xray_emissivity."
+  },
+  "provenance": {
+    "cluster": "phy-gpus",
+    "directory": "~/ps_v432_perturb/chmf-grid.sC57dc",
+    "input_scripts": [
+      "test.py",
+      "real.py",
+      "omp2.py"
+    ],
+    "raw_results": [
+      "validation.json",
+      "real.json",
+      "real-omp2.json"
+    ]
+  }
+}

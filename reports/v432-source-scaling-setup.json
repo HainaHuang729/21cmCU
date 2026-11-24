@@ -1,0 +1,210 @@
+{
+  "slurm_job": "490605",
+  "hardware": "a9",
+  "native": "21cmFAST 4.3.2",
+  "inputs": {
+    "model": "CHMF-SAMPLER",
+    "seed": 81033,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24,
+    "threads": 1,
+    "thermal": true,
+    "recombinations": "inhomogeneous"
+  },
+  "setup": {
+    "ionization_radius_setup": {
+      "native": {
+        "milliseconds_per_call": 8.645074209198356,
+        "median_of": 7,
+        "calls_per_sample": 5,
+        "returned": [
+          0.9305257364999999,
+          14.761016270673029,
+          47656.940888373676,
+          25.05936138420345,
+          1.168035260536645e+16,
+          30.0,
+          31.0,
+          264.0
+        ],
+        "explicit_ion_sigma_calls_per_setup": 31,
+        "radii": 30,
+        "scaling_struct_bytes": 264
+      },
+      "candidate": {
+        "milliseconds_per_call": 0.25686039589345455,
+        "median_of": 7,
+        "calls_per_sample": 5,
+        "returned": [
+          0.9305257364999999,
+          14.761016270673029,
+          47656.940888373676,
+          25.05936138420345,
+          1.168035260536645e+16,
+          30.0,
+          0.0,
+          264.0
+        ],
+        "explicit_ion_sigma_calls_per_setup": 0,
+        "radii": 30,
+        "scaling_struct_bytes": 264
+      },
+      "speedup": 33.65670359234486
+    },
+    "scaling_constants": {
+      "native": {
+        "milliseconds_per_call": 0.26848568425824243,
+        "median_of": 7,
+        "calls_per_sample": 60,
+        "returned": [
+          2.8759866273073293,
+          132729363756.27658,
+          501187232.0,
+          1.1680352605366448e+16,
+          0.0,
+          0.0,
+          0.0,
+          264.0
+        ],
+        "explicit_ion_sigma_calls_per_setup": 0,
+        "radii": 0,
+        "scaling_struct_bytes": 264
+      }
+    },
+    "cell_variance": {
+      "native": {
+        "milliseconds_per_call": 0.25313731748610735,
+        "median_of": 7,
+        "calls_per_sample": 60,
+        "returned": [
+          2.8759866273073293,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          264.0
+        ],
+        "explicit_ion_sigma_calls_per_setup": 0,
+        "radii": 0,
+        "scaling_struct_bytes": 264
+      }
+    }
+  },
+  "gpu_stages": {
+    "ionization_mhr_table": 1,
+    "ionization_forward_fft": 4,
+    "ionization_radius_inverse_pair": 30,
+    "ionization_conditional_nion": 30,
+    "ionization_halo_barrier": 30,
+    "ionization_temperature": 1,
+    "ionization_cumulative_recombinations": 1
+  },
+  "single_node": {
+    "fields": {
+      "neutral_fraction": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "ionisation_rate_G12": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "z_reion": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "mean_free_path": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "cumulative_recombinations": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      },
+      "kinetic_temperature": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0,
+        "different": 0
+      }
+    },
+    "reference": "490465 archived native redshift 9.7, previous state 10; same native 3-D density, X-ray ionization/Tk and emissivity grids",
+    "tested": 24576,
+    "failed": 0,
+    "recombination_peak": 0.18814197182655334,
+    "active_photonionization_cells": 76
+  },
+  "passed": true,
+  "measurement": "Single native 4.3.2 setup vs the instrumented Lagrangian adapter, same source, flags, C compiler, input state and redshift. Seven warm batches, medians per call; no lightcone timed. Timings include native allocation/free of the radius list and no GPU startup.",
+  "returned_setup_fields": [
+    "first_radius_comoving_Mpc",
+    "last_radius_comoving_Mpc",
+    "ionization_Gamma12_prefactor",
+    "Nion_prefactor_ACG",
+    "star_formation_timescale_seconds",
+    "number_of_radii",
+    "direct_ionbox_sigma_z0_calls",
+    "sizeof_ScalingConstants_bytes"
+  ],
+  "returned_scaling_fields": [
+    "sigma_cell_at_z0",
+    "cell_mass_Msun",
+    "atomic_source_turnover_Msun",
+    "star_formation_timescale_seconds"
+  ],
+  "source_trace": [
+    {
+      "source": "scaling_relations.c:set_scaling_constants",
+      "units": "growth and capped efficiencies dimensionless, masses in Msun, mass-dependent timescale t_STAR/H in seconds, CONST timescale dt/dz in seconds per redshift (negative); LX_OVER_SFR multiplied by 1e-38 times seconds per year before float grid storage",
+      "size": "One 264-byte structure (32 doubles and two bools with ABI padding) per ComputeEmissivityFields, ComputeIonizedBox, and thermal RadiationFieldsSetup call. No per-halo or per-voxel call. The 4.3.2 public diagnostics test_halo_props and convert_halo_props are separate callers.",
+      "device_coverage": "Native per-redshift structure values feed CUDA source quadrature (source_integrals.cu, using v3 lightcone/table_qag.cuh) and the sampled per-halo scaling and advection stages (halo_grid.cu, halo_advection.cu). The Eulerian adapter already routes exact scalar sigma(M) to the cached GPU QAG; the Lagrangian struct still obtains its cell variance natively."
+    },
+    {
+      "source": "IonisationBox.c:set_ionbox_constants, setup_radii, calculate_conditional_nion",
+      "units": "Sigma(M,0) is the dimensionless rms of linear density. R is comoving Mpc. Gamma12 multiplies the 4.3.2 redshift-dependent prefactor by R and photons per baryon (Eulerian) or local weighted SFR density divided by 1+delta (Lagrangian).",
+      "removed": "Lagrangian conditional photons come directly from filtered emissivity. sigma_maxmass only feeds the other, Eulerian branch; the sigma_minmass member has no read anywhere in 4.3.2. Skip their otherwise full GSL GK61 evaluations in the Lagrangian adapter. Radius generation, minimum mass and CUDA filtering/barriers are unchanged."
+    },
+    {
+      "source": "SpinTemperatureBox.c:set_zp_consts; RadiationFieldsSetup.c:setup_z_edges and global history",
+      "units": "12 thermal coefficients include T_CMB in K, H(z) in inverse seconds, dt/dz in seconds and dimensionless growth.",
+      "device_coverage": "The installed thermal coefficient body already runs via CUDA stage 27 using growth.py for the growth and expansion functions. ACG global photon histories already form 400 sets of coefficient rows and run the v3-adapted adaptive quadrature on GPU. CONST histories build six scalar inputs per redshift on the host before the CUDA mass quadrature; the two-value Nion ionization setup and host scaling remain distinct from this 400-row path."
+    }
+  ],
+  "observed_driver_counts": {
+    "default_nonthermal_CHMF_48_to_16_seed12451": {
+      "source": "v432-chmf-default-integrated.json",
+      "redshift_nodes": 3,
+      "emissivity_fields": 3,
+      "ionization_fields": 3,
+      "full_scaling_struct_calls_inferred_from_native_callsites": 6,
+      "ionization_radii": 72,
+      "ionbox_sigma_integrals_avoided_at_these_dimensions": 75
+    },
+    "thermal_CHMF_32_to_16_seed81033": {
+      "source": "v432-chmf-thermal-integrated.json",
+      "redshift_nodes": 2,
+      "emissivity_fields": 2,
+      "ionization_fields": 2,
+      "radiation_setups": 1,
+      "full_scaling_struct_calls_inferred_from_native_callsites": 5,
+      "ionization_radii": 60,
+      "ionbox_sigma_integrals_avoided_at_these_dimensions": 62,
+      "CUDA_thermal_scalar_setup_calls": 1,
+      "mass_dependent_Nion_history_rows_on_CUDA": 400
+    }
+  },
+  "verification_script": "~/ps_v432_perturb/v432-redshift-setup.VNjTiC/check.py"
+}

@@ -1,0 +1,563 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "source": "E-INTEGRAL, HMF=ST, USE_MCGS and inhomogeneous reionization photoheating enabled. hmf-interpolation; independent ACG/MCG Gauss-Legendre, using native high-density GK61 transition.",
+  "hardware": "RTX A6000 on a9, one CPU thread",
+  "simulation": {
+    "seed": 129887,
+    "dim": 16,
+    "hii_dim": 8,
+    "box_mpc": 24,
+    "redshifts": [
+      12,
+      11.5,
+      11
+    ],
+    "R_BUBBLE_MAX": 4,
+    "DELTA_R_HII_FACTOR": 2,
+    "N_STEP_TS": 12,
+    "V_CB_MODEL": "AVG-DEBUG",
+    "USE_METALLICITY": false,
+    "CELL_RECOMB": false
+  },
+  "baseline": "Native CPU 490718 cached arrays; the two affected incoming native ionization, density, emissivity and thermal fields were reloaded at each epoch. Independent tests call public compute_ionization_field with only the conditional table and history stages replaced. The initial node uses the native empty previous box. No lightcone run.",
+  "calculation": "The native setup clips current and previous density, measures the unclipped extrema, and pads each density axis by 0.001. It clips turnover grids and supplies the original per-radius mass upper/conditioning limit. The GPU builds current population tables at the current growth, and previous tables at the previous growth, using the same current scaling constants and current filtered turnover fields. Previous tables are built only if the previous unconditional ACG+MCG Nion > 1e-4. Kernel applies native bilinear log-table interpolation and per-species saturation, casts the corrected history to float32 before final upper clipping and uses these stored results for the two double volume means. The consumer reads independent history planes [radius,index].",
+  "residency": "GPU table results are retained through per-radius lookup; the CUDA callback does not write those tables to native arrays or transfer them back to the device.",
+  "scope_limit": "The validated case is a cubic mass-dependent E-integral atomic+molecular run, photoheating on, GL or adaptive table code (this fully integrated history test uses GL). The endpoint-safe lookup evaluates a terminal table knot using its left interval and explicitly checks out-of-range inputs. This test leaves FFT filtering and excursion barrier native.",
+  "active_previous_correction": {
+    "job": "490721",
+    "cache": "490718",
+    "stages": {
+      "ion_mcg_current_tables": 8,
+      "ion_mcg_previous_tables": 8,
+      "ion_mcg_radius_history": 4,
+      "ion_mcg_radius_previous_correction": 4
+    },
+    "measurements": [
+      {
+        "index": 1,
+        "z": 11.5,
+        "prev_z": 12.0,
+        "R_mpc": 3.7221029459999997,
+        "mmin": 100000.0,
+        "mmax": 8494679284534.3545,
+        "M_atomic": 69869374.87710917,
+        "growth": 0.10197996769922513,
+        "previous_growth": 0.09805744742335556,
+        "previous_unconditional_sum": 0.18574067728681987,
+        "mean_acg": 0.19944376758212456,
+        "mean_mcg": 0.012675131446485466,
+        "first_log_turn_mcg": 6.90802001953125
+      },
+      {
+        "index": 0,
+        "z": 11.5,
+        "prev_z": 12.0,
+        "R_mpc": 1.8610514729999998,
+        "mmin": 100000.0,
+        "mmax": 1061834910566.7943,
+        "M_atomic": 69869374.87710917,
+        "growth": 0.10197996769922513,
+        "previous_growth": 0.09805744742335556,
+        "previous_unconditional_sum": 0.18574067728681987,
+        "mean_acg": 0.18021939765822026,
+        "mean_mcg": 0.012210863113068626,
+        "first_log_turn_mcg": 6.907713890075684
+      },
+      {
+        "index": 1,
+        "z": 11.0,
+        "prev_z": 11.5,
+        "R_mpc": 3.7221029459999997,
+        "mmin": 100000.0,
+        "mmax": 8494679284534.3545,
+        "M_atomic": 74281191.90761521,
+        "growth": 0.10622894536124451,
+        "previous_growth": 0.10197996769922513,
+        "previous_unconditional_sum": 0.23877708639878026,
+        "mean_acg": 0.2582817688162322,
+        "mean_mcg": 0.01367090281291894,
+        "first_log_turn_mcg": 7.006969451904297
+      },
+      {
+        "index": 0,
+        "z": 11.0,
+        "prev_z": 11.5,
+        "R_mpc": 1.8610514729999998,
+        "mmin": 100000.0,
+        "mmax": 1061834910566.7943,
+        "M_atomic": 74281191.90761521,
+        "growth": 0.10622894536124451,
+        "previous_growth": 0.10197996769922513,
+        "previous_unconditional_sum": 0.23877708639878026,
+        "mean_acg": 0.23422009048226755,
+        "mean_mcg": 0.013190995522563753,
+        "first_log_turn_mcg": 7.006711959838867
+      }
+    ],
+    "nodes": [
+      {
+        "z": 11.5,
+        "previous": 12.0,
+        "history": {
+          "nion_conditional_filtered_acg@0": {
+            "n": 512,
+            "min": 0.017609700560569763,
+            "max": 3.8356266021728516,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.18021939765822026,
+            "radius_gpu_mean_f64": 0.18021939765822026,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_acg@1": {
+            "n": 512,
+            "min": 0.04532421752810478,
+            "max": 1.3964385986328125,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.19944376758212456,
+            "radius_gpu_mean_f64": 0.19944376758212456,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@0": {
+            "n": 512,
+            "min": 0.0036874886136502028,
+            "max": 0.04910273104906082,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.012210863113068626,
+            "radius_gpu_mean_f64": 0.012210863113068626,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@1": {
+            "n": 512,
+            "min": 0.005815478041768074,
+            "max": 0.03380109369754791,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.012675131446485466,
+            "radius_gpu_mean_f64": 0.012675131446485466,
+            "mean_abs": 0.0
+          }
+        },
+        "final_fields": {
+          "neutral_fraction": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.8245964050292969,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "ionisation_rate_G12": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.262900173664093,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "z_reion": {
+            "n": 512,
+            "min": -1.0,
+            "max": 12.0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "mean_free_path": {
+            "n": 512,
+            "min": 0.0,
+            "max": 3.7221028804779053,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "cumulative_recombinations": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.2618066370487213,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "kinetic_temperature": {
+            "n": 512,
+            "min": 3507.630859375,
+            "max": 47498.5390625,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_acg": {
+            "n": 1024,
+            "min": 0.017609700560569763,
+            "max": 3.8356266021728516,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_mcg": {
+            "n": 1024,
+            "min": 0.0036874886136502028,
+            "max": 0.04910273104906082,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          }
+        }
+      },
+      {
+        "z": 11.0,
+        "previous": 11.5,
+        "history": {
+          "nion_conditional_filtered_acg@0": {
+            "n": 512,
+            "min": 0.024481892585754395,
+            "max": 4.735284328460693,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.23422009048226755,
+            "radius_gpu_mean_f64": 0.23422009048226755,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_acg@1": {
+            "n": 512,
+            "min": 0.06108679994940758,
+            "max": 1.7472552061080933,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.2582817688162322,
+            "radius_gpu_mean_f64": 0.2582817688162322,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@0": {
+            "n": 512,
+            "min": 0.004069635644555092,
+            "max": 0.049801379442214966,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.013190995522563753,
+            "radius_gpu_mean_f64": 0.013190995522563753,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@1": {
+            "n": 512,
+            "min": 0.006373065058141947,
+            "max": 0.03523891791701317,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.01367090281291894,
+            "radius_gpu_mean_f64": 0.01367090281291894,
+            "mean_abs": 0.0
+          }
+        },
+        "final_fields": {
+          "neutral_fraction": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.8297795057296753,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "ionisation_rate_G12": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.28236180543899536,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "z_reion": {
+            "n": 512,
+            "min": -1.0,
+            "max": 12.0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "mean_free_path": {
+            "n": 512,
+            "min": 0.0,
+            "max": 3.7221028804779053,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "cumulative_recombinations": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.442139595746994,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "kinetic_temperature": {
+            "n": 512,
+            "min": 3406.083984375,
+            "max": 44800.42578125,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_acg": {
+            "n": 1024,
+            "min": 0.024481892585754395,
+            "max": 4.735284328460693,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_mcg": {
+            "n": 1024,
+            "min": 0.004069635644555092,
+            "max": 0.049801379442214966,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          }
+        }
+      }
+    ]
+  },
+  "initial_no_previous_correction": {
+    "job": "490723",
+    "cache": "490718",
+    "stages": {
+      "ion_mcg_current_tables": 4,
+      "ion_mcg_radius_history": 2
+    },
+    "measurements": [
+      {
+        "index": 1,
+        "z": 12.0,
+        "prev_z": -1.0,
+        "R_mpc": 3.7221029459999997,
+        "mmin": 100000.0,
+        "mmax": 8494679284534.3545,
+        "M_atomic": 65877246.147624046,
+        "growth": 0.09805744742335556,
+        "previous_growth": NaN,
+        "previous_unconditional_sum": 0.0,
+        "mean_acg": 0.15242431750812102,
+        "mean_mcg": 0.01168384399079514,
+        "first_log_turn_mcg": 6.3599162101745605
+      },
+      {
+        "index": 0,
+        "z": 12.0,
+        "prev_z": -1.0,
+        "R_mpc": 1.8610514729999998,
+        "mmin": 100000.0,
+        "mmax": 1061834910566.7943,
+        "M_atomic": 65877246.147624046,
+        "growth": 0.09805744742335556,
+        "previous_growth": NaN,
+        "previous_unconditional_sum": 0.0,
+        "mean_acg": 0.1372262401819171,
+        "mean_mcg": 0.011239927605402045,
+        "first_log_turn_mcg": 6.3599162101745605
+      }
+    ],
+    "nodes": [
+      {
+        "z": 12.0,
+        "previous": null,
+        "history": {
+          "nion_conditional_filtered_acg@0": {
+            "n": 512,
+            "min": 0.012487041763961315,
+            "max": 3.0827407836914062,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.1372262401819171,
+            "radius_gpu_mean_f64": 0.1372262401819171,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_acg@1": {
+            "n": 512,
+            "min": 0.033211130648851395,
+            "max": 1.1067720651626587,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.15242431750812102,
+            "radius_gpu_mean_f64": 0.15242431750812102,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@0": {
+            "n": 512,
+            "min": 0.0033242569770663977,
+            "max": 0.0480789951980114,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.011239927605402045,
+            "radius_gpu_mean_f64": 0.011239927605402045,
+            "mean_abs": 0.0
+          },
+          "nion_conditional_filtered_mcg@1": {
+            "n": 512,
+            "min": 0.005276170093566179,
+            "max": 0.03223839029669762,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0,
+            "cpu_mean_f64": 0.01168384399079514,
+            "radius_gpu_mean_f64": 0.01168384399079514,
+            "mean_abs": 0.0
+          }
+        },
+        "final_fields": {
+          "neutral_fraction": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.8140766620635986,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "ionisation_rate_G12": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.2126741111278534,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "z_reion": {
+            "n": 512,
+            "min": -1.0,
+            "max": 12.0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "mean_free_path": {
+            "n": 512,
+            "min": 0.0,
+            "max": 3.7221028804779053,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "cumulative_recombinations": {
+            "n": 512,
+            "min": 0.0,
+            "max": 0.08588024973869324,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "kinetic_temperature": {
+            "n": 512,
+            "min": 3717.1416015625,
+            "max": 51222.1484375,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_acg": {
+            "n": 1024,
+            "min": 0.012487041763961315,
+            "max": 3.0827407836914062,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          },
+          "nion_conditional_filtered_mcg": {
+            "n": 1024,
+            "min": 0.0033242569770663977,
+            "max": 0.0480789951980114,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_rel": 0.0,
+            "strict_fails": 0,
+            "scaled_fails": 0
+          }
+        }
+      }
+    ]
+  },
+  "remote_scripts": "~/ps_v432_perturb/e-mcg-history/{check.py,initial.py,check.log,initial.log}; native cache under ~/ps_v432_perturb/molecular.hD9zGp/E-INTEGRAL/cpu-cache"
+}

@@ -1,0 +1,736 @@
+{
+  "version": "4.3.2",
+  "device": "RTX A6000",
+  "cluster_directory": "~/ps_v432_perturb/dexm-rng.Jjs77U",
+  "scope": "Resolved DexM property arrays on the 1/2-thread finder path. The CHMF mass and correlated-progenitor sampler is independent. No full lightcones.",
+  "methods": {
+    "properties": "v4/verify_halo_rng.py output.json",
+    "initial_conditions": "v4/verify_halo_rng.py output.json --initial-conditions",
+    "finder": "v4/verify_halo_finder.py output.json --optimized",
+    "catalog_replay": "Two determine_halo_catalog calls with the exact parameters, seed and node redshifts from the stored native DEXM-ESF lightcone. All five ordered arrays hashed."
+  },
+  "native_add_properties_cat": {
+    "job": "490544",
+    "cases": [
+      {
+        "seed": 0,
+        "threads": 1,
+        "count": 0,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "seed": 0,
+        "threads": 1,
+        "count": 1,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "03dd1eae26bdcf26390a0c6f78012f80883914db9da4c3478c99b6e3c6fb2527"
+      },
+      {
+        "seed": 0,
+        "threads": 1,
+        "count": 2,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "0380be6450946ccc8aa16605305da86e79a9d5c358d1f8c3efbcea19e350cd5a"
+      },
+      {
+        "seed": 37251,
+        "threads": 1,
+        "count": 3,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "bbc2cc3078aadc42c2a53e1e6ee1aef810562e76c4cb8297314b05748050711b"
+      },
+      {
+        "seed": 92,
+        "threads": 1,
+        "count": 911,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "b92347d85b37983b027d8e4101cc4d80dbfc971f7d6b382e9f36c85eae449b0c"
+      },
+      {
+        "seed": 113,
+        "threads": 1,
+        "count": 4097,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "0f071a9bc31f9a8be53e739a9866fc9931a6a23f77978d93f65b90b39983cc8b"
+      },
+      {
+        "seed": 4294967296,
+        "threads": 1,
+        "count": 487,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "1f8e0412e02bb2f2213307b27d244fb0e9f65379eed38a019964e7570f146330"
+      },
+      {
+        "seed": 4294967299,
+        "threads": 1,
+        "count": 144,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "39a8c92ff3d584d7fc85473be64349b62caa35d66a4b27826944c223ddd5c70a"
+      },
+      {
+        "seed": 18446744073709551615,
+        "threads": 1,
+        "count": 10003,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "6b9605b995c0e7221e05a307935f94e9019d3eec69713f0a6b11f73c1afac515"
+      },
+      {
+        "seed": 163179,
+        "threads": 1,
+        "count": 700001,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "cb8f2d454c5a4154f86e9eb66d636d9e30d937bc7e7333d1c3326390c2612137"
+      },
+      {
+        "seed": 0,
+        "threads": 2,
+        "count": 0,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "seed": 0,
+        "threads": 2,
+        "count": 1,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "03dd1eae26bdcf26390a0c6f78012f80883914db9da4c3478c99b6e3c6fb2527"
+      },
+      {
+        "seed": 0,
+        "threads": 2,
+        "count": 2,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "f3db777353a586efeb506e0bb3b970d1721085fd6c717590fed54a62bdf8011a"
+      },
+      {
+        "seed": 37251,
+        "threads": 2,
+        "count": 3,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "1879b47360600a37db8749f53efb1394db098b32c626355a922116fadcb69fe7"
+      },
+      {
+        "seed": 92,
+        "threads": 2,
+        "count": 911,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "ad5b56927fb07327eb9aa162b5f65d0d5b20c57115639322cad8e94340a2d988"
+      },
+      {
+        "seed": 113,
+        "threads": 2,
+        "count": 4097,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "2951cb5db0aef06900f988bdc9f4eaa0f0ab507d0ec019336e1d01242237c1fd"
+      },
+      {
+        "seed": 4294967296,
+        "threads": 2,
+        "count": 487,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "c51fa65bc05b20d2332febe2e0db6ffa5457a9268d210ebbdc1ee3cfc807f47c"
+      },
+      {
+        "seed": 4294967299,
+        "threads": 2,
+        "count": 144,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "0727dacfb6dc4adbe595bd02db55317843f3d7cd44d1c9bea5b934ad44106313"
+      },
+      {
+        "seed": 18446744073709551615,
+        "threads": 2,
+        "count": 10003,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "58ce7958cb007635cee344286518e34f872692101899308fa5d0cc441c15e43f"
+      },
+      {
+        "seed": 163179,
+        "threads": 2,
+        "count": 700001,
+        "mismatches": [
+          0,
+          0,
+          0
+        ],
+        "ordered_sha256": "110dc72b31e1a4bc341ae45c013512b882806051e61e6669c405361ac659c595"
+      }
+    ]
+  },
+  "integrated_finder": {
+    "job": "490537",
+    "cases": [
+      {
+        "case": "seeded",
+        "side": 32,
+        "threads": 1,
+        "resolved_halos": 0,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 8,
+          "dexm_optimized_candidates": 0,
+          "dexm_radius_searches": 19,
+          "dexm_candidates": 0,
+          "dexm_optimized_accepted": 0,
+          "dexm_accepted": 0,
+          "dexm_ordinary_radii": 11,
+          "dexm_ordinary_candidates": 0,
+          "dexm_ordinary_accepted": 0,
+          "dexm_empty_property_catalogs": 1,
+          "dexm_empty_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      },
+      {
+        "case": "periodic_peaks",
+        "side": 32,
+        "threads": 1,
+        "resolved_halos": 3,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 8,
+          "dexm_optimized_candidates": 1147,
+          "dexm_radius_searches": 19,
+          "dexm_candidates": 5735,
+          "dexm_optimized_accepted": 2,
+          "dexm_accepted": 3,
+          "dexm_rebuilt_centres": 7,
+          "dexm_ordinary_radii": 11,
+          "dexm_ordinary_candidates": 4588,
+          "dexm_ordinary_accepted": 1,
+          "dexm_property_rng_halos": 3,
+          "dexm_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      },
+      {
+        "case": "zero",
+        "side": 32,
+        "threads": 1,
+        "resolved_halos": 0,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 8,
+          "dexm_optimized_candidates": 0,
+          "dexm_radius_searches": 19,
+          "dexm_candidates": 0,
+          "dexm_optimized_accepted": 0,
+          "dexm_accepted": 0,
+          "dexm_ordinary_radii": 11,
+          "dexm_ordinary_candidates": 0,
+          "dexm_ordinary_accepted": 0,
+          "dexm_empty_property_catalogs": 1,
+          "dexm_empty_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      },
+      {
+        "case": "seeded",
+        "side": 48,
+        "threads": 2,
+        "resolved_halos": 2,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 14,
+          "dexm_optimized_candidates": 2,
+          "dexm_radius_searches": 14,
+          "dexm_candidates": 2,
+          "dexm_optimized_accepted": 2,
+          "dexm_accepted": 2,
+          "dexm_property_rng_halos": 2,
+          "dexm_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      },
+      {
+        "case": "periodic_peaks",
+        "side": 48,
+        "threads": 2,
+        "resolved_halos": 4,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 14,
+          "dexm_optimized_candidates": 3132,
+          "dexm_radius_searches": 14,
+          "dexm_candidates": 3132,
+          "dexm_optimized_accepted": 4,
+          "dexm_accepted": 4,
+          "dexm_rebuilt_centres": 20,
+          "dexm_property_rng_halos": 4,
+          "dexm_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      },
+      {
+        "case": "zero",
+        "side": 48,
+        "threads": 2,
+        "resolved_halos": 0,
+        "cuda": {
+          "dexm_density_forward_fft": 1,
+          "dexm_optimized_radii": 14,
+          "dexm_optimized_candidates": 0,
+          "dexm_radius_searches": 14,
+          "dexm_candidates": 0,
+          "dexm_optimized_accepted": 0,
+          "dexm_accepted": 0,
+          "dexm_empty_property_catalogs": 1,
+          "dexm_empty_overlap_grids": 1
+        },
+        "different_by_field": {
+          "masses": 0,
+          "coordinates": 0,
+          "overlap": 0,
+          "star_rng": 0,
+          "sfr_rng": 0,
+          "xray_rng": 0
+        }
+      }
+    ]
+  },
+  "direct_dexm_esf": {
+    "archive": "../lagrange-smoke.RDTGp5/DEXM-ESF",
+    "native_job": "490450",
+    "job": "490544",
+    "catalogs": [
+      {
+        "z": 6.0,
+        "n": 98,
+        "star_rng": "3ed89022ba31943c53564b35b62fdaa8bfe1e2a4c10793666191cd35c7dc4bc0",
+        "sfr_rng": "4f1b8dcabf79c8fa6dea6a4cbfc2c46b35b3b24b27220d929b282869bffd1bd1",
+        "xray_rng": "a4ece8b89e14f7d793b99a8b35a8aa3be1a3c1286d2785598d7152c1016f2735",
+        "halo_masses": "5d066ef30e2589fe2643d197d3e11ade0e57e770697e740eb0c29a0941605387",
+        "halo_coords": "7a32bbbceaddf721f96788c5f638b598e5a07cdb20aa0400b890fbe35bdee36c"
+      },
+      {
+        "z": 6.25,
+        "n": 77,
+        "star_rng": "16bdcdc3f8d20aa377c463fe5126d88712c4a4949d203ac04fda7a37852efdb8",
+        "sfr_rng": "dfce4571430ea92887f50d51ea2e26daaaaa9c0cd5d744921f0fa5d9cb67009b",
+        "xray_rng": "33de77c73d8dc911570ad6b8a055dcf356b60c7a4af988be90aa7a6fc973f1e0",
+        "halo_masses": "86e44b3652b7ae73e7bc9cff1da6d0a0224f5d1da60d900375297b48281dd6a4",
+        "halo_coords": "7553129d06d513d51232ac4dad7e4c5d64d49bdc58815d646e404676663fcdf4"
+      }
+    ],
+    "routing": {
+      "halo_grid_positions": 0,
+      "halo_progenitor_positions": 0,
+      "halo_conditional_number_tables": 0,
+      "halo_inverse_cdf_rows": 0,
+      "halo_inverse_cdf_possible_rows": 0,
+      "dexm_density_forward_fft": 2,
+      "dexm_ordinary_radii": 53,
+      "dexm_ordinary_candidates": 1350,
+      "dexm_radius_searches": 53,
+      "dexm_candidates": 1350,
+      "dexm_ordinary_accepted": 175,
+      "dexm_accepted": 175,
+      "dexm_property_rng_halos": 175
+    }
+  },
+  "initial_conditions": {
+    "job": "490544",
+    "cases": [
+      {
+        "seed": 4294967296,
+        "threads": 1,
+        "fields": {
+          "lowres_density": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_density": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vx_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vy_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vz_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          }
+        }
+      },
+      {
+        "seed": 4294967296,
+        "threads": 2,
+        "fields": {
+          "lowres_density": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_density": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vx_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vy_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vz_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          }
+        }
+      },
+      {
+        "seed": 37251,
+        "threads": 1,
+        "fields": {
+          "lowres_density": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_density": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vx_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vy_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vz_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          }
+        }
+      },
+      {
+        "seed": 37251,
+        "threads": 2,
+        "fields": {
+          "lowres_density": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_density": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vx_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vy_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "lowres_vz_2LPT": {
+            "n": 4096,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vx_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vy_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          },
+          "hires_vz_2LPT": {
+            "n": 32768,
+            "different": 0,
+            "max_abs": 0.0,
+            "outside": 0
+          }
+        }
+      }
+    ]
+  }
+}

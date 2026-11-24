@@ -1,0 +1,245 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "gpu": "NVIDIA RTX A6000, a9",
+  "implementation": {
+    "scatter": "For four fine cells per coarse cell along each axis, use the v3 per-displacement tiling strategy with the native 4.3.2 integer origin, nearest periodic displacement index and double weights. Accumulate contribution counts for the existing float-rounding bound. Other grid ratios use the original particle scatter.",
+    "repair": "Threads search the periodic candidate neighborhood together. A single lane adds accepted double contributions in increasing native particle order. For a one-cell grid the existing serial path collects all eight aliased corners."
+  },
+  "checksums": {
+    "v4/cic_ordered.py": "3b72fc8dcf318bb7e214fb096233c45973b54b06b88d07c542a23d7f4532a7e4",
+    "v4/cic_ordered.cu": "70a43e185e33750d96d80151a4e6a7e1415fc4b1312de34ce11ef502f83722a6"
+  },
+  "matched_case": {
+    "fine": 128,
+    "coarse": 32,
+    "box_Mpc": 100,
+    "z": 9.375,
+    "seed": 424242,
+    "same_IC_job": "490611",
+    "deposition_count": 16777216,
+    "repair_cells": 2
+  },
+  "timing": "Each CIC timer surrounds deposition, uncertainty detection and ordered replay, with a GPU synchronization before and after. The reported median excludes the first three of thirteen trials per implementation. This is a substage timing.",
+  "production_scatter_and_replay": {
+    "job": "490625",
+    "cases": [
+      {
+        "original": {
+          "median_ms": 11.388784972950816,
+          "min_ms": 9.897259995341301,
+          "repair_min": 2,
+          "repair_max": 2
+        },
+        "production": {
+          "median_ms": 0.9817274985834956,
+          "min_ms": 0.9427220793440938,
+          "repair_min": 2,
+          "repair_max": 2
+        },
+        "float32_different": 0,
+        "count_differences": 0,
+        "counts_sum": 16777216
+      },
+      {
+        "original": {
+          "median_ms": 0.3745535505004227,
+          "min_ms": 0.36219798494130373,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "production": {
+          "median_ms": 0.3008869825862348,
+          "min_ms": 0.285587040707469,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "float32_different": 0,
+        "count_differences": 0,
+        "counts_sum": 4096
+      },
+      {
+        "original": {
+          "median_ms": 0.2809264697134495,
+          "min_ms": 0.2765270182862878,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "production": {
+          "median_ms": 0.3252524766139686,
+          "min_ms": 0.2786670811474323,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "float32_different": 0,
+        "count_differences": 0,
+        "counts_sum": 110592
+      },
+      {
+        "original": {
+          "median_ms": 0.33263303339481354,
+          "min_ms": 0.31919695902615786,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "production": {
+          "median_ms": 0.37445349153131247,
+          "min_ms": 0.3545490326359868,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "float32_different": 0,
+        "count_differences": 0,
+        "counts_sum": 262144
+      },
+      {
+        "original": {
+          "median_ms": 0.3949444508180022,
+          "min_ms": 0.3868590574711561,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "production": {
+          "median_ms": 0.3930434468202293,
+          "min_ms": 0.38468895945698023,
+          "repair_min": 0,
+          "repair_max": 0
+        },
+        "float32_different": 0,
+        "count_differences": 0,
+        "counts_sum": 2097152
+      }
+    ]
+  },
+  "production_forced_double_replay": {
+    "job": "490625",
+    "results": [
+      {
+        "fine": 8,
+        "coarse": 2,
+        "first": 0.0,
+        "second": 0.0,
+        "two": true,
+        "values": 8,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 16,
+        "coarse": 4,
+        "first": 34.73,
+        "second": -17.0,
+        "two": true,
+        "values": 43,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 36,
+        "coarse": 12,
+        "first": -2.6,
+        "second": 0.89,
+        "two": false,
+        "values": 74,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 32,
+        "coarse": 16,
+        "first": 0.5,
+        "second": 1.2,
+        "two": true,
+        "values": 75,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 12,
+        "coarse": 12,
+        "first": 1.27,
+        "second": -1.61,
+        "two": true,
+        "values": 76,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 32,
+        "coarse": 8,
+        "first": 3.1,
+        "second": 5.9,
+        "two": true,
+        "values": 73,
+        "double_bit_differences": 0
+      },
+      {
+        "fine": 30,
+        "coarse": 8,
+        "first": 0.75,
+        "second": 0.0,
+        "two": false,
+        "values": 74,
+        "double_bit_differences": 0
+      }
+    ]
+  },
+  "intermediate_kernel_ablation": {
+    "original": {
+      "median_ms": 9.792574041057378,
+      "min_ms": 9.766587987542152,
+      "repair_min": 2,
+      "repair_max": 2
+    },
+    "tiled": {
+      "median_ms": 12.789583997800946,
+      "min_ms": 8.95555003080517,
+      "repair_min": 2,
+      "repair_max": 2
+    },
+    "cooperative": {
+      "median_ms": 1.5402204589918256,
+      "min_ms": 1.5150459948927164,
+      "repair_min": 2,
+      "repair_max": 2
+    },
+    "both": {
+      "median_ms": 1.0747050400823355,
+      "min_ms": 1.0510650463402271,
+      "repair_min": 2,
+      "repair_max": 2
+    },
+    "float32_different": 0,
+    "count_differences": 0,
+    "counts_sum": 16777216
+  },
+  "measured_modes": [
+    {
+      "kind": "archived physical node",
+      "fine": 128,
+      "coarse": 32
+    },
+    {
+      "kind": "synthetic",
+      "fine": 8,
+      "coarse": 2,
+      "two_lpt": true,
+      "first_shift": 2.5
+    },
+    {
+      "kind": "synthetic",
+      "fine": 24,
+      "coarse": 6,
+      "two_lpt": false,
+      "first_shift": 0.0
+    },
+    {
+      "kind": "synthetic",
+      "fine": 32,
+      "coarse": 8,
+      "two_lpt": true,
+      "first_shift": 7.1
+    },
+    {
+      "kind": "synthetic",
+      "fine": 64,
+      "coarse": 16,
+      "two_lpt": false,
+      "first_shift": 29.3
+    }
+  ]
+}

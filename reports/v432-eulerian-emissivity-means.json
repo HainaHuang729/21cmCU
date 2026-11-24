@@ -1,0 +1,304 @@
+{
+  "job": "490541",
+  "device": "NVIDIA RTX A6000",
+  "cases": {
+    "constant-thermal": {
+      "baseline": "saved native EmissivityFields",
+      "redshift": 8.7,
+      "threads": 1,
+      "min_density": -0.6188116669654846,
+      "fields": {
+        "sfrd_acg": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            1.1419422226750614e-21,
+            2.646452834653701e-08
+          ],
+          "failed_strict": 0
+        },
+        "xray_emissivity": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            1.1395643109701759e-11,
+            264.09417724609375
+          ],
+          "failed_strict": 0
+        },
+        "n_ion": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.001378676388412714,
+            45.09980010986328
+          ],
+          "failed_strict": 0
+        }
+      },
+      "stages": {
+        "emission": 1,
+        "source_table": 2,
+        "sigma_moments": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 3,
+        "emissivity_global_source_integrals": 1,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "constant-cold": {
+      "baseline": "saved native EmissivityFields",
+      "redshift": 8.7,
+      "threads": 1,
+      "min_density": -0.6188116669654846,
+      "fields": {
+        "n_ion": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.001378676388412714,
+            45.09980010986328
+          ],
+          "failed_strict": 0
+        }
+      },
+      "stages": {
+        "emission": 1,
+        "source_table": 1,
+        "sigma_moments": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 3,
+        "emissivity_global_source_integrals": 1,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "e-integral": {
+      "baseline": "native compute_emissivity_fields on saved density",
+      "redshift": 8.7,
+      "threads": 2,
+      "min_density": -0.6188116669654846,
+      "fields": {
+        "sfrd_acg": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            1.0045593236375147e-13,
+            1.4190767672062066e-07
+          ],
+          "failed_strict": 0
+        },
+        "xray_emissivity": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0010024674702435732,
+            1416.1217041015625
+          ],
+          "failed_strict": 0
+        },
+        "n_ion": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0023604577872902155,
+            23.61039161682129
+          ],
+          "failed_strict": 0
+        }
+      },
+      "stages": {
+        "emission": 1,
+        "source_table": 2,
+        "sigma_moments": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 1,
+        "emissivity_global_source_integrals": 1,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "constant-density-floor": {
+      "baseline": "native compute_emissivity_fields on saved density",
+      "redshift": 8.7,
+      "threads": 1,
+      "min_density": -1.0,
+      "fields": {
+        "sfrd_acg": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0,
+            2.6458350177449574e-08
+          ],
+          "failed_strict": 0
+        },
+        "xray_emissivity": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0,
+            264.03253173828125
+          ],
+          "failed_strict": 0
+        },
+        "n_ion": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            5.328716360963881e-05,
+            45.1014518737793
+          ],
+          "failed_strict": 0
+        }
+      },
+      "stages": {
+        "emission": 1,
+        "source_table": 2,
+        "sigma_moments": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 3,
+        "emissivity_global_source_integrals": 1,
+        "emissivity_mean_normalization": 1
+      }
+    },
+    "e-integral-audit": {
+      "baseline": "native compute_emissivity_fields on saved density",
+      "redshift": 8.7,
+      "threads": 2,
+      "min_density": -0.6188116669654846,
+      "fields": {
+        "sfrd_acg": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            1.0045593236375147e-13,
+            1.4190767672062066e-07
+          ],
+          "failed_strict": 0
+        },
+        "xray_emissivity": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0010024674702435732,
+            1416.1217041015625
+          ],
+          "failed_strict": 0
+        },
+        "n_ion": {
+          "count": 4096,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_over_peak": 0.0,
+          "range": [
+            0.0023604577872902155,
+            23.61039161682129
+          ],
+          "failed_strict": 0
+        }
+      },
+      "stages": {
+        "emission": 1,
+        "source_table": 2,
+        "sigma_moments": 2,
+        "eh_constants": 1,
+        "scalar_sigma": 1,
+        "emissivity_global_source_integrals": 1,
+        "emissivity_mean_normalization": 0
+      }
+    }
+  },
+  "passed": true,
+  "seed": 812445,
+  "box_mpc": 24.0,
+  "grid": [
+    32,
+    16
+  ],
+  "performance": {
+    "job": "490547",
+    "density": "Periodic tiles of the same saved native 16^3 density at z=8.7, with original cell size and active radiative fields",
+    "timing": "Wall time from completed conditional-table setup through mapped and mean-fixed arrays in host output; includes scalar global QAG, launches, transfers, and cleanup. 1 warmup and 7 timed independent field calls per route, one CPU thread. No initial fields, perturbation or lightcone recomputed.",
+    "cases": {
+      "64": {
+        "old_gpu_map_native_means_seconds": [
+          0.0037793279625475407,
+          0.003685035975649953,
+          0.004362676991149783,
+          0.0035559519892558455,
+          0.0034488479141145945,
+          0.003642083960585296,
+          0.003658334957435727
+        ],
+        "old_gpu_map_native_means_median": 0.003658334957435727,
+        "resident_gpu_map_and_means_seconds": [
+          0.0015162269119173288,
+          0.0014911170583218336,
+          0.0015532990219071507,
+          0.0015481279697269201,
+          0.0015502979513257742,
+          0.001515067066065967,
+          0.0015332780312746763
+        ],
+        "resident_gpu_map_and_means_median": 0.0015332780312746763,
+        "different_sites": {
+          "sfrd_acg": 0,
+          "xray_emissivity": 0,
+          "n_ion": 0
+        },
+        "speedup": 2.385956677664262
+      },
+      "96": {
+        "old_gpu_map_native_means_seconds": [
+          0.010089984978549182,
+          0.011807237984612584,
+          0.011505617992952466,
+          0.011384664918296039,
+          0.010084973997436464,
+          0.02572461194358766,
+          0.011635233066044748
+        ],
+        "old_gpu_map_native_means_median": 0.011505617992952466,
+        "resident_gpu_map_and_means_seconds": [
+          0.0027542560128495097,
+          0.0027564259944483638,
+          0.0029269810765981674,
+          0.002991353045217693,
+          0.0030778159853070974,
+          0.003170698997564614,
+          0.005460690939798951
+        ],
+        "resident_gpu_map_and_means_median": 0.002991353045217693,
+        "different_sites": {
+          "sfrd_acg": 0,
+          "xray_emissivity": 0,
+          "n_ion": 0
+        },
+        "speedup": 3.846292235998896
+      }
+    }
+  }
+}

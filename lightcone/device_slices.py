@@ -4,21 +4,64 @@ import cupy as cp
 import numpy as np
 
 
+_weighted_value = """
+template<typename F, typename W>
+__device__ W distance_mix(F a, F b, W u, W v, W denom, int mean_max) {
+    if (mean_max && a * b < 0) return a > b ? a : b;
+    return (u * a + v * b) / denom;
+}
+"""
+
+
+interpolate_values = cp.ElementwiseKernel(
+    "F a, F b, W u, W v, W denom, int32 mean_max",
+    "W y",
+    "y = distance_mix(a, b, u, v, denom, mean_max);",
+    "interpolate_lightcone_values",
+    preamble=_weighted_value,
+    options=("--fmad=false",),
+)
+
+
+# F preserves the coeval field precision in the mean_max sign test. W determines
+# the precision of the distance-weighted sum (v3 float, v4 Astropy result type).
+_interpolate = cp.ElementwiseKernel(
+    "raw F a, raw F b, raw int32 k, raw W u, raw W v, "
+    "int32 depth, int32 count, W denom, int32 mean_max",
+    "W y",
+    """int s = i % count;
+    long j = (i / count) * depth + k[s];
+    F x1 = a[j], x2 = b[j];
+    y = distance_mix(x1, x2, u[s], v[s], denom, mean_max);""",
+    "interpolate_device_slice",
+    preamble=_weighted_value,
+    options=("--fmad=false",),
+)
+
+
+def interpolate_slices(a, b, k, u, v, denom, mean_max):
+    """Interpolate matching device grids at periodic LOS indices prepared by the caller."""
+    nx, ny, depth = a.shape
+    slab = _interpolate(
+        cp.ascontiguousarray(a),
+        cp.ascontiguousarray(b),
+        k,
+        u,
+        v,
+        np.int32(depth),
+        np.int32(k.size),
+        u.dtype.type(denom),
+        np.int32(mean_max),
+        size=nx * ny * k.size,
+    )
+    return slab.reshape(nx, ny, k.size)
+
+
 class DeviceSlices:
     def __init__(self, runtime):
         self.runtime = runtime
         self.previous = {}
         self.calls = 0
-        self.kernel = cp.ElementwiseKernel(
-            "raw float32 a, raw float32 b, raw int32 k, raw float32 u, raw float32 v, "
-            "int32 side, int32 count, float32 denom, int32 mean_max",
-            "float32 y",
-            """int s=i%count; long j=(i/count)*side+k[s];
-            float x1=a[j], x2=b[j];
-            y = mean_max && x1*x2<0 ? fmaxf(x1,x2) : (u[s]*x1+v[s]*x2)/denom;""",
-            "interpolate_device_slice",
-            options=("--fmad=false",),
-        )
 
     def field(self, name, host):
         addr = host.ctypes.data
@@ -46,24 +89,19 @@ class DeviceSlices:
             cp.asarray(v, dtype=cp.float32),
         )
         for name, (a, b, output, mean_max) in zip(names, arrays):
-            side = a.shape[0]
             current = self.field(name, a)
             entry = self.previous.get(name)
             prior = (
                 entry[1] if entry is not None and entry[0] is b else self.field(name, b)
             )
-            slab = self.kernel(
-                current,
-                prior,
+            output[..., indices] = interpolate_slices(
+                current.reshape(a.shape),
+                prior.reshape(b.shape),
                 k,
                 u,
                 v,
-                np.int32(side),
-                np.int32(len(k)),
-                np.float32(denom),
-                np.int32(mean_max),
-                size=side * side * len(k),
-            )
-            output[..., indices] = slab.reshape(side, side, -1).get()
+                denom,
+                mean_max,
+            ).get()
             self.previous[name] = (a, current)
         self.calls += 1

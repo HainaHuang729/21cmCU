@@ -171,7 +171,7 @@ class Compiler:
         return self.function(
             f"""
             const float *c={chirp};
-            float t[{2*nb}]={{}}, v[{2*nb}], h[{2*nb}];
+            float t[{2 * nb}]={{}}, v[{2 * nb}], h[{2 * nb}];
             for(int k=0;k<{n};++k){{
                 t[2*k]=c[2*k]/{nb}.0f; t[2*k+1]=c[2*k+1]/{nb}.0f;
                 if(k)paircopy(t+2*({nb}-k),t+2*k);
@@ -181,7 +181,7 @@ class Compiler:
                 float xr=a[2*k+{x}],xi=a[2*k+{y}],wr=c[2*k],wi=c[2*k+1];
                 t[2*k]=xr*wr+xi*wi; t[2*k+1]=xi*wr-xr*wi;
             }}
-            for(int k={2*n};k<{2*nb};++k)t[k]=0;
+            for(int k={2 * n};k<{2 * nb};++k)t[k]=0;
             {child}(t,v,w);
             for(int k=0;k<{nb};++k){{
                 float xr=v[2*k],xi=v[2*k+1],wr=h[2*k],wi=h[2*k+1];
@@ -222,11 +222,11 @@ class Compiler:
             float t[{pad}]={{}},v[{pad}],h[{pad}];
             for(int k=0;k<{pad};++k)t[k]=w[{offset}+k];
             {omega}(t,h,w);
-            for(int k=0,j=1;k<{n-1};++k,j=(long long)j*{g}%{n})t[k]=a[j];
-            for(int k={n-1};k<{pad};++k)t[k]=0;
+            for(int k=0,j=1;k<{n - 1};++k,j=(long long)j*{g}%{n})t[k]=a[j];
+            for(int k={n - 1};k<{pad};++k)t[k]=0;
             {first}(t,v,w);
-            b[0]=a[0]+v[0];t[0]=v[0]*h[0]+a[0];t[{pad//2}]=v[{pad//2}]*h[{pad//2}];
-            for(int k=1;k<{pad//2};++k){{
+            b[0]=a[0]+v[0];t[0]=v[0]*h[0]+a[0];t[{pad // 2}]=v[{pad // 2}]*h[{pad // 2}];
+            for(int k=1;k<{pad // 2};++k){{
                 float re=h[k]*v[k]-h[{pad}-k]*v[{pad}-k];
                 float im=h[k]*v[{pad}-k]+h[{pad}-k]*v[k];
                 t[k]=re+im;t[{pad}-k]=re-im;
@@ -239,7 +239,7 @@ class Compiler:
         )
         return self.function(
             prepare
-            + f"for(int k=1,j={gi};k<{n-1};++k,j=(long long)j*{gi}%{n}) b[j]={value};"
+            + f"for(int k=1,j={gi};k<{n - 1};++k,j=(long long)j*{gi}%{n}) b[j]={value};"
         )
 
     def halfcomplex(self, node, n):
@@ -268,10 +268,10 @@ class Compiler:
             # Imaginary index zero is unused. Allocate its dummy slot inside scratch.
             return self.function(
                 f"""
-                float h[{n+1}]; float *r={real};
-                {'for(int k=0;k<'+str(n)+';++k) h[k]=a[k];' if self.inverse else ''}
+                float h[{n + 1}]; float *r={real};
+                {"for(int k=0;k<" + str(n) + ";++k) h[k]=a[k];" if self.inverse else ""}
                 {fn}(r,r+1,h,h+{n},2,1,-1,1,0,0);
-                {'' if self.inverse else 'for(int k=0;k<'+str(n)+';++k) b[k]=h[k];'}"""
+                {"" if self.inverse else "for(int k=0;k<" + str(n) + ";++k) b[k]=h[k];"}"""
             )
         if node.op.startswith("rdft-generic-") and n % 2:
             m = n // 2
@@ -287,7 +287,7 @@ class Compiler:
             )
             return self.function(
                 f"""
-                float xr[{m+1}],xi[{m+1}]; float dc=a[0];
+                float xr[{m + 1}],xi[{m + 1}]; float dc=a[0];
                 for(int k=1;k<={m};++k){{xr[k]={real};xi[k]={imag};dc+=xr[k];}}
                 b[0]=dc;
                 for(int j=1;j<={m};++j){{float rr=a[0],ii=0;
@@ -319,13 +319,13 @@ class Compiler:
                 for(int k=0;k<{r};++k)x[k]=t[k*{m}];
                 {base}(x,y,w);
                 for(int k=0;k<{r};++k)t[k*{m}]=y[k];
-                {fn}(t+1,t+{m-1},{weights},{m},1,{(m+1)//2},1);"""
+                {fn}(t+1,t+{m - 1},{weights},{m},1,{(m + 1) // 2},1);"""
         if not generic and m % 2 == 0:
             midfn = self.leaf(mid, rf"r2c{'bIII' if self.inverse else 'fII'}_{r}")
             special += f"""
-                for(int j=0;j<{r};++j)x[j]=t[{m//2}+{m}*j];
-                {midfn}({'y,y+1,x,x' if self.inverse else 'x,x+1,y,y'}+{r-1},2,1,-1,1,0,0);
-                for(int j=0;j<{r};++j)t[{m//2}+{m}*j]=y[j];"""
+                for(int j=0;j<{r};++j)x[j]=t[{m // 2}+{m}*j];
+                {midfn}({"y,y+1,x,x" if self.inverse else "x,x+1,y,y"}+{r - 1},2,1,-1,1,0,0);
+                for(int j=0;j<{r};++j)t[{m // 2}+{m}*j]=y[j];"""
         if self.inverse:
             body = f"""
                 for(int k=0;k<{n};++k)t[k]=a[k];
@@ -342,7 +342,7 @@ class Compiler:
                 }}
                 {special}
                 for(int k=0;k<{n};++k)b[k]=t[k];"""
-        return self.function(f"float t[{n}],x[{max(r,m)}],y[{max(r,m)}];" + body)
+        return self.function(f"float t[{n}],x[{max(r, m)}],y[{max(r, m)}];" + body)
 
     def generic_complex(self, n):
         half = n // 2
@@ -392,8 +392,8 @@ class Compiler:
         y = 1 - x
         return self.function(
             f"""
-            float t[{2*m}],v[{2*m}],h[{2*m}];
-            for(int k=0;k<{2*m};++k)t[k]=w[{offset}+k];
+            float t[{2 * m}],v[{2 * m}],h[{2 * m}];
+            for(int k=0;k<{2 * m};++k)t[k]=w[{offset}+k];
             {omega}(t,h,w);
             for(int k=0,j=1;k<{m};++k,j=(long long)j*{g}%{n}){{
                 t[2*k]=a[2*j+{x}];t[2*k+1]=a[2*j+{y}];
@@ -422,7 +422,7 @@ class Compiler:
         twiddle = f"""
             for(int k=1;k<{r};++k)for(int j=1;2*j<{m};++j){{
                 float *p=t+{m}*k;int a={m}-j;
-                const float *w2={h}+2*(k*{m//2}+j-1);
+                const float *w2={h}+2*(k*{m // 2}+j-1);
                 float xr=p[j],xi=p[a],wr=w2[0],wi={sign}*w2[1];
                 p[j]=xr*wr-xi*wi;p[a]=xi*wr+xr*wi;
             }}"""
@@ -471,15 +471,15 @@ class Compiler:
             }}"""
         along = f"""
             for(int j=0;j<{r};++j){{
-                {line}(t+{2*m}*j,y,w);
-                for(int k=0;k<{2*m};++k)t[{2*m}*j+k]=y[k];
+                {line}(t+{2 * m}*j,y,w);
+                for(int k=0;k<{2 * m};++k)t[{2 * m}*j+k]=y[k];
             }}"""
         order = (along + rotate + across) if dit else (across + rotate + along)
         inp = f"k*{r}+j" if dit else f"j*{m}+k"
         out = f"j*{m}+k" if dit else f"k*{r}+j"
         return self.function(
             f"""
-            float t[{2*n}],x[{2*max(m,r)}],y[{2*max(m,r)}];
+            float t[{2 * n}],x[{2 * max(m, r)}],y[{2 * max(m, r)}];
             for(int j=0;j<{r};++j)for(int k=0;k<{m};++k)paircopy(t+2*(j*{m}+k),a+2*({inp}));
             {order}
             for(int j=0;j<{r};++j)for(int k=0;k<{m};++k)paircopy(b+2*({out}),t+2*(j*{m}+k));"""
@@ -498,7 +498,9 @@ class Compiler:
             if node.code == f"n1_{n}":
                 fn = self.leaf(node, rf"n1_{n}")
                 k = int(self.inverse)
-                return self.function(f"{fn}(a+{k},a+{1-k},b+{k},b+{1-k},2,2,1,0,0);")
+                return self.function(
+                    f"{fn}(a+{k},a+{1 - k},b+{k},b+{1 - k},2,2,1,0,0);"
+                )
             fn = self.leaf(node, rf"n[12]{d}v_{n}_sse2")
             return self.function(f"{fn}(a,a,b,b,2,2,1,0,0);")
         if not node.op.startswith(("dft-ct-dit/", "dft-ct-dif/")):
@@ -516,24 +518,24 @@ class Compiler:
             harmonics = codelet_catalog()[1][fn]
             w = self.coefficients(np.arange(m)[:, None] * harmonics, n)
             body = f"""
-            float x[{2*m}], y[{2*m}];
+            float x[{2 * m}], y[{2 * m}];
             for(int j=0;j<{r};++j){{
                 for(int k=0;k<{m};++k) paircopy(x+2*k,a+2*(j+k*{r}));
                 {sub}(x,y,w);
                 for(int k=0;k<{m};++k) paircopy(b+2*(j*{m}+k),y+2*k);
             }}
-            {fn}(b,b,{w},{2*m},0,{m},2);"""
+            {fn}(b,b,{w},{2 * m},0,{m},2);"""
         else:
             w = self.twiddle(n, r, 0)
             fn = self.leaf(tw, rf"q1{d}v_{r}_sse2")
             # A square DIF codelet transposes r transforms. Populate one independent
             # transform and extract its transposed column, one frequency at a time.
             body = f"""
-            float tile[{2*r*r}], tmp[{2*n}], x[{2*m}], y[{2*m}];
+            float tile[{2 * r * r}], tmp[{2 * n}], x[{2 * m}], y[{2 * m}];
             for(int k=0;k<{m};++k){{
-                for(int i=0;i<{2*r*r};++i) tile[i]=0;
-                for(int j=0;j<{r};++j) paircopy(tile+{2*r}*j,a+2*(j*{m}+k));
-                {fn}(tile,tile,{w}+k*{2*(r-1)},{2*r},2,0,1,2);
+                for(int i=0;i<{2 * r * r};++i) tile[i]=0;
+                for(int j=0;j<{r};++j) paircopy(tile+{2 * r}*j,a+2*(j*{m}+k));
+                {fn}(tile,tile,{w}+k*{2 * (r - 1)},{2 * r},2,0,1,2);
                 for(int j=0;j<{r};++j) paircopy(tmp+2*(j*{m}+k),tile+2*j);
             }}
             for(int j=0;j<{r};++j){{
@@ -544,7 +546,7 @@ class Compiler:
         if node.op.startswith("dft-ct-dit/") and fn[2] != d:
             # FFTW can bind the SIMD combine to a physically swapped complex pair.
             swap = f"for(int k=0;k<{n};++k){{float tmp=b[2*k];b[2*k]=b[2*k+1];b[2*k+1]=tmp;}}"
-            combine = f"{fn}(b,b,{w},{2*m},0,{m},2);"
+            combine = f"{fn}(b,b,{w},{2 * m},0,{m},2);"
             body = body.replace(combine, swap + combine + swap)
         return self.function(body)
 
@@ -560,19 +562,19 @@ class Compiler:
                 else f"{fn}(a,a+1,b,b+1,2,2,2,1,0,0); b[1]=0;"
             )
             if not self.inverse and n % 2 == 0:
-                call += f" b[{n+1}]=0;"
+                call += f" b[{n + 1}]=0;"
             return self.function(call)
         if node.op.startswith("rdft2-rdft-") and node.children[1].op == "rdft2-nop":
             sub = self.halfcomplex(node.children[0], n)
             if self.inverse:
                 body = f"float h[{n}];h[0]=a[0];for(int k=1;2*k<{n};++k){{h[k]=a[2*k];h[{n}-k]=a[2*k+1];}}"
                 if n % 2 == 0:
-                    body += f"h[{n//2}]=a[{n}];"
+                    body += f"h[{n // 2}]=a[{n}];"
                 body += f"{sub}(h,b,w);"
             else:
                 body = f"float h[{n}];{sub}(a,h,w);b[0]=h[0];b[1]=0;for(int k=1;2*k<{n};++k){{b[2*k]=h[k];b[2*k+1]=h[{n}-k];}}"
                 if n % 2 == 0:
-                    body += f"b[{n}]=h[{n//2}];b[{n+1}]=0;"
+                    body += f"b[{n}]=h[{n // 2}];b[{n + 1}]=0;"
             return self.function(body)
         if not node.op.startswith(("rdft2-ct-dit/", "rdft2-ct-dif/")):
             raise UnsupportedPlan(node.op)
@@ -587,36 +589,32 @@ class Compiler:
         base = self.real(zero, r)
         # Repack the strided DC column for the child real transform.
         special = f"""
-        float x[{max(r+2,2*m)}], y[{max(r+2,2*m)}];
-        for(int j=0;j<{(r//2+1) if self.inverse else r//2};++j) paircopy(x+2*j,t+{2*m}*j);
+        float x[{max(r + 2, 2 * m)}], y[{max(r + 2, 2 * m)}];
+        for(int j=0;j<{(r // 2 + 1) if self.inverse else r // 2};++j) paircopy(x+2*j,t+{2 * m}*j);
         {base}(x,y,w);
-        for(int j=0;j<{r//2 if self.inverse else (r//2+1)};++j) paircopy(t+{2*m}*j,y+2*j);
+        for(int j=0;j<{r // 2 if self.inverse else (r // 2 + 1)};++j) paircopy(t+{2 * m}*j,y+2*j);
         """
         w = self.twiddle(n, r, 1)
-        special += (
-            f"{butterfly}(t+2,t+3,t+{2*(m-1)},t+{2*(m-1)+1},{w},{2*m},1,{(m+1)//2},2);"
-        )
+        special += f"{butterfly}(t+2,t+3,t+{2 * (m - 1)},t+{2 * (m - 1) + 1},{w},{2 * m},1,{(m + 1) // 2},2);"
         if m % 2 == 0:
             midfn = self.leaf(mid, rf"r2c{'bIII' if self.inverse else 'fII'}_{r}")
-            special += (
-                f"{{ float *h=t+{m}; {midfn}(h,h+1,h,h+1,{2*m},{2*m},{2*m},1,0,0); }}"
-            )
+            special += f"{{ float *h=t+{m}; {midfn}(h,h+1,h,h+1,{2 * m},{2 * m},{2 * m},1,0,0); }}"
         if self.inverse:
             body = f"""float t[{packed}]; for(int i=0;i<{packed};++i)t[i]=a[i];
             {special}
-            for(int j=0;j<{r//2};++j){{
-                {sub}(t+{2*m}*j,y,w);
+            for(int j=0;j<{r // 2};++j){{
+                {sub}(t+{2 * m}*j,y,w);
                 for(int k=0;k<{m};++k)paircopy(b+{r}*k+2*j,y+2*k);
             }}"""
         else:
             body = f"""float *t=b;
-            for(int j=0;j<{r//2};++j){{
-                float input[{2*m}];
+            for(int j=0;j<{r // 2};++j){{
+                float input[{2 * m}];
                 for(int k=0;k<{m};++k)paircopy(input+2*k,a+{r}*k+2*j);
-                {sub}(input,t+{2*m}*j,w);
+                {sub}(input,t+{2 * m}*j,w);
             }}
             {special}
-            t[1]=t[{n+1}]=0;"""
+            t[1]=t[{n + 1}]=0;"""
         return self.function(body)
 
     def build(self, tree, n):

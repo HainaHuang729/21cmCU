@@ -1,0 +1,719 @@
+{
+  "gpu": "RTX A6000",
+  "cpu_reference": {
+    "source_model": "CHMF-SAMPLER",
+    "thermal": true,
+    "seed": 81033,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "nthreads": 1,
+    "nodes": [
+      10.0,
+      9.7
+    ],
+    "bounds": [
+      9.73,
+      9.92
+    ],
+    "integration_method": "GSL-QAG",
+    "mode": "cpu",
+    "host": "a9",
+    "job": "490575",
+    "version": "4.3.2",
+    "elapsed_seconds": 15.620647269068286,
+    "catalogs": [
+      {
+        "z": 9.7,
+        "n": 38321,
+        "halo_coords": "4d5d05d059d3076b8a1850704a015d15fac558f0f4d04bf4a2dfe21e10a22d80",
+        "halo_masses": "69a2019d61a10774cb45ce954b9e6e9eaaab307afef3693ec68bc44daeebb52e",
+        "star_rng": "f3cd8b9a8d13aae7d89bb6b951ac376a7b13171915fedb6e05f837ac65e18d31",
+        "sfr_rng": "4a91365020e84be8637df3b527e28efda3bdbcc90ab18af204d800bb9d2c2b0e",
+        "xray_rng": "601539ed8d704efeab3fbcd1486ac830cd6116995a7c1d067c9196be427c70e5"
+      },
+      {
+        "z": 10.0,
+        "n": 34371,
+        "halo_coords": "d7ad860ba0ad75be9b149f468f2f52274d7edc2f008eebc4b97360531b3b452d",
+        "halo_masses": "b36ff493cbce48d6e1f36a9966ddf14985c12fa8571f508750378aba33cb6bbb",
+        "star_rng": "b8dd41c58812df542eaf1c1ead8e559d1152e7890af5070a919851e1e8f847a7",
+        "sfr_rng": "642d9e86b4ba560b6839ac6d941a02f8d2575ddf3483350fbdf0fc159a8866da",
+        "xray_rng": "6bf3c037f4444dfe4fcaa16ef2d0085d27eb606ec34a51a93b19d197c2250a0e"
+      }
+    ],
+    "fields_requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion",
+      "spin_temperature",
+      "kinetic_temp_neutral",
+      "xray_ionised_fraction",
+      "cumulative_recombinations",
+      "xray_emissivity",
+      "sfrd_acg"
+    ],
+    "slice_count": 30,
+    "slice_bounds": [
+      9.730000000000537,
+      9.925517402001015
+    ]
+  },
+  "gpu_run": {
+    "source_model": "CHMF-SAMPLER",
+    "thermal": true,
+    "seed": 81033,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "nthreads": 1,
+    "nodes": [
+      10.0,
+      9.7
+    ],
+    "bounds": [
+      9.73,
+      9.92
+    ],
+    "integration_method": "GSL-QAG",
+    "mode": "gpu",
+    "host": "a9",
+    "job": "490630",
+    "version": "4.3.2",
+    "elapsed_seconds": 7.2808472090400755,
+    "catalogs": [
+      {
+        "z": 9.7,
+        "n": 38321,
+        "halo_coords": "4d5d05d059d3076b8a1850704a015d15fac558f0f4d04bf4a2dfe21e10a22d80",
+        "halo_masses": "69a2019d61a10774cb45ce954b9e6e9eaaab307afef3693ec68bc44daeebb52e",
+        "star_rng": "f3cd8b9a8d13aae7d89bb6b951ac376a7b13171915fedb6e05f837ac65e18d31",
+        "sfr_rng": "4a91365020e84be8637df3b527e28efda3bdbcc90ab18af204d800bb9d2c2b0e",
+        "xray_rng": "601539ed8d704efeab3fbcd1486ac830cd6116995a7c1d067c9196be427c70e5"
+      },
+      {
+        "z": 10.0,
+        "n": 34371,
+        "halo_coords": "d7ad860ba0ad75be9b149f468f2f52274d7edc2f008eebc4b97360531b3b452d",
+        "halo_masses": "b36ff493cbce48d6e1f36a9966ddf14985c12fa8571f508750378aba33cb6bbb",
+        "star_rng": "b8dd41c58812df542eaf1c1ead8e559d1152e7890af5070a919851e1e8f847a7",
+        "sfr_rng": "642d9e86b4ba560b6839ac6d941a02f8d2575ddf3483350fbdf0fc159a8866da",
+        "xray_rng": "6bf3c037f4444dfe4fcaa16ef2d0085d27eb606ec34a51a93b19d197c2250a0e"
+      }
+    ],
+    "fields_requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion",
+      "spin_temperature",
+      "kinetic_temp_neutral",
+      "xray_ionised_fraction",
+      "cumulative_recombinations",
+      "xray_emissivity",
+      "sfrd_acg"
+    ],
+    "slice_count": 30,
+    "slice_bounds": [
+      9.730000000000537,
+      9.925517402001015
+    ],
+    "routing": {
+      "source_model": "CHMF-SAMPLER",
+      "native_stages": [
+        "source scaling constants and redshift-dependent prefactors",
+        "lightcone distances and shell selection",
+        "GSL inverse-CDF roots, mass draws and merger decisions",
+        "GSL uniform draws and polar rejection for CHMF properties; scalar libm check at ambiguous float rounding"
+      ],
+      "counters": {
+        "halo_grid_positions": 38321,
+        "halo_progenitor_positions": 34371,
+        "halo_grid_property_gaussians": 114963,
+        "halo_progenitor_property_gaussians": 103113,
+        "halo_property_host_roundings": 1,
+        "halo_property_batches": 36,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 233,
+        "halo_inverse_cdf_possible_rows": 400,
+        "halo_grid_calls": 2,
+        "halo_grid_halos": 72692,
+        "halo_grid_empty": 0,
+        "subgrid_nion_tables": 2,
+        "subgrid_sfrd_tables": 2,
+        "subgrid_xray_tables": 2,
+        "gpu_eh_transfer": 1,
+        "gpu_power_normalization": 1,
+        "gpu_seed_and_modes": 1,
+        "gpu_sigma_mass_table": 1,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 11,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 11,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cdf_built_values": 46868,
+        "subgrid_advection_calls": 2,
+        "subgrid_advection_cells": 8192,
+        "subgrid_advection_input_bytes": 347576,
+        "subgrid_advection_output_bytes": 131080,
+        "subgrid_advection_seconds": 0.004224207019433379,
+        "thermal_initial_conditions": 1,
+        "ionization_mhr_table": 1,
+        "ionization_forward_fft": 8,
+        "ionization_radius_inverse_pair": 60,
+        "ionization_conditional_nion": 60,
+        "ionization_halo_barrier": 60,
+        "ionization_temperature": 2,
+        "ionization_cumulative_recombinations": 2,
+        "radiation_lyman_spectral_factors": 1,
+        "radiation_ionization_interpolation": 1,
+        "radiation_global_nion": 1,
+        "radiation_xray_optical_depth_and_frequency": 1,
+        "radiation_shell_filter": 56,
+        "radiation_shell_accumulation": 28,
+        "radiation_field_normalization": 1,
+        "thermal_constants": 1,
+        "thermal_update": 1,
+        "gpu_matter_perturbations": 2,
+        "gpu_brightness": 2
+      }
+    },
+    "reference_job": "490575",
+    "reference_elapsed_seconds": 15.620647269068286,
+    "coordinates_equal": true,
+    "inputs_equal": true,
+    "catalogs_equal": true,
+    "fields": {
+      "brightness_temp": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 7.62939453125e-06
+      },
+      "cumulative_recombinations": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "density": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "los_velocity": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "neutral_fraction": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "sfrd_acg": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "spin_temperature": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "tau_21": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "velocity_z": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_emissivity": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_ionised_fraction": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "global_quantities": {
+      "brightness_temp": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 7.62939453125e-06
+      },
+      "cumulative_recombinations": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.3283064365386963e-10
+      },
+      "density": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 4.656612873077393e-10
+      },
+      "fesc_weighted_sfrd": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 7.105427357601002e-15
+      },
+      "ionisation_rate_G12": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 5.820766091346741e-11
+      },
+      "kinetic_temp_neutral": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.384185791015625e-07
+      },
+      "kinetic_temperature": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.00048828125
+      },
+      "log10_mturn_acg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "log10_mturn_mcg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "mean_free_path": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09
+      },
+      "n_ion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.4901161193847656e-08
+      },
+      "neutral_fraction": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      },
+      "sfrd_acg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.3877787807814457e-17
+      },
+      "spin_temperature": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.9073486328125e-06
+      },
+      "tau_21": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 3.725290298461914e-09
+      },
+      "velocity_z": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 4.8467614016778965e-26
+      },
+      "xray_emissivity": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.9802322387695312e-08
+      },
+      "xray_ionised_fraction": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.9103830456733704e-11
+      },
+      "z_reion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "brightness_transverse_power": {
+      "unit": "mK^2 Mpc^2",
+      "k_unit": "Mpc^-1",
+      "k_mean": [
+        0.31601981632284,
+        0.5648004102572511,
+        0.7954108410141316,
+        1.0682798108135991,
+        1.3452138414952763,
+        1.595396102466962,
+        1.8486187843440371,
+        2.0276098204629176
+      ],
+      "modes_per_bin": [
+        8,
+        12,
+        16,
+        32,
+        28,
+        40,
+        40,
+        18
+      ],
+      "slices": 30,
+      "tested": 240,
+      "failed": 0,
+      "max_abs": 7.513334787745407e-05
+    },
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "missing_thermal_stages": [],
+    "passed": true
+  },
+  "timing": "Single public-driver timings on node a9 in separate allocations, excluding saving the lightcone. The GPU run reused the existing native HDF5 and CPU catalog digests for comparison.",
+  "criterion": "Each tested value has |GPU - CPU| <= 1e-8 + 1e-4 |CPU|. The five catalog arrays must also match SHA256 in original order at each epoch.",
+  "previous_gpu_run": {
+    "source_model": "CHMF-SAMPLER",
+    "thermal": true,
+    "seed": 81033,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "nthreads": 1,
+    "nodes": [
+      10.0,
+      9.7
+    ],
+    "bounds": [
+      9.73,
+      9.92
+    ],
+    "integration_method": "GSL-QAG",
+    "mode": "gpu",
+    "host": "a9",
+    "job": "490602",
+    "version": "4.3.2",
+    "elapsed_seconds": 10.492172753904015,
+    "catalogs": [
+      {
+        "z": 9.7,
+        "n": 38321,
+        "halo_coords": "4d5d05d059d3076b8a1850704a015d15fac558f0f4d04bf4a2dfe21e10a22d80",
+        "halo_masses": "69a2019d61a10774cb45ce954b9e6e9eaaab307afef3693ec68bc44daeebb52e",
+        "star_rng": "f3cd8b9a8d13aae7d89bb6b951ac376a7b13171915fedb6e05f837ac65e18d31",
+        "sfr_rng": "4a91365020e84be8637df3b527e28efda3bdbcc90ab18af204d800bb9d2c2b0e",
+        "xray_rng": "601539ed8d704efeab3fbcd1486ac830cd6116995a7c1d067c9196be427c70e5"
+      },
+      {
+        "z": 10.0,
+        "n": 34371,
+        "halo_coords": "d7ad860ba0ad75be9b149f468f2f52274d7edc2f008eebc4b97360531b3b452d",
+        "halo_masses": "b36ff493cbce48d6e1f36a9966ddf14985c12fa8571f508750378aba33cb6bbb",
+        "star_rng": "b8dd41c58812df542eaf1c1ead8e559d1152e7890af5070a919851e1e8f847a7",
+        "sfr_rng": "642d9e86b4ba560b6839ac6d941a02f8d2575ddf3483350fbdf0fc159a8866da",
+        "xray_rng": "6bf3c037f4444dfe4fcaa16ef2d0085d27eb606ec34a51a93b19d197c2250a0e"
+      }
+    ],
+    "fields_requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion",
+      "spin_temperature",
+      "kinetic_temp_neutral",
+      "xray_ionised_fraction",
+      "cumulative_recombinations",
+      "xray_emissivity",
+      "sfrd_acg"
+    ],
+    "slice_count": 30,
+    "slice_bounds": [
+      9.730000000000537,
+      9.925517402001015
+    ],
+    "reference_job": "490575",
+    "reference_elapsed_seconds": 15.620647269068286,
+    "coordinates_equal": true,
+    "inputs_equal": true,
+    "catalogs_equal": true,
+    "fields": {
+      "brightness_temp": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 7.62939453125e-06
+      },
+      "cumulative_recombinations": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "density": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temp_neutral": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "los_velocity": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "neutral_fraction": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "sfrd_acg": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "spin_temperature": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "tau_21": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "velocity_z": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_emissivity": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "xray_ionised_fraction": {
+        "tested": 7680,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "global_quantities": {
+      "brightness_temp": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 7.62939453125e-06
+      },
+      "cumulative_recombinations": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.3283064365386963e-10
+      },
+      "density": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 4.656612873077393e-10
+      },
+      "fesc_weighted_sfrd": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 7.105427357601002e-15
+      },
+      "ionisation_rate_G12": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 5.820766091346741e-11
+      },
+      "kinetic_temp_neutral": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.384185791015625e-07
+      },
+      "kinetic_temperature": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.00048828125
+      },
+      "log10_mturn_acg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "log10_mturn_mcg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "mean_free_path": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.862645149230957e-09
+      },
+      "n_ion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.4901161193847656e-08
+      },
+      "neutral_fraction": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      },
+      "sfrd_acg": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.3877787807814457e-17
+      },
+      "spin_temperature": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 1.9073486328125e-06
+      },
+      "tau_21": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 3.725290298461914e-09
+      },
+      "velocity_z": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 4.8467614016778965e-26
+      },
+      "xray_emissivity": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.9802322387695312e-08
+      },
+      "xray_ionised_fraction": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 2.9103830456733704e-11
+      },
+      "z_reion": {
+        "tested": 2,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "brightness_transverse_power": {
+      "unit": "mK^2 Mpc^2",
+      "k_unit": "Mpc^-1",
+      "k_mean": [
+        0.31601981632284,
+        0.5648004102572511,
+        0.7954108410141316,
+        1.0682798108135991,
+        1.3452138414952763,
+        1.595396102466962,
+        1.8486187843440371,
+        2.0276098204629176
+      ],
+      "modes_per_bin": [
+        8,
+        12,
+        16,
+        32,
+        28,
+        40,
+        40,
+        18
+      ],
+      "slices": 30,
+      "tested": 240,
+      "failed": 0,
+      "max_abs": 7.513334787745407e-05
+    },
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "routing": {
+      "source_model": "CHMF-SAMPLER",
+      "native_stages": [
+        "source scaling constants and redshift-dependent prefactors",
+        "lightcone distances and shell selection",
+        "GSL inverse-CDF roots, mass draws and merger decisions",
+        "GSL uniform draws and polar rejection for CHMF properties; scalar libm check at ambiguous float rounding"
+      ],
+      "counters": {
+        "halo_grid_positions": 38321,
+        "halo_progenitor_positions": 34371,
+        "halo_grid_property_gaussians": 114963,
+        "halo_progenitor_property_gaussians": 103113,
+        "halo_property_host_roundings": 1,
+        "halo_property_batches": 36,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 233,
+        "halo_inverse_cdf_possible_rows": 400,
+        "halo_grid_calls": 2,
+        "halo_grid_halos": 72692,
+        "halo_grid_empty": 0,
+        "subgrid_nion_tables": 2,
+        "subgrid_sfrd_tables": 2,
+        "subgrid_xray_tables": 2,
+        "gpu_eh_transfer": 1,
+        "gpu_power_normalization": 1,
+        "gpu_seed_and_modes": 1,
+        "gpu_sigma_mass_table": 1,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 11,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 11,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cdf_built_values": 46868,
+        "subgrid_advection_calls": 2,
+        "subgrid_advection_cells": 8192,
+        "subgrid_advection_input_bytes": 347576,
+        "subgrid_advection_output_bytes": 131080,
+        "subgrid_advection_seconds": 0.005741080967709422,
+        "thermal_initial_conditions": 1,
+        "ionization_mhr_table": 1,
+        "ionization_forward_fft": 8,
+        "ionization_radius_inverse_pair": 60,
+        "ionization_conditional_nion": 60,
+        "ionization_halo_barrier": 60,
+        "ionization_temperature": 2,
+        "ionization_cumulative_recombinations": 2,
+        "radiation_lyman_spectral_factors": 1,
+        "radiation_ionization_interpolation": 1,
+        "radiation_global_nion": 1,
+        "radiation_xray_optical_depth_and_frequency": 1,
+        "radiation_shell_filter": 56,
+        "radiation_shell_accumulation": 28,
+        "radiation_field_normalization": 1,
+        "thermal_constants": 1,
+        "thermal_update": 1,
+        "gpu_matter_perturbations": 2,
+        "gpu_brightness": 2
+      }
+    },
+    "missing_thermal_stages": [],
+    "passed": true
+  },
+  "latest_run_scope": "The fully joined GPU build reread CPU job 490575 for comparison after the small-node growth, CIC, thermal-table and ionization-radius changes. This 32:16 grid ratio uses the general CIC scatter. The 128:32 matched perturbation controls exercise the 4:1 tiled scatter independently."
+}

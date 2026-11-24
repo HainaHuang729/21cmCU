@@ -1,0 +1,223 @@
+{
+  "reference_fft": false,
+  "version": "4.3.2",
+  "gpu": "NVIDIA RTX A6000",
+  "atol": 1e-08,
+  "rtol": 0.0001,
+  "cases": {
+    "linear": {
+      "cpu": {
+        "first": 0.00961994199315086,
+        "warm_median": 0.004001784021966159,
+        "samples": [
+          0.00961994199315086,
+          0.0047950209700502455,
+          0.004001784021966159,
+          0.003950622980482876
+        ]
+      },
+      "gpu": {
+        "first": 0.4716173409833573,
+        "warm_median": 0.0017399759963154793,
+        "samples": [
+          0.4716173409833573,
+          0.0019333299715071917,
+          0.0017399759963154793,
+          0.0016813650145195425
+        ]
+      },
+      "fields": {
+        "density": {
+          "max_abs": 4.172325134277344e-07,
+          "failed": 148,
+          "peak_reference": 1.3634674549102783
+        },
+        "velocity_x": {
+          "max_abs": 4.632211430296955e-23,
+          "failed": 0,
+          "peak_reference": 1.304952855174266e-16,
+          "failed_in_upstream_scaled_units": 157
+        },
+        "velocity_y": {
+          "max_abs": 2.9778502051908996e-23,
+          "failed": 0,
+          "peak_reference": 9.803771089758086e-17,
+          "failed_in_upstream_scaled_units": 129
+        },
+        "velocity_z": {
+          "max_abs": 3.3087224502121107e-23,
+          "failed": 0,
+          "peak_reference": 9.67404667039711e-17,
+          "failed_in_upstream_scaled_units": 131
+        }
+      }
+    },
+    "no2lpt": {
+      "cpu": {
+        "first": 0.07623420999152586,
+        "warm_median": 0.07414573698770255,
+        "samples": [
+          0.07623420999152586,
+          0.07414573698770255,
+          0.07511023594997823,
+          0.07340125000337139
+        ]
+      },
+      "gpu": {
+        "first": 0.08980490401154384,
+        "warm_median": 0.004039324994664639,
+        "samples": [
+          0.08980490401154384,
+          0.004168647981714457,
+          0.004039324994664639,
+          0.003990523982793093
+        ]
+      },
+      "fields": {
+        "density": {
+          "max_abs": 3.5762786865234375e-07,
+          "failed": 140,
+          "peak_reference": 2.029268264770508
+        },
+        "velocity_x": {
+          "max_abs": 5.293955920339377e-23,
+          "failed": 0,
+          "peak_reference": 1.3820316622343252e-16,
+          "failed_in_upstream_scaled_units": 109
+        },
+        "velocity_y": {
+          "max_abs": 3.970466940254533e-23,
+          "failed": 0,
+          "peak_reference": 1.0038835305766465e-16,
+          "failed_in_upstream_scaled_units": 152
+        },
+        "velocity_z": {
+          "max_abs": 3.639594695233322e-23,
+          "failed": 0,
+          "peak_reference": 9.86717150586007e-17,
+          "failed_in_upstream_scaled_units": 120
+        }
+      }
+    },
+    "highres": {
+      "cpu": {
+        "first": 0.27457630197750404,
+        "warm_median": 0.274531030037906,
+        "samples": [
+          0.27457630197750404,
+          0.2657581669627689,
+          0.2780016929609701,
+          0.274531030037906
+        ]
+      },
+      "gpu": {
+        "first": 0.571809516986832,
+        "warm_median": 0.015373542031738907,
+        "samples": [
+          0.571809516986832,
+          0.026400993985589594,
+          0.01517054799478501,
+          0.015373542031738907
+        ]
+      },
+      "fields": {
+        "density": {
+          "max_abs": 9.5367431640625e-07,
+          "failed": 370,
+          "peak_reference": 3.634838581085205
+        },
+        "velocity_x": {
+          "max_abs": 4.632211430296955e-23,
+          "failed": 0,
+          "peak_reference": 1.5163639408283648e-16,
+          "failed_in_upstream_scaled_units": 158
+        },
+        "velocity_y": {
+          "max_abs": 3.3087224502121107e-23,
+          "failed": 0,
+          "peak_reference": 1.2214407005309123e-16,
+          "failed_in_upstream_scaled_units": 146
+        },
+        "velocity_z": {
+          "max_abs": 3.639594695233322e-23,
+          "failed": 0,
+          "peak_reference": 1.1471191180630638e-16,
+          "failed_in_upstream_scaled_units": 106
+        }
+      }
+    }
+  },
+  "trace": {
+    "target": [
+      36,
+      21,
+      41
+    ],
+    "cpu": -0.0007613515481352806,
+    "gpu_original": -0.0007620468968525529,
+    "stages": [
+      {
+        "step": "fine forward FFT",
+        "same_input_max": 0.09789975732564926,
+        "cpu_prefix_then_gpu_value": -0.0007617343799211085
+      },
+      {
+        "step": "top-hat",
+        "same_input_max": 0.00390625,
+        "cpu_prefix_then_gpu_value": -0.000761804694775492
+      },
+      {
+        "step": "fine inverse FFT",
+        "same_input_max": 3.5,
+        "cpu_prefix_then_gpu_value": -0.0007613906054757535,
+        "cpu_at_site": 3372430.5,
+        "gpu_same_input_at_site": 3372429.0
+      },
+      {
+        "step": "fine normalization and sampling",
+        "same_input_max": 0.0,
+        "cpu_prefix_then_gpu_value": -0.0007613906054757535,
+        "cpu_at_site": 0.9992386698722839,
+        "gpu_same_input_at_site": 0.9992386698722839
+      },
+      {
+        "step": "subtract one",
+        "same_input_max": 0.0,
+        "cpu_prefix_then_gpu_value": -0.0007613906054757535,
+        "cpu_at_site": -0.0007613301277160645,
+        "gpu_same_input_at_site": -0.0007613301277160645
+      },
+      {
+        "step": "coarse forward FFT",
+        "same_input_max": 0.00041057204362004995,
+        "cpu_prefix_then_gpu_value": -0.000761359347961843
+      },
+      {
+        "step": "coarse inverse FFT",
+        "same_input_max": 0.05078125,
+        "cpu_prefix_then_gpu_value": -0.0007613515481352806,
+        "cpu_at_site": -95.1689453125,
+        "gpu_same_input_at_site": -95.169921875
+      },
+      {
+        "step": "coarse normalization and clip",
+        "same_input_max": 0.0,
+        "cpu_prefix_then_gpu_value": -0.0007613515481352806,
+        "cpu_at_site": -0.0007613515481352806,
+        "gpu_same_input_at_site": -0.0007613515481352806
+      }
+    ],
+    "cpu_reconstruction_max": 0.0,
+    "gpu_reconstruction_max": 0.0,
+    "gpu_corrected": -0.0007616281509399414,
+    "original_failed": 524
+  },
+  "trace_job": 490009,
+  "benchmark_job": 490007,
+  "seed": 12345,
+  "z": 10,
+  "initial_grid": 150,
+  "output_grid": 50,
+  "box_Mpc": 100,
+  "cpu_threads": 2
+}

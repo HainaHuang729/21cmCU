@@ -1,0 +1,136 @@
+{
+  "upstream": "4.3.2",
+  "job": 490406,
+  "node": "a8",
+  "gpu": "RTX A6000",
+  "seed": 424242,
+  "source_model": "CHMF-SAMPLER",
+  "fine_dim": 32,
+  "hii_dim": 16,
+  "box_len_mpc": 24,
+  "redshifts": [
+    10,
+    10.22
+  ],
+  "comparison": "Independent calls to determine_halo_catalog with the same native IC and seed. The progenitor comparison used each path’s own descendant catalog. Compared every output row in native order.",
+  "runs": [
+    {
+      "threads": 1,
+      "samples": [
+        {
+          "label": "grid",
+          "cpu_count": 34027,
+          "gpu_count": 34027,
+          "halo_coords": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "halo_masses": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "star_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "sfr_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "xray_rng": {
+            "diff": 0,
+            "max": 0.0
+          }
+        },
+        {
+          "label": "progenitors",
+          "cpu_count": 31335,
+          "gpu_count": 31335,
+          "halo_coords": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "halo_masses": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "star_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "sfr_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "xray_rng": {
+            "diff": 0,
+            "max": 0.0
+          }
+        }
+      ],
+      "placements": {
+        "halo_grid_positions": 34027,
+        "halo_progenitor_positions": 31335
+      }
+    },
+    {
+      "threads": 2,
+      "samples": [
+        {
+          "label": "grid",
+          "cpu_count": 32908,
+          "gpu_count": 32908,
+          "halo_coords": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "halo_masses": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "star_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "sfr_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "xray_rng": {
+            "diff": 0,
+            "max": 0.0
+          }
+        },
+        {
+          "label": "progenitors",
+          "cpu_count": 30290,
+          "gpu_count": 30290,
+          "halo_coords": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "halo_masses": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "star_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "sfr_rng": {
+            "diff": 0,
+            "max": 0.0
+          },
+          "xray_rng": {
+            "diff": 0,
+            "max": 0.0
+          }
+        }
+      ],
+      "placements": {
+        "halo_grid_positions": 32908,
+        "halo_progenitor_positions": 30290
+      }
+    }
+  ]
+}

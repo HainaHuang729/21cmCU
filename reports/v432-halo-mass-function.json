@@ -1,0 +1,320 @@
+{
+  "model": "4.3.2 CHMF-SAMPLER, default ST and MASS-LIMITED",
+  "jobs": {
+    "native_profile": 490430,
+    "rejected_cuda_brent": 490441,
+    "full_rows_cache": 490460,
+    "selected_rows": 490462,
+    "integrated_backend": 490466
+  },
+  "timings": "Single paired measurements per node. prepare both axes in native C; number/fraction quadrature and index marking on GPU, cached GSL Brent inverse on selected condition rows. Native and selected inverse measurements on a9, 2 CPU threads, encompass construction of the entire inverse table for the sampler. CUDA-only Brent not used in production.",
+  "native_profile": {
+    "node": "a8",
+    "threads": 2,
+    "seed": 424242,
+    "grid": {
+      "number_and_fraction_seconds": 0.00328504,
+      "inverse_seconds": 1.324947904
+    },
+    "progenitors": {
+      "number_and_fraction_seconds": 0.017801624,
+      "inverse_seconds": 4.291239655
+    }
+  },
+  "validation": "Native vs actual GPU-backed catalogs with same IC, ordered masses, positions, star_rng, sfr_rng, xray_rng. Audit poisoned every omitted row with NaNs after storing a full native oracle. Full-row cached solver also compared independently.",
+  "cases": [
+    {
+      "seed": 424242,
+      "redshift": 10.0,
+      "dimensions": [
+        32,
+        16
+      ],
+      "box_len_Mpc": 24.0,
+      "report": {
+        "halo_grid_positions": 32908,
+        "halo_progenitor_positions": 30290,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 224,
+        "halo_inverse_cdf_possible_rows": 400
+      },
+      "density_tables": [
+        {
+          "number_cases": 400,
+          "max_abs": 7.815970093361102e-14,
+          "max_rel": 3.968925143307245e-14,
+          "float32_different": 0
+        },
+        {
+          "number_cases": 400,
+          "max_abs": 1.4139800441625994e-11,
+          "max_rel": 1.5400616378685387e-13,
+          "float32_different": 0
+        }
+      ],
+      "catalogs": [
+        {
+          "n_halos": 32908,
+          "native_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+          "gpu_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+        },
+        {
+          "n_halos": 30290,
+          "native_sha256": "87b6933693ace8af34af32d0758f0961ed9cc9255c63dfb467f70f200fac9043",
+          "gpu_sha256": "87b6933693ace8af34af32d0758f0961ed9cc9255c63dfb467f70f200fac9043"
+        }
+      ],
+      "inverse_tables": [
+        {
+          "conditions": "grid_density",
+          "possible_values": 80000,
+          "selected_values": 65200,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 2.29329997,
+          "selected_seconds": 1.33063003,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 2.23954502,
+          "full_cache_seconds": 1.74674317
+        },
+        {
+          "conditions": "descendant_mass",
+          "possible_values": 80000,
+          "selected_values": 24400,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 6.60915365,
+          "selected_seconds": 0.78725828,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 7.19753506,
+          "full_cache_seconds": 5.79950069
+        }
+      ]
+    },
+    {
+      "seed": 71837,
+      "redshift": 8.0,
+      "dimensions": [
+        24,
+        12
+      ],
+      "box_len_Mpc": 20.0,
+      "report": {
+        "halo_grid_positions": 42137,
+        "halo_progenitor_positions": 40248,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 260,
+        "halo_inverse_cdf_possible_rows": 400
+      },
+      "density_tables": [
+        {
+          "number_cases": 400,
+          "max_abs": 7.460698725481052e-14,
+          "max_rel": 1.1352784802589403e-14,
+          "float32_different": 0
+        },
+        {
+          "number_cases": 400,
+          "max_abs": 1.723776676954003e-11,
+          "max_rel": 1.8555852059141438e-13,
+          "float32_different": 0
+        }
+      ],
+      "catalogs": [
+        {
+          "n_halos": 42137,
+          "native_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8",
+          "gpu_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8"
+        },
+        {
+          "n_halos": 40248,
+          "native_sha256": "9eee9cd1ee20824a86cdaf8a830f0ae5e44bda39c673470d8df0b0d0b89e5d81",
+          "gpu_sha256": "9eee9cd1ee20824a86cdaf8a830f0ae5e44bda39c673470d8df0b0d0b89e5d81"
+        }
+      ],
+      "inverse_tables": [
+        {
+          "conditions": "grid_density",
+          "possible_values": 80000,
+          "selected_values": 73200,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 2.29740566,
+          "selected_seconds": 1.5296316,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 2.42822962,
+          "full_cache_seconds": 1.80354757
+        },
+        {
+          "conditions": "descendant_mass",
+          "possible_values": 80000,
+          "selected_values": 30800,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 8.2812406,
+          "selected_seconds": 1.26725367,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 8.2531073,
+          "full_cache_seconds": 6.38673716
+        }
+      ]
+    },
+    {
+      "seed": 1109,
+      "redshift": 13.0,
+      "dimensions": [
+        24,
+        12
+      ],
+      "box_len_Mpc": 20.0,
+      "report": {
+        "halo_grid_positions": 4219,
+        "halo_progenitor_positions": 3692,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 169,
+        "halo_inverse_cdf_possible_rows": 400
+      },
+      "density_tables": [
+        {
+          "number_cases": 400,
+          "max_abs": 7.460698725481052e-14,
+          "max_rel": 5.345851416543584e-15,
+          "float32_different": 0
+        },
+        {
+          "number_cases": 400,
+          "max_abs": 8.554934538551606e-12,
+          "max_rel": 8.470788677434011e-14,
+          "float32_different": 0
+        }
+      ],
+      "catalogs": [
+        {
+          "n_halos": 4219,
+          "native_sha256": "c7d36398dc6de7069b7bee83f538a3f275695c444ef7f49d1f45ce564709f0b5",
+          "gpu_sha256": "c7d36398dc6de7069b7bee83f538a3f275695c444ef7f49d1f45ce564709f0b5"
+        },
+        {
+          "n_halos": 3692,
+          "native_sha256": "d39df7d501a740e0d22fda728f3449c0bbde9fa8930c7ca2f7ff7f46bb9ad487",
+          "gpu_sha256": "d39df7d501a740e0d22fda728f3449c0bbde9fa8930c7ca2f7ff7f46bb9ad487"
+        }
+      ],
+      "inverse_tables": [
+        {
+          "conditions": "grid_density",
+          "possible_values": 80000,
+          "selected_values": 49200,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 2.24627845,
+          "selected_seconds": 1.02956665,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 2.42643953,
+          "full_cache_seconds": 1.8704322
+        },
+        {
+          "conditions": "descendant_mass",
+          "possible_values": 80000,
+          "selected_values": 18400,
+          "selected_double_bit_differences": 0,
+          "native_seconds": 5.87394062,
+          "selected_seconds": 0.546909656,
+          "full_cache_values": 80000,
+          "full_cache_double_bit_differences": 0,
+          "full_cache_native_seconds": 5.93828869,
+          "full_cache_seconds": 4.66457443
+        }
+      ]
+    }
+  ],
+  "production_additional": [
+    {
+      "seed": 90317,
+      "z": 11.5,
+      "nx": 83,
+      "ny": 137,
+      "threads": 1,
+      "catalogs": [
+        {
+          "n_halos": 10695,
+          "native_sha256": "11f3d1ca0995a67870f033aaa76d77b30b49f48f648a011349c9524aef68dadf",
+          "gpu_sha256": "11f3d1ca0995a67870f033aaa76d77b30b49f48f648a011349c9524aef68dadf"
+        },
+        {
+          "n_halos": 9618,
+          "native_sha256": "e7fc4f04f0d41046b8a318827d160dda12f1a57c7351d5458243376f022a2aa7",
+          "gpu_sha256": "e7fc4f04f0d41046b8a318827d160dda12f1a57c7351d5458243376f022a2aa7"
+        }
+      ],
+      "report": {
+        "halo_grid_positions": 10695,
+        "halo_progenitor_positions": 9618,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 94,
+        "halo_inverse_cdf_possible_rows": 166,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 6,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 6,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_overlap_grids": 1
+      }
+    },
+    {
+      "seed": 71837,
+      "z": 8.0,
+      "nx": 200,
+      "ny": 400,
+      "threads": 2,
+      "catalogs": [
+        {
+          "n_halos": 42137,
+          "native_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8",
+          "gpu_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8"
+        },
+        {
+          "n_halos": 40248,
+          "native_sha256": "9eee9cd1ee20824a86cdaf8a830f0ae5e44bda39c673470d8df0b0d0b89e5d81",
+          "gpu_sha256": "9eee9cd1ee20824a86cdaf8a830f0ae5e44bda39c673470d8df0b0d0b89e5d81"
+        }
+      ],
+      "report": {
+        "halo_grid_positions": 42137,
+        "halo_progenitor_positions": 40248,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 260,
+        "halo_inverse_cdf_possible_rows": 400,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 13,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 13,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_overlap_grids": 1
+      }
+    }
+  ],
+  "shared_emissivity_regression": {
+    "tables": 16,
+    "entries": 6400,
+    "different": 0,
+    "redshifts": [
+      8,
+      12
+    ],
+    "cell_sizes_Mpc": [
+      3.125,
+      3.90625
+    ]
+  },
+  "rejected_cuda_brent": {
+    "n_inverse_values": 160000,
+    "values_different_at_float32": 21,
+    "max_relative_error": 9.773033880395908e-05,
+    "example": "At condition 54, probability 336, native GSL took another bisection from a 1.019e-4 bracket with residual 4.9e-14. A rounding difference can move that residual across zero and alter the returned mass."
+  }
+}

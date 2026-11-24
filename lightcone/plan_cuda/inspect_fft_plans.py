@@ -1,4 +1,5 @@
 """Inspect clean ESTIMATE plans for the upstream in-place float32 cubic layout."""
+
 import argparse
 import ctypes as C
 import json
@@ -8,6 +9,7 @@ import re
 def inspect(sizes, threads, library=None):
     if library is None:
         import py21cmfast.c_21cmfast as native
+
         library = native.__file__
     lib = C.CDLL(library)
     ptr = C.c_void_p
@@ -40,8 +42,15 @@ def inspect(sizes, threads, library=None):
                             lib.fftwf_free(desc)
                     finally:
                         lib.fftwf_destroy_plan(h)
-                    rows.append(dict(n=n, threads=count, direction=direction,
-                                     codelets=sorted(set(re.findall(r'"([^"]+)"', tree))), tree=tree))
+                    rows.append(
+                        dict(
+                            n=n,
+                            threads=count,
+                            direction=direction,
+                            codelets=sorted(set(re.findall(r'"([^"]+)"', tree))),
+                            tree=tree,
+                        )
+                    )
         finally:
             lib.fftwf_free(buf)
     return rows

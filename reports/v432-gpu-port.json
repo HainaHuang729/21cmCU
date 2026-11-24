@@ -1,0 +1,424 @@
+{
+  "version": "21cmFAST 4.3.2",
+  "node": "a8",
+  "accelerator": "RTX A6000",
+  "source_model": "Eulerian atomic cooling",
+  "seed": 424242,
+  "threads": 2,
+  "threshold": "abs(GPU-CPU) <= 1e-8 + 1e-4 * abs(CPU)",
+  "timing": "From benchmark module start through HDF5 close and fsync. Includes the IC digest and online power spectra. Excludes Python initialization and the subsequent JSON writes. Earlier native reference, same node. Single runs, no isolated performance claim.",
+  "run_directory": "port-check-25",
+  "runs": {
+    "192": {
+      "job": 490329,
+      "audit_job": 490331,
+      "cpu_ref_seconds": 65.77935682691168,
+      "gpu_seconds": 46.1841171940323,
+      "ic_sha256": "e1c57a3b99dea586cc8a87e56947eda430d2570a6121c7dd1123f3766babc161",
+      "ic_digest_matches": true,
+      "nodes": 43,
+      "output_bytes": 85250384,
+      "fields": {
+        "brightness_temp": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 62,
+          "failed_slices": 40,
+          "max_abs": 3.0517578125e-05
+        },
+        "neutral_fraction": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "xray_ionised_fraction": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 7.450580596923828e-09
+        },
+        "kinetic_temp_neutral": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0009765625
+        },
+        "spin_temperature": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.00048828125
+        },
+        "cumulative_recombinations": {
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0
+        }
+      },
+      "ps32": {
+        "tested": 1376,
+        "failed": 0,
+        "max_abs": 5.313674066087515e-06,
+        "max_relative_nonzero": 6.129074418928824e-08
+      },
+      "gpu_calls": {
+        "emission": 43,
+        "heat": 42,
+        "ion_center": 682,
+        "recombination": 31,
+        "shell_filter": 3262,
+        "shell_accumulate": 1631,
+        "source_table": 768,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 2046,
+        "native_spectral_filter_on_gpu": 1953,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 93,
+        "ion_filter_extrema": 682,
+        "ion_photon_lookup": 682,
+        "radiation_units": 42,
+        "radiation_setup_grid": 42,
+        "ionized_temperature": 31,
+        "xray_frequency_integrals": 42,
+        "global_source_integrals": 42,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 42,
+        "ion_global_source_integrals": 43,
+        "fully_neutral_box": 12,
+        "global_neutral_fraction": 31,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 42
+      },
+      "resident_inputs": {
+        "ic_fields": [
+          "hires_density",
+          "lowres_density",
+          "hires_vx",
+          "hires_vy",
+          "hires_vz",
+          "hires_vx_2LPT",
+          "hires_vy_2LPT",
+          "hires_vz_2LPT"
+        ],
+        "density_reads_from_device": 28
+      },
+      "audit": {
+        "driver_arrays": 769,
+        "failed": 0,
+        "thermal_terms": {
+          "dxe_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 8.847089727481716e-17
+          },
+          "dxheat_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "dcomp_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 1.1368683772161603e-13
+          },
+          "dspec_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 1.5347723092418164e-12
+          },
+          "dadia_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "dCMBheat_dzp": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 3.1763735522036263e-22
+          },
+          "eps_Lya_cont": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 1.9539925233402755e-14
+          },
+          "eps_Lya_inj": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 5.684341886080802e-14
+          },
+          "J_alpha_tot": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 6.617444900424222e-24
+          },
+          "xa_tilde_fast_arg": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 3.410605131648481e-13
+          },
+          "xCMB": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 1.3021805855828461e-12
+          },
+          "xc_fast": {
+            "cells": 11010048,
+            "failed": 0,
+            "max_abs": 1.5543122344752192e-15
+          }
+        },
+        "source_tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 17200,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 290000,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        }
+      }
+    },
+    "384": {
+      "job": 490330,
+      "audit_job": 490332,
+      "cpu_ref_seconds": 347.5170508529991,
+      "gpu_seconds": 82.39540088700596,
+      "ic_sha256": "7018a09629d94b5bf3b2c78223370641ea7d8e764a88ab85b327b4d255f75ab9",
+      "ic_digest_matches": true,
+      "nodes": 43,
+      "output_bytes": 153701704,
+      "fields": {
+        "brightness_temp": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 192,
+          "failed_slices": 56,
+          "max_abs": 3.0517578125e-05
+        },
+        "neutral_fraction": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 5.960464477539063e-08
+        },
+        "xray_ionised_fraction": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 7.450580596923828e-09
+        },
+        "kinetic_temp_neutral": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.001953125
+        },
+        "spin_temperature": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.00048828125
+        },
+        "cumulative_recombinations": {
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0
+        }
+      },
+      "ps32": {
+        "tested": 1376,
+        "failed": 0,
+        "max_abs": 2.9053176220372734e-06,
+        "max_relative_nonzero": 6.570800996619305e-08
+      },
+      "gpu_calls": {
+        "emission": 43,
+        "heat": 42,
+        "ion_center": 620,
+        "recombination": 31,
+        "shell_filter": 3258,
+        "shell_accumulate": 1629,
+        "source_table": 706,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 1860,
+        "native_spectral_filter_on_gpu": 1767,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 93,
+        "ion_filter_extrema": 620,
+        "ion_photon_lookup": 620,
+        "radiation_units": 42,
+        "radiation_setup_grid": 42,
+        "ionized_temperature": 31,
+        "xray_frequency_integrals": 42,
+        "global_source_integrals": 42,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 42,
+        "ion_global_source_integrals": 43,
+        "fully_neutral_box": 12,
+        "global_neutral_fraction": 31,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 42
+      },
+      "resident_inputs": {
+        "ic_fields": [
+          "hires_density",
+          "lowres_density",
+          "hires_vx",
+          "hires_vy",
+          "hires_vz",
+          "hires_vx_2LPT",
+          "hires_vy_2LPT",
+          "hires_vz_2LPT"
+        ],
+        "density_reads_from_device": 26
+      },
+      "audit": {
+        "driver_arrays": 769,
+        "failed": 0,
+        "thermal_terms": {
+          "dxe_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 1.8041124150158794e-16
+          },
+          "dxheat_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "dcomp_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 4.547473508864641e-13
+          },
+          "dspec_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 6.707523425575346e-12
+          },
+          "dadia_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "dCMBheat_dzp": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 6.352747104407253e-22
+          },
+          "eps_Lya_cont": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 1.9539925233402755e-14
+          },
+          "eps_Lya_inj": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 9.947598300641403e-14
+          },
+          "J_alpha_tot": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 1.3234889800848443e-23
+          },
+          "xa_tilde_fast_arg": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 4.547473508864641e-13
+          },
+          "xCMB": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 2.013722522065109e-12
+          },
+          "xc_fast": {
+            "cells": 37158912,
+            "failed": 0,
+            "max_abs": 2.4424906541753444e-15
+          }
+        },
+        "source_tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 17200,
+            "failed": 0,
+            "max_abs": 0.0
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 265200,
+            "failed": 0,
+            "max_abs": 0.0
+          }
+        }
+      }
+    }
+  },
+  "cpu_numerics_remaining": [
+    "native scaling-constant setup and conditional source-table scalar inputs",
+    "native ionization and radiation scalar setup",
+    "astropy cosmological distances, geometry of radiation shells, H(z) for optical-gradient correction"
+  ],
+  "host_data_path": "A copy of the IC remains on device for perturbation. The native driver exposes host snapshots and several evolution stages still transfer fields across its ABI.",
+  "growth_probe": {
+    "job": 490333,
+    "nodes": 43,
+    "max_abs_D": 0.0,
+    "max_abs_initial_D": 0.0,
+    "max_relative_growth_rate": 5.551115123125783e-16
+  }
+}

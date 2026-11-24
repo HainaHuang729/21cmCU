@@ -1,0 +1,973 @@
+{
+  "version": "4.3.2",
+  "device": "RTX A6000",
+  "host": "a9",
+  "source_method": "The native default is GAUSS-LEGENDRE, which uses adaptive GK61 at density > 1.2. An explicit GSL-QAG uses adaptive GK61 at all regular density nodes. Both apply the same native direct-collapse and logarithmic floors. Gamma approximation and multi-population feedback are outside the CUDA table route.",
+  "implementation": "Shared lightcone/table_qag.cuh, native ST conditional SourceIntegral, relative quadrature tolerance 0.001, 1000 panels; GL abscissae and weights are neither transferred nor used in all-density QAG mode.",
+  "inputs": "Archived 32^3 to 16^3 native IC and density from v432-halo-rays.M8d76F, seed 81033, 24 Mpc, z=9.7. Selected cap/floor probes set one initial Lagrangian density to 38. Empty sampled catalogs isolate table emission. Independent E-INTEGRAL ionization uses archived seed 531091 perturbed density and IC, z=8.7.",
+  "artifacts": "phy-gpus:~/ps_v432_perturb/v432-source-qag.zomk1k (check.py, ion.py, result.json, ion.json)",
+  "scope": "One EmissivityFields at a time and one E-INTEGRAL ionization step. During explicit audit the native CPU initializer calculates the independent table before CUDA, followed by comparison to the native array and native field output.",
+  "summary": {
+    "GSL-QAG": {
+      "table_nodes": 6400,
+      "nion_sfrd_nodes": 4800,
+      "regular_qag_nodes": 4492,
+      "regular_gl_nodes": 0,
+      "direct_collapse_nodes": 1908,
+      "floored_log_nodes": 1272,
+      "grid_values": 86016,
+      "field_or_table_mismatches": 0
+    },
+    "GAUSS-LEGENDRE": {
+      "table_nodes": 1200,
+      "nion_sfrd_nodes": 800,
+      "regular_qag_nodes": 57,
+      "regular_gl_nodes": 507,
+      "direct_collapse_nodes": 636,
+      "floored_log_nodes": 636,
+      "grid_values": 16384,
+      "field_or_table_mismatches": 0
+    },
+    "E_INTEGRAL_ionization": {
+      "qag_tables": 27,
+      "table_nodes": 10800,
+      "grid_values": 20480,
+      "field_or_table_mismatches": 0
+    }
+  },
+  "emissivity": {
+    "job": "490566",
+    "cases": [
+      {
+        "source": "CHMF-SAMPLER",
+        "thermal": false,
+        "method": "GSL-QAG",
+        "widened_sentinel": false,
+        "redshift": 9.7,
+        "tables": {
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -15.365646362304688,
+            "n_max": -6.81315279006958,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "halo_grid_empty": 1,
+          "subgrid_nion_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 134612,
+          "subgrid_advection_output_bytes": 16388,
+          "subgrid_advection_seconds": 0.19100020092446357
+        }
+      },
+      {
+        "source": "CHMF-SAMPLER",
+        "thermal": true,
+        "method": "GSL-QAG",
+        "widened_sentinel": true,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": -29.775949478149414,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          },
+          "Xray_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": -7.179948329925537,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -40.0,
+            "n_max": -6.813141822814941,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "fesc_weighted_sfrd": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "halo_grid_empty": 1,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_xray_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 173788,
+          "subgrid_advection_output_bytes": 65540,
+          "subgrid_advection_seconds": 0.027949364040978253
+        }
+      },
+      {
+        "source": "L-INTEGRAL",
+        "thermal": true,
+        "method": "GSL-QAG",
+        "widened_sentinel": false,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -35.06269454956055,
+            "n_max": -18.381755828857422,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          },
+          "Xray_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -12.647360801696777,
+            "n_max": 3.6246776580810547,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -12.534904479980469,
+            "n_max": 2.1678977012634277,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "fesc_weighted_sfrd": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_xray_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 173788,
+          "subgrid_advection_output_bytes": 65540,
+          "subgrid_advection_seconds": 0.0022461230400949717
+        }
+      },
+      {
+        "source": "L-INTEGRAL",
+        "thermal": true,
+        "method": "GSL-QAG",
+        "widened_sentinel": true,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 0,
+            "n_min": -35.06269454956055,
+            "n_max": -16.149887084960938,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          },
+          "Xray_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 0,
+            "n_min": -18.721067428588867,
+            "n_max": 5.535407543182373,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 0,
+            "n_min": -12.534904479980469,
+            "n_max": 3.2174713611602783,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "fesc_weighted_sfrd": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_xray_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 173788,
+          "subgrid_advection_output_bytes": 65540,
+          "subgrid_advection_seconds": 0.002441677963361144
+        }
+      },
+      {
+        "source": "DEXM-ESF",
+        "thermal": true,
+        "method": "GSL-QAG",
+        "widened_sentinel": true,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": -19.25507354736328,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 16591170477.606161,
+            "mass_condition": 132729363756.27652
+          },
+          "Xray_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": 2.837278366088867,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 16591170477.606161,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 188,
+            "regular_gl": 0,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -40.0,
+            "n_max": 1.7370578050613403,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 16591170477.606161,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "fesc_weighted_sfrd": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "halo_grid_empty": 1,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_xray_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 173788,
+          "subgrid_advection_output_bytes": 65540,
+          "subgrid_advection_seconds": 0.003119113971479237
+        }
+      },
+      {
+        "source": "E-INTEGRAL",
+        "thermal": true,
+        "method": "GSL-QAG",
+        "widened_sentinel": false,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -29.139009475708008,
+            "n_max": -17.04602813720703,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -6.876480579376221,
+            "n_max": 2.858659505844116,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "emission": 1,
+          "source_table": 2,
+          "sigma_moments": 2,
+          "eh_constants": 1,
+          "scalar_sigma": 1,
+          "emissivity_global_source_integrals": 1
+        }
+      },
+      {
+        "source": "E-INTEGRAL",
+        "thermal": false,
+        "method": "GSL-QAG",
+        "widened_sentinel": false,
+        "redshift": 9.7,
+        "tables": {
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 400,
+            "regular_gl": 0,
+            "cap_nodes": 0,
+            "lower_floor_nodes": 0,
+            "n_min": -6.876480579376221,
+            "n_max": 2.858659505844116,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 1.0000000000000034e+16,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "emission": 1,
+          "source_table": 1,
+          "sigma_moments": 2,
+          "eh_constants": 1,
+          "scalar_sigma": 1,
+          "emissivity_global_source_integrals": 1
+        }
+      },
+      {
+        "source": "CHMF-SAMPLER",
+        "thermal": true,
+        "method": "GAUSS-LEGENDRE",
+        "widened_sentinel": true,
+        "redshift": 9.7,
+        "tables": {
+          "SFRD_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 19,
+            "regular_gl": 169,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": -29.775949478149414,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          },
+          "Xray_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 19,
+            "regular_gl": 169,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -50.0,
+            "n_max": -7.179948329925537,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          },
+          "Nion_conditional_table1D_acg": {
+            "tested": 400,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0,
+            "max_fractional_linear_error": 0.0,
+            "regular_qag": 19,
+            "regular_gl": 169,
+            "cap_nodes": 212,
+            "lower_floor_nodes": 212,
+            "n_min": -40.0,
+            "n_max": -6.8131422996521,
+            "mass_lo": 10023744.640000012,
+            "mass_hi": 100000000.00000018,
+            "mass_condition": 132729363756.27652
+          }
+        },
+        "fields": {
+          "sfrd_acg": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "xray_emissivity": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "n_ion": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          },
+          "fesc_weighted_sfrd": {
+            "tested": 4096,
+            "different_float32": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "strict_failed": 0
+          }
+        },
+        "executed": {
+          "halo_grid_empty": 1,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_xray_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 4096,
+          "subgrid_advection_input_bytes": 173788,
+          "subgrid_advection_output_bytes": 65540,
+          "subgrid_advection_seconds": 0.01441581198014319
+        }
+      }
+    ]
+  },
+  "ionization": {
+    "job": "490568",
+    "redshift": 8.7,
+    "seed": 531091,
+    "qag_tables": [
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.0849916318655014,
+        "density_hi": 0.08938991820812225
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.1039566153883934,
+        "density_hi": 0.11691890454292297
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.12281876599788666,
+        "density_hi": 0.1487130651473999
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.13308559155464172,
+        "density_hi": 0.17567151582241058
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.14076939022541046,
+        "density_hi": 0.20542400872707367
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.15524582362174988,
+        "density_hi": 0.24031527137756348
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.17556476390361786,
+        "density_hi": 0.26611994004249573
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.19381616806983948,
+        "density_hi": 0.3018260726928711
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.2186169753074646,
+        "density_hi": 0.32938931679725647
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.24472339248657227,
+        "density_hi": 0.382325364112854
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.26614214277267456,
+        "density_hi": 0.4398993978500366
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.2832079658508301,
+        "density_hi": 0.5102098712921143
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.2968511710166931,
+        "density_hi": 0.5835364589691162
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.3101064691543579,
+        "density_hi": 0.654473973274231
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.3316582570075989,
+        "density_hi": 0.7178164253234863
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.3531319031715393,
+        "density_hi": 0.7703811058998108
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.37874598598480225,
+        "density_hi": 0.8449894914627075
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.4008126983642578,
+        "density_hi": 0.9179008731842041
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.419564110994339,
+        "density_hi": 0.9872814545631409
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.43534613943099976,
+        "density_hi": 1.0517700443267821
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.4485398361682892,
+        "density_hi": 1.110516143798828
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.45951796865463257,
+        "density_hi": 1.1631298789978026
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.46862287616729736,
+        "density_hi": 1.2095888385772704
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.476157767534256,
+        "density_hi": 1.252137852668762
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.4823844859600067,
+        "density_hi": 1.2999487648010253
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.4875255653858185,
+        "density_hi": 1.341855598449707
+      },
+      {
+        "n": 400,
+        "unequal": 0,
+        "max_log_abs": 0.0,
+        "max_linear_relative": 0.0,
+        "density_lo": -0.5222955474853516,
+        "density_hi": 1.5754800567626952
+      }
+    ],
+    "fields": {
+      "neutral_fraction": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "ionisation_rate_G12": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "z_reion": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temperature": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "nion_conditional_filtered_acg": {
+        "tested": 4096,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "executed": {
+      "ion_center": 27,
+      "source_table": 27,
+      "ion_filter_prepare": 1,
+      "ion_filter_extrema": 27,
+      "ion_photon_lookup": 27,
+      "ionized_temperature": 1,
+      "sigma_moments": 2,
+      "ion_global_source_integrals": 1,
+      "eh_constants": 1,
+      "scalar_sigma": 29,
+      "ionization_recfast": 1,
+      "ion_filter_resident_radius": 27
+    },
+    "passed": true
+  },
+  "passed": true
+}

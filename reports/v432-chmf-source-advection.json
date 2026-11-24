@@ -1,0 +1,487 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "status": "PASS",
+  "device": "NVIDIA RTX A6000",
+  "artifacts": "phy-gpus:~/ps_v432_perturb/chmf-advection.GCnxHa",
+  "scope": "Single-redshift compute_emissivity_fields with the same initial conditions and halo catalogue, including the native 4.3.2 CPU reference. All allocated source fields and all voxels are compared.",
+  "stage": "Evaluate the Nion/SFR/X-ray natural-log conditional tables and the extra linear halo-number and collapsed-mass tables at grown Lagrangian cell densities. Apply 1LPT and 2LPT displacement and cloud-in-cell updates in Cartesian cell order to the sampled-source grids. Derive fesc-weighted SFRD and, when metal dependence is off, X-ray emissivity from the totals.",
+  "units": "Nion is photons per baryon; SFRD is stellar mass per second per comoving Mpc cubed. ACG emissivities, stellar mass density and halo mass density carry the destination-to-source voxel-count ratio. Halo counts use the source cell volume without the extra ratio. Lagrangian sources have no Eulerian (1 + delta) multiplier.",
+  "native_work_in_these_tests": [
+    "Initial conditions and halo catalogue with stochastic draws were constructed by upstream CPU.",
+    "Initial density-range scan, GL node setup, sigma tables, metallicity-dependent X-ray conditional table construction when requested and optional halo-count/collapsed-mass table construction are native."
+  ],
+  "acceptance": {
+    "atol": 1e-08,
+    "rtol": 0.0001,
+    "failed": "Cells with abs(GPU - CPU) > atol + rtol * abs(CPU).",
+    "max_relative": "Maximum relative error over nonzero reference values; every field also required max_relative < 1e-4.",
+    "different": "Number of numerically unequal float32 values. All outputs required finite differences."
+  },
+  "timing": "Observed wall time per invocation on a9, including transfers and stable CIC sorting. Entry timings exclude context-manager setup; first-use compilation/allocation can be included. These are individual calls, not a throughput benchmark.",
+  "transfer_accounting": "Application payload bytes for explicitly uploaded density/velocities, existing output grids and interpolation data, with metadata. Download bytes include output grids and the bounds-check status. CuPy allocator and internal sort bookkeeping are excluded.",
+  "common_parameters": {
+    "redshift": 8.0,
+    "random_seed": 424242,
+    "SOURCE_MODEL": "CHMF-SAMPLER",
+    "BOX_LEN_Mpc": 40.0,
+    "DIM": 48,
+    "HII_DIM": 24,
+    "PERTURB_ALGORITHM": "2LPT",
+    "PERTURB_ON_HIGH_RES": false,
+    "SAMPLER_MIN_MASS_Msun": 100000000.0,
+    "USE_METALLICITY": true,
+    "USE_UPPER_STELLAR_TURNOVER": true,
+    "USE_MCGS": false,
+    "USE_REIONIZATION_PHOTOHEATING_FEEDBACK": false,
+    "other": "Upstream defaults except per-case overrides."
+  },
+  "matched_catalogue_cases": {
+    "slurm_job": 490443,
+    "sources": [
+      "replay.py",
+      "advection.json"
+    ],
+    "description": "Each case retains the identical native catalogue, or sets all its masses to zero to isolate the integrated component. A separate native catalogue is constructed at each thread setting.",
+    "results": [
+      {
+        "N_THREADS": 1,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "n_halos": 334723,
+        "all_masses_zero": false,
+        "entry_cpu_seconds": 0.29477549996227026,
+        "entry_gpu_seconds": 0.2699176090536639,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 334723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 732000,
+          "subgrid_advection_output_bytes": 387076,
+          "subgrid_advection_seconds": 0.00308238307479769
+        },
+        "fields": {
+          "halo_number": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "halo_mass_density": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "stellar_mass_density_acg": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          }
+        }
+      },
+      {
+        "N_THREADS": 1,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "n_halos": 334723,
+        "all_masses_zero": true,
+        "entry_cpu_seconds": 0.04133287305012345,
+        "entry_gpu_seconds": 0.039106447948142886,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 334723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 732000,
+          "subgrid_advection_output_bytes": 387076,
+          "subgrid_advection_seconds": 0.0024326590355485678
+        },
+        "fields": {
+          "halo_number": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "halo_mass_density": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "stellar_mass_density_acg": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          }
+        }
+      },
+      {
+        "N_THREADS": 2,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "n_halos": 335723,
+        "all_masses_zero": false,
+        "entry_cpu_seconds": 0.3606436890549958,
+        "entry_gpu_seconds": 0.03971850103698671,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 335723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 732000,
+          "subgrid_advection_output_bytes": 387076,
+          "subgrid_advection_seconds": 0.0024460889399051666
+        },
+        "fields": {
+          "halo_number": {
+            "failed": 0,
+            "different": 366,
+            "max_abs": 0.0003662109375,
+            "max_relative": 2.8015504901032425e-07,
+            "nonzero": 13824
+          },
+          "halo_mass_density": {
+            "failed": 0,
+            "different": 796,
+            "max_abs": 12288.0,
+            "max_relative": 8.917397177141176e-07,
+            "nonzero": 13824
+          },
+          "stellar_mass_density_acg": {
+            "failed": 0,
+            "different": 832,
+            "max_abs": 32.0,
+            "max_relative": 1.192341637356922e-06,
+            "nonzero": 13824
+          },
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 821,
+            "max_abs": 6.217248937900877e-15,
+            "max_relative": 1.2971246945734604e-06,
+            "nonzero": 13824
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 855,
+            "max_abs": 2.288818359375e-05,
+            "max_relative": 1.6834617879426065e-06,
+            "nonzero": 13824
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 859,
+            "max_abs": 6.198883056640625e-06,
+            "max_relative": 1.536132761195566e-06,
+            "nonzero": 13824
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 823,
+            "max_abs": 2.5011104298755527e-12,
+            "max_relative": 1.5447118631138134e-06,
+            "nonzero": 13824
+          }
+        }
+      },
+      {
+        "N_THREADS": 2,
+        "USE_TS_FLUCT": true,
+        "RECOMB_MODEL": "inhomogeneous",
+        "EXTRA_EMISSIVITY_FIELDS": true,
+        "n_halos": 335723,
+        "all_masses_zero": true,
+        "entry_cpu_seconds": 0.021554144914261997,
+        "entry_gpu_seconds": 0.02977807994466275,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 335723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 1,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 732000,
+          "subgrid_advection_output_bytes": 387076,
+          "subgrid_advection_seconds": 0.0025926230009645224
+        },
+        "fields": {
+          "halo_number": {
+            "failed": 0,
+            "different": 243,
+            "max_abs": 0.000244140625,
+            "max_relative": 2.282883770739571e-07,
+            "nonzero": 13824
+          },
+          "halo_mass_density": {
+            "failed": 0,
+            "different": 235,
+            "max_abs": 1024.0,
+            "max_relative": 2.2448462819060003e-07,
+            "nonzero": 13824
+          },
+          "stellar_mass_density_acg": {
+            "failed": 0,
+            "different": 247,
+            "max_abs": 0.000244140625,
+            "max_relative": 2.172088725045823e-07,
+            "nonzero": 13824
+          },
+          "sfrd_acg": {
+            "failed": 0,
+            "different": 219,
+            "max_abs": 4.0657581468206416e-20,
+            "max_relative": 3.078884721219304e-07,
+            "nonzero": 13824
+          },
+          "xray_emissivity": {
+            "failed": 0,
+            "different": 236,
+            "max_abs": 3.4924596548080444e-10,
+            "max_relative": 3.1176877232524216e-07,
+            "nonzero": 13824
+          },
+          "n_ion": {
+            "failed": 0,
+            "different": 229,
+            "max_abs": 4.656612873077393e-10,
+            "max_relative": 2.9715980600615436e-07,
+            "nonzero": 13824
+          },
+          "fesc_weighted_sfrd": {
+            "failed": 0,
+            "different": 206,
+            "max_abs": 2.220446049250313e-16,
+            "max_relative": 2.4363086488774313e-07,
+            "nonzero": 13824
+          }
+        }
+      },
+      {
+        "N_THREADS": 1,
+        "USE_TS_FLUCT": false,
+        "RECOMB_MODEL": "none",
+        "EXTRA_EMISSIVITY_FIELDS": false,
+        "n_halos": 334723,
+        "all_masses_zero": false,
+        "entry_cpu_seconds": 0.10881165298633277,
+        "entry_gpu_seconds": 0.02466972707770765,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 334723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 0,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 445900,
+          "subgrid_advection_output_bytes": 55300,
+          "subgrid_advection_seconds": 0.0018942680908367038
+        },
+        "fields": {
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          }
+        }
+      },
+      {
+        "N_THREADS": 1,
+        "USE_TS_FLUCT": false,
+        "RECOMB_MODEL": "none",
+        "EXTRA_EMISSIVITY_FIELDS": false,
+        "n_halos": 334723,
+        "all_masses_zero": true,
+        "entry_cpu_seconds": 0.012626194977201521,
+        "entry_gpu_seconds": 0.024784800014458597,
+        "counters": {
+          "halo_grid_calls": 1,
+          "halo_grid_halos": 334723,
+          "halo_grid_empty": 0,
+          "subgrid_nion_tables": 1,
+          "subgrid_sfrd_tables": 0,
+          "subgrid_advection_calls": 1,
+          "subgrid_advection_cells": 13824,
+          "subgrid_advection_input_bytes": 445900,
+          "subgrid_advection_output_bytes": 55300,
+          "subgrid_advection_seconds": 0.002367377979680896
+        },
+        "fields": {
+          "n_ion": {
+            "failed": 0,
+            "different": 0,
+            "max_abs": 0.0,
+            "max_relative": 0.0,
+            "nonzero": 13824
+          }
+        }
+      }
+    ]
+  },
+  "high_resolution_empty_catalogue": {
+    "slurm_job": 490446,
+    "sources": [
+      "high.py",
+      "high.json"
+    ],
+    "description": "Two 131072-cell CUDA batches advect 64 cubed Lagrangian cells to 32 cubed output cells. This exercises the nonmetallicity X-ray and fesc-weighted SFRD formulas.",
+    "results": {
+      "DIM": 64,
+      "HII_DIM": 32,
+      "PERTURB_ON_HIGH_RES": true,
+      "USE_METALLICITY": false,
+      "N_THREADS": 1,
+      "USE_TS_FLUCT": true,
+      "RECOMB_MODEL": "inhomogeneous",
+      "EXTRA_EMISSIVITY_FIELDS": true,
+      "n_halos": 0,
+      "fields": {
+        "halo_number": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "halo_mass_density": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "stellar_mass_density_acg": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "sfrd_acg": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "xray_emissivity": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "n_ion": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        },
+        "fesc_weighted_sfrd": {
+          "failed": 0,
+          "different": 0,
+          "max_abs": 0.0,
+          "max_relative": 0.0,
+          "nonzero": 32768
+        }
+      },
+      "counters": {
+        "halo_grid_calls": 0,
+        "halo_grid_halos": 0,
+        "halo_grid_empty": 1,
+        "subgrid_nion_tables": 1,
+        "subgrid_sfrd_tables": 1,
+        "subgrid_advection_calls": 1,
+        "subgrid_advection_cells": 262144,
+        "subgrid_advection_input_bytes": 8005340,
+        "subgrid_advection_output_bytes": 917508,
+        "subgrid_advection_seconds": 0.40074267494492233
+      },
+      "entry_cpu_seconds": 0.2890520109795034,
+      "entry_gpu_seconds": 0.4294614039827138
+    }
+  },
+  "lightcone_run": false
+}

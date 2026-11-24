@@ -1,0 +1,2856 @@
+{
+  "summary": {
+    "490060": {
+      "grid": [
+        192,
+        64
+      ],
+      "fields": {
+        "density": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_x": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_y": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_z": {
+          "max_abs": 0.0,
+          "failed": 0
+        }
+      },
+      "highres_warm_median_s": {
+        "cpu": 0.6133437529788353,
+        "gpu": 0.04210481693735346
+      }
+    },
+    "490061": {
+      "grid": [
+        384,
+        96
+      ],
+      "fields": {
+        "density": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_x": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_y": {
+          "max_abs": 0.0,
+          "failed": 0
+        },
+        "velocity_z": {
+          "max_abs": 0.0,
+          "failed": 0
+        }
+      },
+      "highres_warm_median_s": {
+        "cpu": 5.3109900885028765,
+        "gpu": 0.4324757974827662
+      }
+    }
+  },
+  "original_trace": {
+    "490056": {
+      "case": "highres",
+      "z": 6.0,
+      "seed": 424242,
+      "smooth": false,
+      "target": {
+        "xyz": [
+          19,
+          26,
+          23
+        ],
+        "cpu": -0.001221969723701477,
+        "gpu": -0.0012223497033119202,
+        "delta": 3.7997961044311523e-07
+      },
+      "cpu": -0.001221969723701477,
+      "gpu": -0.0012223497033119202,
+      "same_ic_deposit_max_abs": 5.960464477539063e-08,
+      "same_ic_deposit_different": 1,
+      "deposit_worst": {
+        "xyz": [
+          159,
+          183,
+          51
+        ],
+        "cpu": 0.807695209980011,
+        "gpu": 0.8076952695846558
+      },
+      "gpu_tail_on_cpu_deposit": {
+        "max_abs": 0.0,
+        "different": 0,
+        "failed": 0,
+        "target": -0.001221969723701477
+      },
+      "native_coarse_before_smoothing": -0.0012221336364746094,
+      "native_tail_on_gpu_deposit_max_abs": 1.430511474609375e-06,
+      "native_tail_on_gpu_deposit_site": -0.0012223497033119202,
+      "same_mass_forward_max_complex_abs": 0.0,
+      "same_spectrum_tophat_max_complex_abs": 0.0,
+      "same_filtered_inverse_site": [
+        0.9987778663635254,
+        0.9987778663635254
+      ],
+      "fine_site": [
+        57,
+        78,
+        69
+      ],
+      "gpu_full_fine_inverse_site": 0.9987778663635254
+    },
+    "490057": {
+      "case": "highres",
+      "z": 6.0,
+      "seed": 1850877074,
+      "smooth": false,
+      "target": {
+        "xyz": [
+          36,
+          79,
+          88
+        ],
+        "cpu": -7.318567077163607e-05,
+        "gpu": -7.240860577439889e-05,
+        "delta": 7.770649972371757e-07
+      },
+      "cpu": -7.318567077163607e-05,
+      "gpu": -7.240860577439889e-05,
+      "same_ic_deposit_max_abs": 2.384185791015625e-07,
+      "same_ic_deposit_different": 13,
+      "deposit_worst": {
+        "xyz": [
+          141,
+          295,
+          118
+        ],
+        "cpu": 2.3130884170532227,
+        "gpu": 2.3130881786346436
+      },
+      "gpu_tail_on_cpu_deposit": {
+        "max_abs": 0.0,
+        "different": 0,
+        "failed": 0,
+        "target": -7.318567077163607e-05
+      },
+      "native_coarse_before_smoothing": -7.277727127075195e-05,
+      "native_tail_on_gpu_deposit_max_abs": 1.1920928955078125e-06,
+      "native_tail_on_gpu_deposit_site": -7.240860577439889e-05,
+      "same_mass_forward_max_complex_abs": 0.0,
+      "same_spectrum_tophat_max_complex_abs": 0.0,
+      "same_filtered_inverse_site": [
+        0.9999272227287292,
+        0.9999272227287292
+      ],
+      "fine_site": [
+        144,
+        316,
+        352
+      ],
+      "gpu_full_fine_inverse_site": 0.9999272227287292
+    }
+  },
+  "corrected_trace": {
+    "490060": {
+      "case": "highres",
+      "z": 6.0,
+      "seed": 424242,
+      "smooth": false,
+      "target": {
+        "xyz": [
+          19,
+          26,
+          23
+        ],
+        "cpu": -0.001221969723701477,
+        "gpu": -0.0012223497033119202,
+        "delta": 3.7997961044311523e-07
+      },
+      "cpu": -0.001221969723701477,
+      "gpu": -0.001221969723701477,
+      "same_ic_deposit_max_abs": 0.0,
+      "same_ic_deposit_different": 0,
+      "gpu_tail_on_cpu_deposit": {
+        "max_abs": 0.0,
+        "different": 0,
+        "failed": 0,
+        "target": -0.001221969723701477
+      },
+      "native_coarse_before_smoothing": -0.0012219548225402832,
+      "native_tail_on_gpu_deposit_max_abs": 0.0,
+      "native_tail_on_gpu_deposit_site": -0.001221969723701477,
+      "same_mass_forward_max_complex_abs": 0.0,
+      "same_spectrum_tophat_max_complex_abs": 0.0,
+      "same_filtered_inverse_site": [
+        0.9987780451774597,
+        0.9987780451774597
+      ],
+      "fine_site": [
+        57,
+        78,
+        69
+      ],
+      "gpu_full_fine_inverse_site": 0.9987780451774597
+    },
+    "490061": {
+      "case": "highres",
+      "z": 6.0,
+      "seed": 1850877074,
+      "smooth": false,
+      "target": {
+        "xyz": [
+          36,
+          79,
+          88
+        ],
+        "cpu": -7.318567077163607e-05,
+        "gpu": -7.240860577439889e-05,
+        "delta": 7.770649972371757e-07
+      },
+      "cpu": -7.318567077163607e-05,
+      "gpu": -7.318567077163607e-05,
+      "same_ic_deposit_max_abs": 0.0,
+      "same_ic_deposit_different": 0,
+      "gpu_tail_on_cpu_deposit": {
+        "max_abs": 0.0,
+        "different": 0,
+        "failed": 0,
+        "target": -7.318567077163607e-05
+      },
+      "native_coarse_before_smoothing": -7.283687591552734e-05,
+      "native_tail_on_gpu_deposit_max_abs": 0.0,
+      "native_tail_on_gpu_deposit_site": -7.318567077163607e-05,
+      "same_mass_forward_max_complex_abs": 0.0,
+      "same_spectrum_tophat_max_complex_abs": 0.0,
+      "same_filtered_inverse_site": [
+        0.9999271631240845,
+        0.9999271631240845
+      ],
+      "fine_site": [
+        144,
+        316,
+        352
+      ],
+      "gpu_full_fine_inverse_site": 0.9999271631240845
+    }
+  },
+  "arithmetic_order": {
+    "490062": [
+      {
+        "fine": 192,
+        "seed": 424242,
+        "z": 6.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_old_scale_reference": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 192,
+        "seed": 424242,
+        "z": 15.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_old_scale_reference": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 192,
+        "seed": 1850877074,
+        "z": 6.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_old_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 192,
+        "seed": 1850877074,
+        "z": 15.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_old_scale_reference": {
+            "different": 1,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      }
+    ],
+    "490063": [
+      {
+        "fine": 384,
+        "seed": 424242,
+        "z": 6.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 9,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_old_scale_reference": {
+            "different": 9,
+            "max_abs": 5.960464477539063e-08
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 384,
+        "seed": 424242,
+        "z": 15.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 16,
+            "max_abs": 1.1920928955078125e-07
+          },
+          "group_old_scale_reference": {
+            "different": 16,
+            "max_abs": 1.1920928955078125e-07
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 384,
+        "seed": 1850877074,
+        "z": 6.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 13,
+            "max_abs": 2.384185791015625e-07
+          },
+          "group_old_scale_reference": {
+            "different": 13,
+            "max_abs": 2.384185791015625e-07
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      },
+      {
+        "fine": 384,
+        "seed": 1850877074,
+        "z": 15.0,
+        "variants": {
+          "group_old_scale_old": {
+            "different": 7,
+            "max_abs": 1.1920928955078125e-07
+          },
+          "group_old_scale_reference": {
+            "different": 7,
+            "max_abs": 1.1920928955078125e-07
+          },
+          "group_reference_scale_old": {
+            "different": 0,
+            "max_abs": 0.0
+          },
+          "group_reference_scale_reference": {
+            "different": 0,
+            "max_abs": 0.0
+          }
+        }
+      }
+    ]
+  },
+  "regression": {
+    "490060": {
+      "version": "4.3.2",
+      "device": "NVIDIA RTX A6000",
+      "threads": 2,
+      "atol": 1e-08,
+      "rtol": 0.0001,
+      "cases": [
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.007754898048005998,
+            "warm_median": 0.004369833040982485,
+            "samples": [
+              0.007754898048005998,
+              0.005771251046098769,
+              0.004369833040982485,
+              0.004308542935177684
+            ]
+          },
+          "gpu": {
+            "first": 2.2287643409799784,
+            "warm_median": 0.002429167041555047,
+            "samples": [
+              2.2287643409799784,
+              0.004279461922124028,
+              0.002429167041555047,
+              0.002410875982604921
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.005152748082764447,
+            "warm_median": 0.003948605968616903,
+            "samples": [
+              0.005152748082764447,
+              0.005094947991892695,
+              0.003948605968616903,
+              0.003918834961950779
+            ]
+          },
+          "gpu": {
+            "first": 0.0027830629842355847,
+            "warm_median": 0.002294183010235429,
+            "samples": [
+              0.0027830629842355847,
+              0.002433486981317401,
+              0.002294183010235429,
+              0.002264083013869822
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.15743291401304305,
+            "warm_median": 0.1516982939792797,
+            "samples": [
+              0.15743291401304305,
+              0.15273931401316077,
+              0.1513489269418642,
+              0.1516982939792797
+            ]
+          },
+          "gpu": {
+            "first": 0.11120238807052374,
+            "warm_median": 0.008808398968540132,
+            "samples": [
+              0.11120238807052374,
+              0.008808398968540132,
+              0.009220165899023414,
+              0.007448942982591689
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.1543499049730599,
+            "warm_median": 0.15133490599691868,
+            "samples": [
+              0.1543499049730599,
+              0.1539986579446122,
+              0.15127573593053967,
+              0.15133490599691868
+            ]
+          },
+          "gpu": {
+            "first": 0.0077693379716947675,
+            "warm_median": 0.00734367105178535,
+            "samples": [
+              0.0077693379716947675,
+              0.00734367105178535,
+              0.007486533024348319,
+              0.007309630047529936
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.6268075390253216,
+            "warm_median": 0.6307225440395996,
+            "samples": [
+              0.6268075390253216,
+              0.6240831479663029,
+              0.6307225440395996,
+              0.6361825090134516
+            ]
+          },
+          "gpu": {
+            "first": 2.077360520954244,
+            "warm_median": 0.04198337404523045,
+            "samples": [
+              2.077360520954244,
+              0.04198337404523045,
+              0.04158041602931917,
+              0.0454899410251528
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 424242,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.6190947539871559,
+            "warm_median": 0.6220336699625477,
+            "samples": [
+              0.6190947539871559,
+              0.6207791350316256,
+              0.6253395630046725,
+              0.6220336699625477
+            ]
+          },
+          "gpu": {
+            "first": 0.042472162982448936,
+            "warm_median": 0.04177026997786015,
+            "samples": [
+              0.042472162982448936,
+              0.041765369940549135,
+              0.04183918097987771,
+              0.04177026997786015
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.005081007955595851,
+            "warm_median": 0.0040382969891652465,
+            "samples": [
+              0.005081007955595851,
+              0.0040832479717209935,
+              0.0040382969891652465,
+              0.003966355929151177
+            ]
+          },
+          "gpu": {
+            "first": 0.005158988991752267,
+            "warm_median": 0.002293134108185768,
+            "samples": [
+              0.005158988991752267,
+              0.002527027972973883,
+              0.002269804012030363,
+              0.002293134108185768
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.004588768002577126,
+            "warm_median": 0.004260620917193592,
+            "samples": [
+              0.004588768002577126,
+              0.004386123968288302,
+              0.004199141054414213,
+              0.004260620917193592
+            ]
+          },
+          "gpu": {
+            "first": 0.0027157709700986743,
+            "warm_median": 0.002223332063294947,
+            "samples": [
+              0.0027157709700986743,
+              0.0022927640238776803,
+              0.0021907209884375334,
+              0.002223332063294947
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.15429052396211773,
+            "warm_median": 0.1509661910822615,
+            "samples": [
+              0.15429052396211773,
+              0.15034496888983995,
+              0.15128328697755933,
+              0.1509661910822615
+            ]
+          },
+          "gpu": {
+            "first": 0.009966410929337144,
+            "warm_median": 0.007333570974878967,
+            "samples": [
+              0.009966410929337144,
+              0.007677527028135955,
+              0.007333570974878967,
+              0.007317280047573149
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.1505131620215252,
+            "warm_median": 0.1504314299672842,
+            "samples": [
+              0.1505131620215252,
+              0.15199778089299798,
+              0.14886262104846537,
+              0.1504314299672842
+            ]
+          },
+          "gpu": {
+            "first": 0.008020173059776425,
+            "warm_median": 0.007449283031746745,
+            "samples": [
+              0.008020173059776425,
+              0.007556015043519437,
+              0.007449283031746745,
+              0.007428592070937157
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.6174167239805683,
+            "warm_median": 0.6000117510557175,
+            "samples": [
+              0.6174167239805683,
+              0.6000117510557175,
+              0.5948440720094368,
+              0.610170966014266
+            ]
+          },
+          "gpu": {
+            "first": 0.05596008105203509,
+            "warm_median": 0.04277248901780695,
+            "samples": [
+              0.05596008105203509,
+              0.04292523197364062,
+              0.04269225802272558,
+              0.04277248901780695
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.6028150039492175,
+            "warm_median": 0.6301605779444799,
+            "samples": [
+              0.6028150039492175,
+              0.6227086749859154,
+              0.6311978190205991,
+              0.6301605779444799
+            ]
+          },
+          "gpu": {
+            "first": 0.04302476393058896,
+            "warm_median": 0.04256714507937431,
+            "samples": [
+              0.04302476393058896,
+              0.042534684063866735,
+              0.042569505982100964,
+              0.04256714507937431
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.0052663409151136875,
+            "warm_median": 0.004592978046275675,
+            "samples": [
+              0.0052663409151136875,
+              0.005359912058338523,
+              0.004592978046275675,
+              0.00439506396651268
+            ]
+          },
+          "gpu": {
+            "first": 0.010361728025600314,
+            "warm_median": 0.0027677830075845122,
+            "samples": [
+              0.010361728025600314,
+              0.003916734945960343,
+              0.0027677830075845122,
+              0.0026425409596413374
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.004692799993790686,
+            "warm_median": 0.004452764987945557,
+            "samples": [
+              0.004692799993790686,
+              0.005820651073008776,
+              0.004329612944275141,
+              0.004452764987945557
+            ]
+          },
+          "gpu": {
+            "first": 0.0032043009996414185,
+            "warm_median": 0.0026588219916447997,
+            "samples": [
+              0.0032043009996414185,
+              0.002633129945024848,
+              0.0026588219916447997,
+              0.00266555103007704
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.1513190190307796,
+            "warm_median": 0.14963771600741893,
+            "samples": [
+              0.1513190190307796,
+              0.14973952795844525,
+              0.14946253201924264,
+              0.14963771600741893
+            ]
+          },
+          "gpu": {
+            "first": 0.009645044920034707,
+            "warm_median": 0.00750310393050313,
+            "samples": [
+              0.009645044920034707,
+              0.007982362993061543,
+              0.00750310393050313,
+              0.007461832952685654
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.1497699279570952,
+            "warm_median": 0.1495892850216478,
+            "samples": [
+              0.1497699279570952,
+              0.14918663795106113,
+              0.1495892850216478,
+              0.15010388498194516
+            ]
+          },
+          "gpu": {
+            "first": 0.00815246591810137,
+            "warm_median": 0.00756907497998327,
+            "samples": [
+              0.00815246591810137,
+              0.007657457026652992,
+              0.00756907497998327,
+              0.007540634018369019
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.615572921000421,
+            "warm_median": 0.6012427269015461,
+            "samples": [
+              0.615572921000421,
+              0.5966054279124364,
+              0.6104320330778137,
+              0.6012427269015461
+            ]
+          },
+          "gpu": {
+            "first": 0.04741282807663083,
+            "warm_median": 0.04173499904572964,
+            "samples": [
+              0.04741282807663083,
+              0.04173499904572964,
+              0.04173872002866119,
+              0.04112705809529871
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 424242,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.6198094530263916,
+            "warm_median": 0.6266497339820489,
+            "samples": [
+              0.6198094530263916,
+              0.6253884800244123,
+              0.6266497339820489,
+              0.6283555380068719
+            ]
+          },
+          "gpu": {
+            "first": 0.04264516697730869,
+            "warm_median": 0.04199258494190872,
+            "samples": [
+              0.04264516697730869,
+              0.042087026056833565,
+              0.04199258494190872,
+              0.04193189402576536
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.005032156012021005,
+            "warm_median": 0.004527976969256997,
+            "samples": [
+              0.005032156012021005,
+              0.004540027002803981,
+              0.004527976969256997,
+              0.004435884999111295
+            ]
+          },
+          "gpu": {
+            "first": 0.005815860931761563,
+            "warm_median": 0.0031146700493991375,
+            "samples": [
+              0.005815860931761563,
+              0.0029812570428475738,
+              0.007175687002018094,
+              0.0031146700493991375
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.004717819974757731,
+            "warm_median": 0.004361742991022766,
+            "samples": [
+              0.004717819974757731,
+              0.004718980984762311,
+              0.004361742991022766,
+              0.004303692956455052
+            ]
+          },
+          "gpu": {
+            "first": 0.0030946589540690184,
+            "warm_median": 0.00272086204495281,
+            "samples": [
+              0.0030946589540690184,
+              0.00272086204495281,
+              0.002749773091636598,
+              0.002634831005707383
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.15110071492381394,
+            "warm_median": 0.1499981340020895,
+            "samples": [
+              0.15110071492381394,
+              0.15003121399786323,
+              0.1499981340020895,
+              0.14953582489397377
+            ]
+          },
+          "gpu": {
+            "first": 0.009493242017924786,
+            "warm_median": 0.007602596073411405,
+            "samples": [
+              0.009493242017924786,
+              0.007707257987931371,
+              0.007602596073411405,
+              0.007497033919207752
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.14975400897674263,
+            "warm_median": 0.149510774994269,
+            "samples": [
+              0.14975400897674263,
+              0.149510774994269,
+              0.14920892799273133,
+              0.14955321501474828
+            ]
+          },
+          "gpu": {
+            "first": 0.008046564063988626,
+            "warm_median": 0.007525854045525193,
+            "samples": [
+              0.008046564063988626,
+              0.007641506032086909,
+              0.007489133044146001,
+              0.007525854045525193
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.6278462689369917,
+            "warm_median": 0.6009526749840006,
+            "samples": [
+              0.6278462689369917,
+              0.6009526749840006,
+              0.6005286660511047,
+              0.6022027980070561
+            ]
+          },
+          "gpu": {
+            "first": 0.04793962894473225,
+            "warm_median": 0.04221704893279821,
+            "samples": [
+              0.04793962894473225,
+              0.04227213002741337,
+              0.04221704893279821,
+              0.042151307919994
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 192,
+          "low": 64,
+          "box": 200,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.6005012160167098,
+            "warm_median": 0.6046538359951228,
+            "samples": [
+              0.6005012160167098,
+              0.6046538359951228,
+              0.6025784760713577,
+              0.6095105700660497
+            ]
+          },
+          "gpu": {
+            "first": 0.04357811494264752,
+            "warm_median": 0.04500968207139522,
+            "samples": [
+              0.04357811494264752,
+              0.04583747801370919,
+              0.04500968207139522,
+              0.042740459088236094
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        }
+      ]
+    },
+    "490061": {
+      "version": "4.3.2",
+      "device": "NVIDIA RTX A6000",
+      "threads": 2,
+      "atol": 1e-08,
+      "rtol": 0.0001,
+      "cases": [
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.03479550697375089,
+            "warm_median": 0.02785823296289891,
+            "samples": [
+              0.03479550697375089,
+              0.029057255946099758,
+              0.02785823296289891,
+              0.02648171701002866
+            ]
+          },
+          "gpu": {
+            "first": 2.2030759529443458,
+            "warm_median": 0.00854679406620562,
+            "samples": [
+              2.2030759529443458,
+              0.009108053985983133,
+              0.004734080983325839,
+              0.00854679406620562
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.025551868951879442,
+            "warm_median": 0.025567540084011853,
+            "samples": [
+              0.025551868951879442,
+              0.025567540084011853,
+              0.023403707891702652,
+              0.026942946016788483
+            ]
+          },
+          "gpu": {
+            "first": 0.004334402969107032,
+            "warm_median": 0.003927535028196871,
+            "samples": [
+              0.004334402969107032,
+              0.0040097469463944435,
+              0.003865404985845089,
+              0.003927535028196871
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 1.1823636390035972,
+            "warm_median": 1.1733584980247542,
+            "samples": [
+              1.1823636390035972,
+              1.1823009380605072,
+              1.1733584980247542,
+              1.1673880340531468
+            ]
+          },
+          "gpu": {
+            "first": 0.28172729804646224,
+            "warm_median": 0.052667658077552915,
+            "samples": [
+              0.28172729804646224,
+              0.05521060700993985,
+              0.04631451703608036,
+              0.052667658077552915
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 1.152488769032061,
+            "warm_median": 1.157050259062089,
+            "samples": [
+              1.152488769032061,
+              1.1580918279942125,
+              1.1528170959791169,
+              1.157050259062089
+            ]
+          },
+          "gpu": {
+            "first": 0.04631432704627514,
+            "warm_median": 0.04542948096059263,
+            "samples": [
+              0.04631432704627514,
+              0.04537377005908638,
+              0.04548402095679194,
+              0.04542948096059263
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 5.361538372002542,
+            "warm_median": 5.3612015979597345,
+            "samples": [
+              5.361538372002542,
+              5.3612015979597345,
+              5.3541593350237235,
+              5.385200401069596
+            ]
+          },
+          "gpu": {
+            "first": 2.462828679010272,
+            "warm_median": 0.4349400190403685,
+            "samples": [
+              2.462828679010272,
+              0.4349400190403685,
+              0.43867359100840986,
+              0.43195424205623567
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 424242,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 5.30094127508346,
+            "warm_median": 5.278854942996986,
+            "samples": [
+              5.30094127508346,
+              5.278854942996986,
+              5.284425798919983,
+              5.238099092035554
+            ]
+          },
+          "gpu": {
+            "first": 0.5123113370500505,
+            "warm_median": 0.43329579196870327,
+            "samples": [
+              0.5123113370500505,
+              0.4337369699496776,
+              0.43279816198628396,
+              0.43329579196870327
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.028077368973754346,
+            "warm_median": 0.023189425002783537,
+            "samples": [
+              0.028077368973754346,
+              0.023189425002783537,
+              0.023408929002471268,
+              0.021916500059887767
+            ]
+          },
+          "gpu": {
+            "first": 0.00879674800671637,
+            "warm_median": 0.003783192951232195,
+            "samples": [
+              0.00879674800671637,
+              0.0056620180839672685,
+              0.0037548820255324244,
+              0.003783192951232195
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.02512622205540538,
+            "warm_median": 0.025437287986278534,
+            "samples": [
+              0.02512622205540538,
+              0.025437287986278534,
+              0.02312751393765211,
+              0.027127300039865077
+            ]
+          },
+          "gpu": {
+            "first": 0.0043503830675035715,
+            "warm_median": 0.0038719340227544308,
+            "samples": [
+              0.0043503830675035715,
+              0.004093528958037496,
+              0.003860904020257294,
+              0.0038719340227544308
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 1.1454154290258884,
+            "warm_median": 1.1576960049569607,
+            "samples": [
+              1.1454154290258884,
+              1.1576960049569607,
+              1.178619507001713,
+              1.148246324970387
+            ]
+          },
+          "gpu": {
+            "first": 0.09955495002213866,
+            "warm_median": 0.044779508956708014,
+            "samples": [
+              0.09955495002213866,
+              0.04583224991802126,
+              0.044779508956708014,
+              0.04327204101718962
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 1.157707906095311,
+            "warm_median": 1.1582882279762998,
+            "samples": [
+              1.157707906095311,
+              1.1617857250384986,
+              1.1582882279762998,
+              1.1581862770253792
+            ]
+          },
+          "gpu": {
+            "first": 0.04698030208237469,
+            "warm_median": 0.04541241202969104,
+            "samples": [
+              0.04698030208237469,
+              0.04563453595619649,
+              0.04541241202969104,
+              0.04507218499202281
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 5.390312882955186,
+            "warm_median": 5.368594366009347,
+            "samples": [
+              5.390312882955186,
+              5.368594366009347,
+              5.375950346933678,
+              5.361706492956728
+            ]
+          },
+          "gpu": {
+            "first": 0.5581556080142036,
+            "warm_median": 0.43208316795062274,
+            "samples": [
+              0.5581556080142036,
+              0.43404229497537017,
+              0.4320507060037926,
+              0.43208316795062274
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": false,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 5.224912420031615,
+            "warm_median": 5.237754764966667,
+            "samples": [
+              5.224912420031615,
+              5.2329367629718035,
+              5.237754764966667,
+              5.248744803946465
+            ]
+          },
+          "gpu": {
+            "first": 0.5348986249882728,
+            "warm_median": 0.4318769669625908,
+            "samples": [
+              0.5348986249882728,
+              0.4318498959764838,
+              0.4318769669625908,
+              0.4320730799809098
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.03551547206006944,
+            "warm_median": 0.027641331078484654,
+            "samples": [
+              0.03551547206006944,
+              0.027641331078484654,
+              0.025169494096189737,
+              0.029218790936283767
+            ]
+          },
+          "gpu": {
+            "first": 0.015496487962082028,
+            "warm_median": 0.0076625479850918055,
+            "samples": [
+              0.015496487962082028,
+              0.0076625479850918055,
+              0.0051015689969062805,
+              0.008910000906325877
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.023260026006028056,
+            "warm_median": 0.027703362982720137,
+            "samples": [
+              0.023260026006028056,
+              0.027703362982720137,
+              0.024568652035668492,
+              0.028757632011547685
+            ]
+          },
+          "gpu": {
+            "first": 0.004653629031963646,
+            "warm_median": 0.004073798074387014,
+            "samples": [
+              0.004653629031963646,
+              0.00421783106867224,
+              0.004067058092914522,
+              0.004073798074387014
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 1.1516149180242792,
+            "warm_median": 1.156568433973007,
+            "samples": [
+              1.1516149180242792,
+              1.152723561041057,
+              1.156568433973007,
+              1.1569125519599766
+            ]
+          },
+          "gpu": {
+            "first": 0.048256507026962936,
+            "warm_median": 0.04477755003608763,
+            "samples": [
+              0.048256507026962936,
+              0.05152799002826214,
+              0.04477755003608763,
+              0.04447861504741013
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 1.155983484000899,
+            "warm_median": 1.1569619140354916,
+            "samples": [
+              1.155983484000899,
+              1.1569619140354916,
+              1.1561428880086169,
+              1.1591725669568405
+            ]
+          },
+          "gpu": {
+            "first": 0.08630205900408328,
+            "warm_median": 0.04444273409899324,
+            "samples": [
+              0.08630205900408328,
+              0.04444273409899324,
+              0.04452841600868851,
+              0.04438420291990042
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 5.378095936961472,
+            "warm_median": 5.347519234986976,
+            "samples": [
+              5.378095936961472,
+              5.339499172987416,
+              5.347519234986976,
+              5.349354439065792
+            ]
+          },
+          "gpu": {
+            "first": 0.5143139080610126,
+            "warm_median": 0.43305136694107205,
+            "samples": [
+              0.5143139080610126,
+              0.4375133829889819,
+              0.43303781608119607,
+              0.43305136694107205
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 424242,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 5.2051499870140105,
+            "warm_median": 5.221199583960697,
+            "samples": [
+              5.2051499870140105,
+              5.221199583960697,
+              5.216928829089738,
+              5.221400213078596
+            ]
+          },
+          "gpu": {
+            "first": 0.4558962290175259,
+            "warm_median": 0.4328368549467996,
+            "samples": [
+              0.4558962290175259,
+              0.4328368549467996,
+              0.432958367979154,
+              0.43282909493427724
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 6.0,
+          "cpu": {
+            "first": 0.032013945979997516,
+            "warm_median": 0.027593541075475514,
+            "samples": [
+              0.032013945979997516,
+              0.027593541075475514,
+              0.02505845297127962,
+              0.028833954012952745
+            ]
+          },
+          "gpu": {
+            "first": 0.012560911010950804,
+            "warm_median": 0.007580566103570163,
+            "samples": [
+              0.012560911010950804,
+              0.007580566103570163,
+              0.005033837049268186,
+              0.008807479054667056
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "linear",
+          "z": 15.0,
+          "cpu": {
+            "first": 0.025813567102886736,
+            "warm_median": 0.02755497000180185,
+            "samples": [
+              0.025813567102886736,
+              0.02755497000180185,
+              0.02488986891694367,
+              0.02868046099320054
+            ]
+          },
+          "gpu": {
+            "first": 0.00459846796002239,
+            "warm_median": 0.004128139000386,
+            "samples": [
+              0.00459846796002239,
+              0.0042323420057073236,
+              0.004065437940880656,
+              0.004128139000386
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 6.0,
+          "cpu": {
+            "first": 1.1667131159920245,
+            "warm_median": 1.158702271990478,
+            "samples": [
+              1.1667131159920245,
+              1.158702271990478,
+              1.1599076150450855,
+              1.156995909055695
+            ]
+          },
+          "gpu": {
+            "first": 0.04805819399189204,
+            "warm_median": 0.052091302000917494,
+            "samples": [
+              0.04805819399189204,
+              0.05359988193958998,
+              0.04572485003154725,
+              0.052091302000917494
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "no2lpt",
+          "z": 15.0,
+          "cpu": {
+            "first": 1.153136814944446,
+            "warm_median": 1.1582861159695312,
+            "samples": [
+              1.153136814944446,
+              1.1594602779950947,
+              1.1577144250040874,
+              1.1582861159695312
+            ]
+          },
+          "gpu": {
+            "first": 0.08332799409981817,
+            "warm_median": 0.044602187001146376,
+            "samples": [
+              0.08332799409981817,
+              0.044602187001146376,
+              0.04450935695786029,
+              0.04460231796838343
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 6.0,
+          "cpu": {
+            "first": 5.349963754066266,
+            "warm_median": 5.343125234008767,
+            "samples": [
+              5.349963754066266,
+              5.345826660981402,
+              5.333946809987538,
+              5.343125234008767
+            ]
+          },
+          "gpu": {
+            "first": 0.5365733780199662,
+            "warm_median": 0.43206960696261376,
+            "samples": [
+              0.5365733780199662,
+              0.4324506239499897,
+              0.43206960696261376,
+              0.4319871459156275
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        },
+        {
+          "fine": 384,
+          "low": 96,
+          "box": 375,
+          "smooth": true,
+          "seed": 1850877074,
+          "case": "highres",
+          "z": 15.0,
+          "cpu": {
+            "first": 5.215514596900903,
+            "warm_median": 5.219422567985021,
+            "samples": [
+              5.215514596900903,
+              5.219422567985021,
+              5.216196204070002,
+              5.240184071008116
+            ]
+          },
+          "gpu": {
+            "first": 0.509970249957405,
+            "warm_median": 0.43211474001873285,
+            "samples": [
+              0.509970249957405,
+              0.43233580398373306,
+              0.43211474001873285,
+              0.43124899396207184
+            ]
+          },
+          "fields": {
+            "density": {
+              "max_abs": 0.0,
+              "failed": 0
+            },
+            "velocity_x": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_y": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            },
+            "velocity_z": {
+              "max_abs": 0.0,
+              "failed": 0,
+              "scaled_failed": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

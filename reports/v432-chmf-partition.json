@@ -1,0 +1,456 @@
+{
+  "scope": "21cmFAST 4.3.2 Sheth\u2013Tormen CHMF PARTITION device preparation, stochastic draws and public lightcone.",
+  "environment": "a9, RTX A6000, glibc 2.39, GSL 2.7",
+  "native_oracle": "The stock method failed in job 490851. The temporary CPU reference builds the native catalog and stochasticity sources with the sole source repair of supplying storage for the discarded zeroth-order output in both calls within partition_rejection. The CUDA adapter's CPU fallback uses the same source correction. Scientific options, formulas, random draws, and the installed native build are retained.",
+  "exact_word_replay": {
+    "job": "490860",
+    "partition_replay": [
+      {
+        "cases": 1280,
+        "draws": 12629,
+        "masses": 2347,
+        "zero_draws": 0,
+        "multiple_branches": 193,
+        "output_count_mismatches": 0,
+        "cursor_mismatches": 0,
+        "max_cpu_draws": 161,
+        "examples": [],
+        "failed": 0
+      }
+    ]
+  },
+  "sample_method": "1,280 saved parent masses, including the 256 heaviest catalog entries, with deterministic test word streams. Native and CUDA run from the same sigma table. Packed masses, number of draws and output counts match.",
+  "one_thread_catalogs": {
+    "cpu": {
+      "job": "490858",
+      "mode": "cpu",
+      "elapsed": 4.142804290982895,
+      "grid": {
+        "count": 34027,
+        "fields_sha256": {
+          "halo_masses": "f9fb6d1831e5395e20afa95024fffe979de61367b431591db50197a84aca43a3",
+          "halo_coords": "38d1814ea3d721a6f39dfddeb4ecd549cdcef2284967580b82c8ba2bdfd230d0",
+          "star_rng": "b4ba42ab66f482bbd27ae5736aa0f16041ebf02acd8dc9db512382cc2cde284d",
+          "sfr_rng": "33ac7fcc408b9825108aa284e8c37c112940ad6e3b92743f9f42d03dd3e85a78",
+          "xray_rng": "ce6c73f1bf48252d36b0c7517368556f5d92b0386b35a063d570329a3d6852c8"
+        },
+        "ordered_sha256": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b"
+      },
+      "progenitors": {
+        "count": 31686,
+        "fields_sha256": {
+          "halo_masses": "58829fd56502899bb9bc1327eef40446c53baea3eb9fe152c436b0ab891e6e54",
+          "halo_coords": "72850f6050397e3932e468e69a3f591864eb332131e04760e96c0e5ccdd518f3",
+          "star_rng": "642e3044b9380f9bf7c7dda6adc2a8bdd3a40b1aa091c137fcecf355da923b8a",
+          "sfr_rng": "e83de99d62e27a48c9674c02692630d0ba6c15413afa76e09399605e61618872",
+          "xray_rng": "286b834c5a5e530cfe3bb822fc0f8d05e42e9b699b5fb53f81e376d2e0ebbad0"
+        },
+        "ordered_sha256": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc"
+      },
+      "report": {},
+      "passed": true
+    },
+    "gpu": {
+      "job": "490859",
+      "mode": "gpu",
+      "elapsed": 1.730129597010091,
+      "grid": {
+        "count": 34027,
+        "fields_sha256": {
+          "halo_masses": "f9fb6d1831e5395e20afa95024fffe979de61367b431591db50197a84aca43a3",
+          "halo_coords": "38d1814ea3d721a6f39dfddeb4ecd549cdcef2284967580b82c8ba2bdfd230d0",
+          "star_rng": "b4ba42ab66f482bbd27ae5736aa0f16041ebf02acd8dc9db512382cc2cde284d",
+          "sfr_rng": "33ac7fcc408b9825108aa284e8c37c112940ad6e3b92743f9f42d03dd3e85a78",
+          "xray_rng": "ce6c73f1bf48252d36b0c7517368556f5d92b0386b35a063d570329a3d6852c8"
+        },
+        "ordered_sha256": "536cc3b446a65465c21eda57fa49a49aaa285069c563bbc4f7c0b122d61f4b8b"
+      },
+      "progenitors": {
+        "count": 31686,
+        "fields_sha256": {
+          "halo_masses": "58829fd56502899bb9bc1327eef40446c53baea3eb9fe152c436b0ab891e6e54",
+          "halo_coords": "72850f6050397e3932e468e69a3f591864eb332131e04760e96c0e5ccdd518f3",
+          "star_rng": "642e3044b9380f9bf7c7dda6adc2a8bdd3a40b1aa091c137fcecf355da923b8a",
+          "sfr_rng": "e83de99d62e27a48c9674c02692630d0ba6c15413afa76e09399605e61618872",
+          "xray_rng": "286b834c5a5e530cfe3bb822fc0f8d05e42e9b699b5fb53f81e376d2e0ebbad0"
+        },
+        "ordered_sha256": "aad22042f3216903e5795112cc788459146e0629be16fb22be7a0e454d5740fc"
+      },
+      "report": {
+        "halo_grid_positions": 34027,
+        "halo_progenitor_positions": 31686,
+        "halo_grid_property_gaussians": 102081,
+        "halo_progenitor_property_gaussians": 95058,
+        "halo_property_host_roundings": 0,
+        "halo_property_batches": 33,
+        "halo_conditional_number_tables": 2,
+        "halo_inverse_cdf_rows": 164,
+        "halo_inverse_cdf_possible_rows": 200,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 10,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 10,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cuda_rows": 164,
+        "halo_inverse_cuda_seconds": 0.0661567950155586,
+        "halo_cuda_mt_words": 1158144,
+        "halo_cuda_grid_conditions_prepared": 4096,
+        "halo_cuda_grid_resident_density": 4096,
+        "halo_cuda_grid_sample_conditions": 4084,
+        "halo_cuda_grid_sample_masses": 33827,
+        "halo_cuda_grid_sample_words_consumed": 477272,
+        "halo_cuda_grid_sample_high_poisson_conditions": 2409,
+        "halo_cuda_grid_sample_device_tangent_conditions": 2409,
+        "halo_cuda_grid_sample_sampling_seconds": 0.2820448777638376,
+        "halo_inverse_cdf_built_values": 65600,
+        "halo_grid_condition_builds": 13,
+        "halo_cuda_progenitor_conditions_prepared": 34027,
+        "halo_cuda_progenitor_conditions": 34013,
+        "halo_cuda_progenitor_masses": 31672,
+        "halo_cuda_progenitor_words_consumed": 608958,
+        "halo_cuda_progenitor_high_poisson_conditions": 0,
+        "halo_cuda_progenitor_device_tangent_conditions": 0,
+        "halo_cuda_progenitor_sampling_seconds": 0.7195628379704431,
+        "halo_progenitor_condition_builds": 15
+      },
+      "passed": true,
+      "native_job": "490858"
+    }
+  },
+  "two_thread_public_lightcone": {
+    "source_model": "CHMF-SAMPLER",
+    "thermal": false,
+    "seed": 424242,
+    "dim": 32,
+    "hii_dim": 16,
+    "box_mpc": 24.0,
+    "nthreads": 2,
+    "nodes": [
+      10.22,
+      10.0,
+      9.8
+    ],
+    "bounds": [
+      9.85,
+      10.18
+    ],
+    "sample_method": "PARTITION",
+    "native_partition_reference_null_fix": true,
+    "mode": "gpu",
+    "host": "a9",
+    "job": "490862",
+    "version": "4.3.2",
+    "elapsed_seconds": 17.82465821597725,
+    "catalogs": [
+      {
+        "z": 9.8,
+        "n": 36012,
+        "halo_coords": "22c8c90b596871dde803dff3d524aa83fb6befcb9ff96a753b7718e6cd60c4ea",
+        "halo_masses": "fd959c6e7196443f8765c7eb5025c350618962ddd293dbcae26fe15dcaeaa849",
+        "star_rng": "fb8cd51b3d0c99c72b744740ec6a8b456b73d9cae6389c9e5526f1084ce1a1bb",
+        "sfr_rng": "c32b202db09040e8d9a2e663b065bf08777d3b9e95a4fdcee6d9ae11ac64fae8",
+        "xray_rng": "fecb98f6a7fdcc1c3304e6cbe29497c68838cb3bb960c867a5678175483b771d"
+      },
+      {
+        "z": 10.0,
+        "n": 33851,
+        "halo_coords": "1ee6ea66fdb7fc471626b136906e3a6fda75d2595469f5a14c4ed76e711b76bc",
+        "halo_masses": "c88452cb5570064382b8e6d99aa1fb8532f141b786079bc5daebcef8b1cbe52e",
+        "star_rng": "9dea68f43417682b0047126a0bd09d376558d84bc998dedb6049179247022bf1",
+        "sfr_rng": "337b149fcbfbc84809cc685b0977e7f72e08366be135b2f30480210b5dd5aba3",
+        "xray_rng": "813e4601d09bc600ed28022d18566e6d1b72e719d8aaf030cadfe9c484481031"
+      },
+      {
+        "z": 10.22,
+        "n": 31454,
+        "halo_coords": "4e48e504575ba4654c4023c2d027b5cedc5cc6e64d3b7d1ca19575ad3ef259dd",
+        "halo_masses": "97fd1ef3681c54f32e29f061163b7a1b5c11f06f587eb88469823a68d2111665",
+        "star_rng": "6bab39797afeff5ab66e8a63cd03e3fa6aa371c387320685b9786c4bb12f376b",
+        "sfr_rng": "043af49f45386339c67aab92256bc90436390d22a4dd131e040d8e5ff1688278",
+        "xray_rng": "83a23c0f353a0a561f85f463b4f47d1556384b195df195faef07bc8b2ee5fcab"
+      }
+    ],
+    "fields_requested": [
+      "brightness_temp",
+      "neutral_fraction",
+      "density",
+      "velocity_z",
+      "n_ion"
+    ],
+    "slice_count": 49,
+    "slice_bounds": [
+      9.850000024072509,
+      10.182055330233927
+    ],
+    "routing": {
+      "source_model": "CHMF-SAMPLER",
+      "native_stages": [
+        "source scaling constants and redshift-dependent prefactors",
+        "lightcone distances and shell selection",
+        "progenitor window-boundary fallback",
+        "grid window-boundary fallback",
+        "GSL uniform draws and polar rejection for CHMF properties; scalar libm check at ambiguous float rounding"
+      ],
+      "counters": {
+        "halo_grid_positions": 36012,
+        "halo_progenitor_positions": 65305,
+        "halo_grid_property_gaussians": 108036,
+        "halo_progenitor_property_gaussians": 195915,
+        "halo_property_host_roundings": 1,
+        "halo_property_batches": 53,
+        "halo_conditional_number_tables": 3,
+        "halo_inverse_cdf_rows": 165,
+        "halo_inverse_cdf_possible_rows": 200,
+        "halo_grid_calls": 3,
+        "halo_grid_halos": 101317,
+        "halo_grid_empty": 0,
+        "subgrid_nion_tables": 3,
+        "subgrid_sfrd_tables": 0,
+        "subgrid_xray_tables": 0,
+        "backend_setup_seconds": 8.014635612023994,
+        "gpu_eh_transfer": 1,
+        "gpu_power_normalization": 1,
+        "gpu_seed_and_modes": 1,
+        "gpu_sigma_mass_table": 1,
+        "dexm_density_forward_fft": 1,
+        "dexm_ordinary_radii": 10,
+        "dexm_ordinary_candidates": 0,
+        "dexm_radius_searches": 10,
+        "dexm_candidates": 0,
+        "dexm_ordinary_accepted": 0,
+        "dexm_accepted": 0,
+        "dexm_empty_property_catalogs": 1,
+        "dexm_empty_overlap_grids": 1,
+        "halo_inverse_cuda_rows": 165,
+        "halo_inverse_cuda_seconds": 0.14144398900680244,
+        "halo_cuda_mt_words": 958464,
+        "halo_cuda_grid_conditions_prepared": 4096,
+        "halo_cuda_grid_resident_density": 4096,
+        "halo_cuda_gfsr_words": 918528,
+        "halo_cuda_grid_sample_conditions": 4085,
+        "halo_cuda_grid_sample_masses": 35784,
+        "halo_cuda_grid_sample_words_consumed": 501888,
+        "halo_cuda_grid_sample_high_poisson_conditions": 2512,
+        "halo_cuda_grid_sample_device_tangent_conditions": 2512,
+        "halo_cuda_grid_sample_sampling_seconds": 1.1764883769210428,
+        "halo_inverse_cdf_built_values": 66000,
+        "halo_grid_condition_builds": 12,
+        "halo_cuda_progenitor_conditions_prepared": 69863,
+        "halo_cuda_progenitor_conditions": 69836,
+        "halo_cuda_progenitor_masses": 65274,
+        "halo_cuda_progenitor_words_consumed": 1250057,
+        "halo_cuda_progenitor_high_poisson_conditions": 0,
+        "halo_cuda_progenitor_device_tangent_conditions": 0,
+        "halo_cuda_progenitor_sampling_seconds": 5.468001996283419,
+        "halo_progenitor_condition_builds": 29,
+        "subgrid_advection_calls": 3,
+        "subgrid_advection_cells": 12288,
+        "subgrid_advection_input_bytes": 403884,
+        "subgrid_advection_output_bytes": 49164,
+        "subgrid_advection_seconds": 0.053006491041742265,
+        "ionization_forward_fft": 6,
+        "ionization_radius_inverse_pair": 90,
+        "ionization_conditional_nion": 90,
+        "ionization_halo_barrier": 90,
+        "ionization_temperature": 3,
+        "gpu_matter_perturbations": 3,
+        "gpu_brightness": 3
+      }
+    },
+    "reference_job": "490862",
+    "reference_elapsed_seconds": 6.285446617985144,
+    "coordinates_equal": true,
+    "inputs_equal": true,
+    "catalogs_equal": true,
+    "fields": {
+      "brightness_temp": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 1.6689300537109375e-05
+      },
+      "density": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "los_velocity": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 3.337860107421875e-06
+      },
+      "neutral_fraction": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 3.2782554626464844e-07
+      },
+      "velocity_z": {
+        "tested": 12544,
+        "failed": 0,
+        "max_abs": 0.0
+      }
+    },
+    "global_quantities": {
+      "brightness_temp": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.9073486328125e-06
+      },
+      "density": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.7462298274040222e-09
+      },
+      "ionisation_rate_G12": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "kinetic_temperature": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.00048828125
+      },
+      "log10_mturn_acg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "log10_mturn_mcg": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "n_ion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.4901161193847656e-08
+      },
+      "neutral_fraction": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 0.0
+      },
+      "velocity_z": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 1.1107161545511846e-25
+      },
+      "z_reion": {
+        "tested": 3,
+        "failed": 0,
+        "max_abs": 5.960464477539063e-08
+      }
+    },
+    "brightness_transverse_power": {
+      "unit": "mK^2 Mpc^2",
+      "k_unit": "Mpc^-1",
+      "k_mean": [
+        0.31601981632284,
+        0.5648004102572511,
+        0.7954108410141316,
+        1.0682798108135991,
+        1.3452138414952763,
+        1.595396102466962,
+        1.8486187843440371,
+        2.0276098204629176
+      ],
+      "modes_per_bin": [
+        8,
+        12,
+        16,
+        32,
+        28,
+        40,
+        40,
+        18
+      ],
+      "slices": 49,
+      "tested": 392,
+      "failed": 0,
+      "max_abs": 0.000122423600600996
+    },
+    "rtol": 0.0001,
+    "atol": 1e-08,
+    "passed": true
+  },
+  "binary_split_regression": {
+    "job": "490861",
+    "mode": "gpu",
+    "elapsed": 2.130982049042359,
+    "grid": {
+      "count": 32908,
+      "fields_sha256": {
+        "halo_masses": "e1e9bbae436ba0c93be9201721b2fc904ca7d87c11f6a024a5811c1c046ec2fe",
+        "halo_coords": "37bf8045fb72f4ea806b23a3b93fac96ee82c6936dceee7c8536b3ce5f36d449",
+        "star_rng": "88310462c17b53fc798a78c9ffe26950d8ed1dda8cce86a0be6f2c55adbad058",
+        "sfr_rng": "208f8cca0916d4544278b1ad101d6030ec7464e7e6633ddad18246c45d5b56f8",
+        "xray_rng": "9f1fb1368091d80648a9f0c0d27caf44cfa7269edc1bb866078456422c69121f"
+      },
+      "ordered_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392"
+    },
+    "progenitors": {
+      "count": 28499,
+      "fields_sha256": {
+        "halo_masses": "85cb2c7114e754f8b0329ed044a0a83d4492e7fd052a301591f8cfd834b48df8",
+        "halo_coords": "6e05a426977fd49f968a60f60adfac30307f418ea9b7490027dcc6d823c459ca",
+        "star_rng": "dd13ecec21666d34eee5a2add912fd4292a1b4696646620df9f2bbfb31d3ea79",
+        "sfr_rng": "95f16a5348979fe68e9fbbcea828288e6c858835ff0b2465cd691b02e2ac10ae",
+        "xray_rng": "f1b7f933b8805c78f8fb8f71792f5bfd7ad4db74a9ba8791febbe355c4e6493f"
+      },
+      "ordered_sha256": "0f537b58227df065dd4ea7557317b875a1bb7e0856ba7d902820403f00d85a78"
+    },
+    "report": {
+      "halo_grid_positions": 32908,
+      "halo_progenitor_positions": 28499,
+      "halo_grid_property_gaussians": 98724,
+      "halo_progenitor_property_gaussians": 85497,
+      "halo_property_host_roundings": 1,
+      "halo_property_batches": 31,
+      "halo_conditional_number_tables": 2,
+      "halo_inverse_cdf_rows": 163,
+      "halo_inverse_cdf_possible_rows": 200,
+      "dexm_density_forward_fft": 1,
+      "dexm_ordinary_radii": 10,
+      "dexm_ordinary_candidates": 0,
+      "dexm_radius_searches": 10,
+      "dexm_candidates": 0,
+      "dexm_ordinary_accepted": 0,
+      "dexm_accepted": 0,
+      "dexm_empty_property_catalogs": 1,
+      "dexm_empty_overlap_grids": 1,
+      "halo_inverse_cuda_rows": 163,
+      "halo_inverse_cuda_seconds": 0.06632275995798409,
+      "halo_cuda_mt_words": 519168,
+      "halo_cuda_grid_conditions_prepared": 4096,
+      "halo_cuda_grid_resident_density": 4096,
+      "halo_cuda_gfsr_words": 479232,
+      "halo_cuda_grid_sample_conditions": 4085,
+      "halo_cuda_grid_sample_masses": 32697,
+      "halo_cuda_grid_sample_words_consumed": 462060,
+      "halo_cuda_grid_sample_high_poisson_conditions": 2390,
+      "halo_cuda_grid_sample_device_tangent_conditions": 2390,
+      "halo_cuda_grid_sample_sampling_seconds": 0.5087107331492007,
+      "halo_inverse_cdf_built_values": 65200,
+      "halo_grid_condition_builds": 12,
+      "halo_cuda_progenitor_conditions_prepared": 32908,
+      "halo_cuda_progenitor_conditions": 32900,
+      "halo_cuda_progenitor_masses": 28490,
+      "halo_cuda_progenitor_words_consumed": 416920,
+      "halo_cuda_progenitor_high_poisson_conditions": 0,
+      "halo_cuda_progenitor_device_tangent_conditions": 0,
+      "halo_cuda_progenitor_sampling_seconds": 1.9008343789028004,
+      "halo_progenitor_condition_builds": 9
+    },
+    "passed": true,
+    "native_job": "490849"
+  }
+}

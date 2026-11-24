@@ -1,0 +1,158 @@
+{
+  "version": "4.3.2",
+  "gpu_run": 490365,
+  "node": "a8",
+  "box_len_Mpc": 200,
+  "DIM": 192,
+  "HII_DIM": 64,
+  "seed": 424242,
+  "nodes": 43,
+  "slices": 650,
+  "cpu_reference": "~/ps_v432_perturb/evolution-window/timing-192",
+  "gpu_outputs": "~/ps_v432_perturb/small192-Bvcd3m/timing-192",
+  "cpu_reference_reused": true,
+  "simulation_completed": true,
+  "strict_acceptance_passed": false,
+  "tolerance": {
+    "atol": 1e-08,
+    "rtol": 0.0001
+  },
+  "cpu_reference_seconds": 65.77935682691168,
+  "gpu_seconds_with_ray_capture": 27.935740138986148,
+  "gpu_perturb_seconds": 1.525536224944517,
+  "ic_sha256": "e1c57a3b99dea586cc8a87e56947eda430d2570a6121c7dd1123f3766babc161",
+  "node_lists_identical": true,
+  "distance_arrays_identical": true,
+  "fields": {
+    "brightness_temp": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 3.0517578125e-05,
+      "failed": 62,
+      "failed_slices": 40,
+      "xyz": [
+        31,
+        50,
+        436
+      ],
+      "cpu": 0.026657339185476303,
+      "gpu": 0.026654265820980072,
+      "max_abs_among_failed": 3.073364496231079e-06
+    },
+    "neutral_fraction": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 5.960464477539063e-08,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "xray_ionised_fraction": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 7.450580596923828e-09,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "kinetic_temp_neutral": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 0.0009765625,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "spin_temperature": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 0.00048828125,
+      "failed": 0,
+      "failed_slices": 0
+    },
+    "cumulative_recombinations": {
+      "shape": [
+        64,
+        64,
+        650
+      ],
+      "max_abs": 0.0,
+      "failed": 0,
+      "failed_slices": 0
+    }
+  },
+  "power_spectrum": {
+    "tested": 1376,
+    "failed": 0,
+    "max_abs": 5.31367405187666e-06,
+    "max_relative_nonzero": 6.129074418928824e-08
+  },
+  "ray_replay": {
+    "cells": 62,
+    "rays": 62,
+    "gpu_direct_projection_exact": 62,
+    "gpu_reconstructed_exact": 62,
+    "temperature_swap_exact_cpu": 61,
+    "temperature_swap_pass": 62,
+    "native_neutral_identical_at_both_nodes": 61,
+    "max_projection_error": 0.0,
+    "max_reconstruction_error": 0.0,
+    "max_temperature_swap_error": 4.98257577419281e-08,
+    "example": {
+      "cell": [
+        2,
+        9,
+        366
+      ],
+      "gpu": -0.015384773723781109,
+      "cpu": -0.015382827259600163,
+      "replay": -0.015384773723781109,
+      "cpu_spin_replay": -0.015382827259600163
+    }
+  },
+  "replay_method": "Same-input reconstruction of coeval brightness on the two nodes bracketing each failed voxel, projected with its original slice weights and final velocity factor. Change only the two coeval spin temperatures to those from saved native CPU snapshots; results do not feed the production simulation.",
+  "stage_calls": {
+    "emission": 43,
+    "heat": 42,
+    "ion_center": 682,
+    "recombination": 31,
+    "shell_filter": 3262,
+    "shell_accumulate": 1631,
+    "source_table": 768,
+    "native_forward_fft_on_gpu": 0,
+    "native_inverse_fft_on_gpu": 2046,
+    "native_spectral_filter_on_gpu": 1953,
+    "gpu_seed_and_modes": 1,
+    "ion_filter_prepare": 93,
+    "ion_filter_extrema": 682,
+    "ion_photon_lookup": 682,
+    "radiation_units": 42,
+    "radiation_setup_grid": 42,
+    "ionized_temperature": 31,
+    "xray_frequency_integrals": 42,
+    "global_source_integrals": 42,
+    "sigma_moments": 2,
+    "mhr_table": 1,
+    "lyman_shells": 42,
+    "ion_global_source_integrals": 43,
+    "fully_neutral_box": 12,
+    "global_neutral_fraction": 31,
+    "eh_constants": 1,
+    "initial_heat": 1,
+    "thermal_constants": 42,
+    "scalar_sigma": 1117,
+    "emissivity_global_source_integrals": 43
+  }
+}

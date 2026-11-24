@@ -1,0 +1,63 @@
+{
+  "order": [
+    "density",
+    "G12",
+    "xHI"
+  ],
+  "swaps": {
+    "cpu/cpu/cpu": 0.0,
+    "cpu/cpu/gpu": 0.0,
+    "cpu/gpu/cpu": 0.07141250371932983,
+    "cpu/gpu/gpu": 0.07206998765468597,
+    "gpu/cpu/cpu": 0.0,
+    "gpu/cpu/gpu": 0.0,
+    "gpu/gpu/cpu": 0.07141250371932983,
+    "gpu/gpu/gpu": 0.07206998765468597
+  },
+  "nodes": {
+    "cpu": [
+      {
+        "z": 7.516570316800001,
+        "density": 0.15396390855312347,
+        "neutral_fraction": 0.21523897349834442,
+        "ionisation_rate_G12": 0.0,
+        "z_reion": -1.0,
+        "cumulative_recombinations": 0.0,
+        "xray_ionised_fraction": 0.006619970314204693,
+        "mean_free_path": 0.0
+      },
+      {
+        "z": 7.18900992,
+        "density": 0.17390558123588562,
+        "neutral_fraction": 0.009122895076870918,
+        "ionisation_rate_G12": 0.0,
+        "z_reion": -1.0,
+        "cumulative_recombinations": 0.0,
+        "xray_ionised_fraction": 0.009238865226507187,
+        "mean_free_path": 0.0
+      }
+    ],
+    "gpu": [
+      {
+        "z": 7.516570316800001,
+        "density": 0.15396395325660706,
+        "neutral_fraction": 0.21523918211460114,
+        "ionisation_rate_G12": 0.0,
+        "z_reion": -1.0,
+        "cumulative_recombinations": 0.0,
+        "xray_ionised_fraction": 0.006619971711188555,
+        "mean_free_path": 0.0
+      },
+      {
+        "z": 7.18900992,
+        "density": 0.17390576004981995,
+        "neutral_fraction": 0.0,
+        "ionisation_rate_G12": 0.026512743905186653,
+        "z_reion": 7.189010143280029,
+        "cumulative_recombinations": 0.07206998765468597,
+        "xray_ionised_fraction": 0.009238867089152336,
+        "mean_free_path": 2.6655685901641846
+      }
+    ]
+  }
+}

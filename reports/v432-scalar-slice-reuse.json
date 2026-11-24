@@ -1,0 +1,354 @@
+{
+  "upstream": "21cmFAST 4.3.2",
+  "fixture": "Eulerian atomic cooling",
+  "seed": 424242,
+  "atol": 1e-08,
+  "rtol": 0.0001,
+  "single_step_job": 490339,
+  "single_step": {
+    "device": "NVIDIA RTX A6000",
+    "slices": {
+      "v4_values_exact": 360,
+      "v3_values_exact": 48
+    },
+    "scalars": {
+      "sigma_z0": {
+        "values": 4,
+        "max_relative": 2.220446049250313e-16
+      },
+      "n_ion": {
+        "values": 3,
+        "max_relative": 3.3306690738754696e-15
+      },
+      "sfrd_acg": {
+        "values": 3,
+        "max_relative": 3.3306690738754696e-15
+      },
+      "xray_emissivity": {
+        "values": 3,
+        "max_relative": 3.552713678800501e-15
+      }
+    },
+    "ion_temperature": {
+      "values": 2048,
+      "active": 1131,
+      "max_abs_K": 0.00390625
+    }
+  },
+  "runs": {
+    "192": {
+      "job": 490340,
+      "reference": "/home/user/hnhuang/ps_v432_perturb/evolution-window/timing-192/cpu.h5",
+      "previous_gpu_job": 490329,
+      "ic_sha256": "e1c57a3b99dea586cc8a87e56947eda430d2570a6121c7dd1123f3766babc161",
+      "ic_hash_matches": true,
+      "nodes": 43,
+      "distances_match": true,
+      "ps_tests": 1376,
+      "ps_failed": 0,
+      "fields": {
+        "brightness_temp": {
+          "failed": 62,
+          "failed_slices": 40,
+          "max_abs": 3.0517578125e-05,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 62,
+          "common_failures": 62,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "neutral_fraction": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 5.960464477539063e-08,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "xray_ionised_fraction": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 7.450580596923828e-09,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0009765625,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "spin_temperature": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.00048828125,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "cumulative_recombinations": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0,
+          "shape": [
+            64,
+            64,
+            650
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        }
+      },
+      "stages": {
+        "emission": 43,
+        "heat": 42,
+        "ion_center": 682,
+        "recombination": 31,
+        "shell_filter": 3262,
+        "shell_accumulate": 1631,
+        "source_table": 768,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 2046,
+        "native_spectral_filter_on_gpu": 1953,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 93,
+        "ion_filter_extrema": 682,
+        "ion_photon_lookup": 682,
+        "radiation_units": 42,
+        "radiation_setup_grid": 42,
+        "ionized_temperature": 31,
+        "xray_frequency_integrals": 42,
+        "global_source_integrals": 42,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 42,
+        "ion_global_source_integrals": 43,
+        "fully_neutral_box": 12,
+        "global_neutral_fraction": 31,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 42,
+        "scalar_sigma": 1117,
+        "emissivity_global_source_integrals": 43
+      }
+    },
+    "384": {
+      "job": 490341,
+      "reference": "/home/user/hnhuang/ps_v432_perturb/evolution-window/timing-384/cpu.h5",
+      "previous_gpu_job": 490330,
+      "ic_sha256": "7018a09629d94b5bf3b2c78223370641ea7d8e764a88ab85b327b4d255f75ab9",
+      "ic_hash_matches": true,
+      "nodes": 43,
+      "distances_match": true,
+      "ps_tests": 1376,
+      "ps_failed": 0,
+      "fields": {
+        "brightness_temp": {
+          "failed": 192,
+          "failed_slices": 56,
+          "max_abs": 3.0517578125e-05,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 192,
+          "common_failures": 192,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "neutral_fraction": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 5.960464477539063e-08,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "xray_ionised_fraction": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 7.450580596923828e-09,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "kinetic_temp_neutral": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.001953125,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "spin_temperature": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.00048828125,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        },
+        "cumulative_recombinations": {
+          "failed": 0,
+          "failed_slices": 0,
+          "max_abs": 0.0,
+          "shape": [
+            96,
+            96,
+            521
+          ],
+          "previous_failed": 0,
+          "common_failures": 0,
+          "new_failures": 0,
+          "recovered": 0,
+          "different_from_previous_gpu": 0,
+          "max_abs_change_from_previous_gpu": 0.0
+        }
+      },
+      "stages": {
+        "emission": 43,
+        "heat": 42,
+        "ion_center": 620,
+        "recombination": 31,
+        "shell_filter": 3258,
+        "shell_accumulate": 1629,
+        "source_table": 706,
+        "native_forward_fft_on_gpu": 0,
+        "native_inverse_fft_on_gpu": 1860,
+        "native_spectral_filter_on_gpu": 1767,
+        "gpu_seed_and_modes": 1,
+        "ion_filter_prepare": 93,
+        "ion_filter_extrema": 620,
+        "ion_photon_lookup": 620,
+        "radiation_units": 42,
+        "radiation_setup_grid": 42,
+        "ionized_temperature": 31,
+        "xray_frequency_integrals": 42,
+        "global_source_integrals": 42,
+        "sigma_moments": 2,
+        "mhr_table": 1,
+        "lyman_shells": 42,
+        "ion_global_source_integrals": 43,
+        "fully_neutral_box": 12,
+        "global_neutral_fraction": 31,
+        "eh_constants": 1,
+        "initial_heat": 1,
+        "thermal_constants": 42,
+        "scalar_sigma": 1031,
+        "emissivity_global_source_integrals": 43
+      }
+    }
+  },
+  "final_velocity_correction_replay": {
+    "job": 490346,
+    "inputs": "Saved CPU and GPU tau_21, los_velocity and cosmological redshifts on rays containing over-tolerance brightness cells. Each backend evaluated the multiplicative velocity correction on unit input brightness.",
+    "runs": {
+      "192": {
+        "failed_voxels": 62,
+        "rays": 62,
+        "gpu_vs_cpu_factor_on_cpu_rays": {
+          "different": 0,
+          "max_abs": 0.0
+        },
+        "factor_using_each_run_inputs": {
+          "different": 0,
+          "max_abs": 0.0
+        },
+        "failures_after_accounting_for_final_factor": 62
+      },
+      "384": {
+        "failed_voxels": 192,
+        "rays": 190,
+        "gpu_vs_cpu_factor_on_cpu_rays": {
+          "different": 0,
+          "max_abs": 0.0
+        },
+        "factor_using_each_run_inputs": {
+          "different": 0,
+          "max_abs": 0.0
+        },
+        "failures_after_accounting_for_final_factor": 192
+      }
+    }
+  }
+}

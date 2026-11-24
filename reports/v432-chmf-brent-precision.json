@@ -1,0 +1,364 @@
+{
+  "source_mode": "4.3.2 CHMF-SAMPLER, ST, MASS-LIMITED, two threads, NVIDIA RTX A6000",
+  "decision": "Production keeps the existing selected-row cached GSL inverse CDF. Candidate arithmetic is isolated in the experiment directory.",
+  "original": "The original rejected CUDA candidate differed at 21 of 160000 float32-cast bins on seed 424242. Control uses that same pair of grid and progenitor tables.",
+  "jobs": {
+    "native_GSL_arguments_and_iterations": 490542,
+    "per_iteration_fixed_input_CUDA_replay": 490545,
+    "full_saved_table_variants": 490546,
+    "real_selected_tables_and_catalogs": 490550
+  },
+  "archive": "~/ps_v432_perturb/brent-v432.rk2Mlt",
+  "raw_files": [
+    "inputs0.npz",
+    "inputs1.npz",
+    "factored.json",
+    "allrows.json",
+    "blind-catalogs.json",
+    "gate.c",
+    "gate.py",
+    "gate-evaluate.py",
+    "allrows.py",
+    "variant.py",
+    "test-catalog.py"
+  ],
+  "native_reference": "Intercepted the actual native GSL fsolver arguments and iterations. Both independently reconstructed 200 by 400 double tables matched the archived native tables bit for bit. The CUDA loop also replayed captured native CDF residuals at the same abscissae. The initial comparison in controlled.json used independent axis reconstruction; conclusions use the exact GSL inputs archived in inputs0.npz and inputs1.npz.",
+  "comparison_on_21_prior_disagreements": {
+    "old": {
+      "historical_bins": 21,
+      "returned_exact_log_mass_with_native_oracle": 21,
+      "matched_mass_ratio_at_float32_with_own_cdf_and_native_bracket": 6,
+      "changed_residual_signs_at_native_points": 22,
+      "same_native_function_values_replayed": 21,
+      "n_native_iteration_points": 144,
+      "norms_matching_native_bits": 0,
+      "max_relative_difference_in_cumulative_integral": 1.499388918469427e-13
+    },
+    "reordered": {
+      "historical_bins": 21,
+      "returned_exact_log_mass_with_native_oracle": 21,
+      "matched_mass_ratio_at_float32_with_own_cdf_and_native_bracket": 20,
+      "changed_residual_signs_at_native_points": 1,
+      "same_native_function_values_replayed": 21,
+      "n_native_iteration_points": 144,
+      "norms_matching_native_bits": 13,
+      "max_relative_difference_in_cumulative_integral": 1.864911946067704e-15
+    }
+  },
+  "native_input_differences_from_original_generated_axes": {
+    "conditioning_rows_or_barriers": 15,
+    "log_probability_targets": 3
+  },
+  "arithmetic": "The candidate reproduces the installed native executable’s order of sigma interpolation, barrier Taylor terms and sums, exp(log(10)*slope) derivative, sqrt(v)*v, mass-function multiplication and the number-density prefactor. The native normalization variant supplies one native QAG integral per conditioning row and uses CUDA for the remaining inverse evaluations.",
+  "decision_example": {
+    "condition": 141,
+    "probability": 97,
+    "kind": "progenitor",
+    "evaluations": [
+      {
+        "log_mass": 31.350716165486844,
+        "native_residual": 2.8147089992103247e-08,
+        "device_residual": 2.8147089992103247e-08
+      },
+      {
+        "log_mass": 31.350716169874893,
+        "native_residual": 1.7763568394002505e-15,
+        "device_residual": 0.0
+      },
+      {
+        "log_mass": 31.350716169874897,
+        "native_residual": 3.552713678800501e-15,
+        "device_residual": 3.552713678800501e-15
+      },
+      {
+        "log_mass": 31.350787287105227,
+        "native_residual": -0.00045640272450953034,
+        "device_residual": -0.00045640272450953034
+      }
+    ],
+    "native_returned_log_mass": 31.350787287105227,
+    "cuda_returned_log_mass": 31.350716169874893,
+    "why": "GSL treats an exactly zero residual as a root. A nonzero residual of one double unit in the last place retained the opposite endpoint. The final native interval test stopped after another bisection."
+  },
+  "full_saved_tables": [
+    {
+      "mode": "legacy_native_axes",
+      "cat": 0,
+      "different_float32": 1,
+      "different_double": 51579,
+      "max_relative": 5.262917976021254e-05,
+      "failed_indices": [
+        [
+          189,
+          280
+        ]
+      ]
+    },
+    {
+      "mode": "legacy_native_axes",
+      "cat": 1,
+      "different_float32": 19,
+      "different_double": 56376,
+      "max_relative": 9.773033880395908e-05,
+      "failed_indices": [
+        [
+          54,
+          336
+        ],
+        [
+          75,
+          293
+        ],
+        [
+          80,
+          281
+        ],
+        [
+          85,
+          268
+        ],
+        [
+          88,
+          259
+        ],
+        [
+          91,
+          250
+        ],
+        [
+          98,
+          232
+        ],
+        [
+          103,
+          217
+        ],
+        [
+          104,
+          212
+        ],
+        [
+          122,
+          157
+        ],
+        [
+          124,
+          154
+        ],
+        [
+          129,
+          138
+        ],
+        [
+          132,
+          129
+        ],
+        [
+          141,
+          97
+        ],
+        [
+          143,
+          91
+        ],
+        [
+          143,
+          93
+        ],
+        [
+          144,
+          88
+        ],
+        [
+          153,
+          59
+        ],
+        [
+          185,
+          71
+        ]
+      ]
+    },
+    {
+      "mode": "reordered_native_axes",
+      "cat": 0,
+      "different_float32": 0,
+      "different_double": 43612,
+      "max_relative": 1.5028751909441335e-12,
+      "failed_indices": []
+    },
+    {
+      "mode": "reordered_native_axes",
+      "cat": 1,
+      "different_float32": 3,
+      "different_double": 31134,
+      "max_relative": 7.111470156381451e-05,
+      "failed_indices": [
+        [
+          80,
+          281
+        ],
+        [
+          95,
+          272
+        ],
+        [
+          141,
+          97
+        ]
+      ]
+    },
+    {
+      "mode": "reordered_native_norm",
+      "cat": 0,
+      "different_float32": 0,
+      "different_double": 43553,
+      "max_relative": 1.5028751909441335e-12,
+      "failed_indices": []
+    },
+    {
+      "mode": "reordered_native_norm",
+      "cat": 1,
+      "different_float32": 0,
+      "different_double": 30519,
+      "max_relative": 9.726621317195729e-11,
+      "failed_indices": []
+    }
+  ],
+  "single_node_catalog_checks": [
+    {
+      "seed": 424242,
+      "redshift": 10.0,
+      "tables": [
+        {
+          "from_catalog": 0,
+          "rows": 163,
+          "checked": 65200,
+          "different_float32": 0,
+          "different_double": 34933,
+          "max_relative": 1.078740396731097e-14,
+          "float32_positions": []
+        },
+        {
+          "from_catalog": 1,
+          "rows": 61,
+          "checked": 24400,
+          "different_float32": 0,
+          "different_double": 10110,
+          "max_relative": 9.726621317195729e-11,
+          "float32_positions": []
+        }
+      ],
+      "catalogs": [
+        {
+          "expected_count": 32908,
+          "actual_count": 32908,
+          "expected_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+          "actual_sha256": "29ef48ca96c0491f2ae7b9238d301963e1a6b25ac833144d9582a13079112392",
+          "exact": true
+        },
+        {
+          "expected_count": 30290,
+          "actual_count": 30290,
+          "expected_sha256": "87b6933693ace8af34af32d0758f0961ed9cc9255c63dfb467f70f200fac9043",
+          "actual_sha256": "87b6933693ace8af34af32d0758f0961ed9cc9255c63dfb467f70f200fac9043",
+          "exact": true
+        }
+      ]
+    },
+    {
+      "seed": 71837,
+      "redshift": 8.0,
+      "tables": [
+        {
+          "from_catalog": 0,
+          "rows": 183,
+          "checked": 73200,
+          "different_float32": 0,
+          "different_double": 33658,
+          "max_relative": 1.4298266352392992e-14,
+          "float32_positions": []
+        },
+        {
+          "from_catalog": 1,
+          "rows": 77,
+          "checked": 30800,
+          "different_float32": 1,
+          "different_double": 13504,
+          "max_relative": 7.104194745058264e-05,
+          "float32_positions": [
+            [
+              33,
+              386
+            ]
+          ]
+        }
+      ],
+      "catalogs": [
+        {
+          "expected_count": 42137,
+          "actual_count": 42137,
+          "expected_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8",
+          "actual_sha256": "4be8f0ef07771f49321aa0c60d00d259f2072335829f59f65a9976c324810df8",
+          "exact": true
+        },
+        {
+          "expected_count": 40248,
+          "actual_count": 40248,
+          "expected_sha256": "9eee9cd1ee20824a86cdaf8a830f0ae5e44bda39c673470d8df0b0d0b89e5d81",
+          "actual_sha256": "daad84bf12cc461e2852dbe0058e4ecdbb0bbd6b67e980b92e467cac1565ea44",
+          "exact": false
+        }
+      ]
+    },
+    {
+      "seed": 1109,
+      "redshift": 13.0,
+      "tables": [
+        {
+          "from_catalog": 0,
+          "rows": 123,
+          "checked": 49200,
+          "different_float32": 0,
+          "different_double": 22098,
+          "max_relative": 2.1373886425214666e-14,
+          "float32_positions": []
+        },
+        {
+          "from_catalog": 1,
+          "rows": 46,
+          "checked": 18400,
+          "different_float32": 0,
+          "different_double": 7854,
+          "max_relative": 5.861276605830971e-13,
+          "float32_positions": []
+        }
+      ],
+      "catalogs": [
+        {
+          "expected_count": 4219,
+          "actual_count": 4219,
+          "expected_sha256": "c7d36398dc6de7069b7bee83f538a3f275695c444ef7f49d1f45ce564709f0b5",
+          "actual_sha256": "c7d36398dc6de7069b7bee83f538a3f275695c444ef7f49d1f45ce564709f0b5",
+          "exact": true
+        },
+        {
+          "expected_count": 3692,
+          "actual_count": 3692,
+          "expected_sha256": "d39df7d501a740e0d22fda728f3449c0bbde9fa8930c7ca2f7ff7f46bb9ad487",
+          "actual_sha256": "d39df7d501a740e0d22fda728f3449c0bbde9fa8930c7ca2f7ff7f46bb9ad487",
+          "exact": true
+        }
+      ]
+    }
+  ],
+  "catalog_summary": {
+    "catalogs": 6,
+    "catalogs_with_identical_counts": 6,
+    "catalogs_with_identical_sha256": 5,
+    "selected_table_values": 261200,
+    "different_float32": 1,
+    "different_float64": 122157
+  },
+  "compatibility": "Native evaluate_nhalo_inverse bilinearly interpolates stored double ratios. sample_dndM_inverse clips, multiplies by the condition mass, and stoc_mass_sample sums the result in double before comparing the accumulated mass against the stopping threshold. Agreement at table float32, or matching catalog count, therefore cannot certify the draw sequence. A portable bound covering the native CDF residual sign and interpolation/draw decision, or exact native arithmetic for those decisions, is required before enabling a faster inverse backend."
+}
