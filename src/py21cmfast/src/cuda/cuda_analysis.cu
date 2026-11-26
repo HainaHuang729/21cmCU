@@ -382,6 +382,147 @@ int compute_grid_blocks(size_t total, int threads) {
     return (int)std::min(b, max_blocks);
 }
 
+__device__ static inline int wrap_coord_ll(long long v, int d) {
+    long long m = v % (long long)d;
+    return (int)(m < 0 ? m + (long long)d : m);
+}
+
+__global__ void angular_slice_kernel(const float *d_box_a, const float *d_box_b, int nx, int ny,
+                                     int nz, int n_coords, const double *d_coords_xyz, float w_a,
+                                     float w_b, int order, int kind, float *d_out) {
+    size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    size_t nc = (size_t)n_coords;
+    double wa = (double)w_a;
+    double wb = (double)w_b;
+
+    for (size_t i = tid; i < nc; i += stride) {
+        double cx = d_coords_xyz[i];
+        double cy = d_coords_xyz[nc + i];
+        double cz = d_coords_xyz[2 * nc + i];
+
+        if (order == 0) {
+            int ix = wrap_coord_ll((long long)floor(cx + 0.5), nx);
+            int iy = wrap_coord_ll((long long)floor(cy + 0.5), ny);
+            int iz = wrap_coord_ll((long long)floor(cz + 0.5), nz);
+            size_t idx = p21_grid_idx(ix, iy, iz, ny, nz);
+            float a = d_box_a[idx];
+            float b = d_box_b[idx];
+            float v = w_a * a + w_b * b;
+            if (kind == 1 && (a * b < 0.0f)) {
+                v = fmaxf(a, b);
+            }
+            d_out[i] = v;
+        } else {
+            double fx = floor(cx);
+            double fy = floor(cy);
+            double fz = floor(cz);
+            double tx = cx - fx;
+            double ty = cy - fy;
+            double tz = cz - fz;
+
+            int x0 = wrap_coord_ll((long long)fx, nx);
+            int y0 = wrap_coord_ll((long long)fy, ny);
+            int z0 = wrap_coord_ll((long long)fz, nz);
+            int x1 = (x0 + 1 < nx) ? (x0 + 1) : 0;
+            int y1 = (y0 + 1 < ny) ? (y0 + 1) : 0;
+            int z1 = (z0 + 1 < nz) ? (z0 + 1) : 0;
+
+            int xs[2] = {x0, x1};
+            int ys[2] = {y0, y1};
+            int zs[2] = {z0, z1};
+            double wxs[2] = {1.0 - tx, tx};
+            double wys[2] = {1.0 - ty, ty};
+            double wzs[2] = {1.0 - tz, tz};
+
+            double acc = 0.0;
+            for (int dx = 0; dx < 2; ++dx) {
+                for (int dy = 0; dy < 2; ++dy) {
+                    double wxy = wxs[dx] * wys[dy];
+                    for (int dz = 0; dz < 2; ++dz) {
+                        size_t idx = p21_grid_idx(xs[dx], ys[dy], zs[dz], ny, nz);
+                        float a = d_box_a[idx];
+                        float b = d_box_b[idx];
+                        double v = wa * (double)a + wb * (double)b;
+                        if (kind == 1 && (a * b < 0.0f)) {
+                            v = (double)fmaxf(a, b);
+                        }
+                        acc += (wxy * wzs[dz]) * v;
+                    }
+                }
+            }
+            d_out[i] = (float)acc;
+        }
+    }
+}
+
+__global__ void angular_los_vel_kernel(const float *d_vxa, const float *d_vya, const float *d_vza,
+                                       const float *d_vxb, const float *d_vyb, const float *d_vzb,
+                                       int nx, int ny, int nz, int n_coords,
+                                       const double *d_coords_xyz, const double *d_unit_xyz,
+                                       float w_a, float w_b, int order, float *d_out) {
+    size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    size_t nc = (size_t)n_coords;
+    double wa = (double)w_a;
+    double wb = (double)w_b;
+
+    for (size_t i = tid; i < nc; i += stride) {
+        double cx = d_coords_xyz[i];
+        double cy = d_coords_xyz[nc + i];
+        double cz = d_coords_xyz[2 * nc + i];
+        double ux = d_unit_xyz[i];
+        double uy = d_unit_xyz[nc + i];
+        double uz = d_unit_xyz[2 * nc + i];
+
+        if (order == 0) {
+            int ix = wrap_coord_ll((long long)floor(cx + 0.5), nx);
+            int iy = wrap_coord_ll((long long)floor(cy + 0.5), ny);
+            int iz = wrap_coord_ll((long long)floor(cz + 0.5), nz);
+            size_t idx = p21_grid_idx(ix, iy, iz, ny, nz);
+            double la = ux * (double)d_vxa[idx] + uy * (double)d_vya[idx] + uz * (double)d_vza[idx];
+            double lb = ux * (double)d_vxb[idx] + uy * (double)d_vyb[idx] + uz * (double)d_vzb[idx];
+            d_out[i] = (float)(wa * la + wb * lb);
+        } else {
+            double fx = floor(cx);
+            double fy = floor(cy);
+            double fz = floor(cz);
+            double tx = cx - fx;
+            double ty = cy - fy;
+            double tz = cz - fz;
+
+            int x0 = wrap_coord_ll((long long)fx, nx);
+            int y0 = wrap_coord_ll((long long)fy, ny);
+            int z0 = wrap_coord_ll((long long)fz, nz);
+            int x1 = (x0 + 1 < nx) ? (x0 + 1) : 0;
+            int y1 = (y0 + 1 < ny) ? (y0 + 1) : 0;
+            int z1 = (z0 + 1 < nz) ? (z0 + 1) : 0;
+
+            int xs[2] = {x0, x1};
+            int ys[2] = {y0, y1};
+            int zs[2] = {z0, z1};
+            double wxs[2] = {1.0 - tx, tx};
+            double wys[2] = {1.0 - ty, ty};
+            double wzs[2] = {1.0 - tz, tz};
+
+            double acc = 0.0;
+            for (int dx = 0; dx < 2; ++dx) {
+                for (int dy = 0; dy < 2; ++dy) {
+                    double wxy = wxs[dx] * wys[dy];
+                    for (int dz = 0; dz < 2; ++dz) {
+                        size_t idx = p21_grid_idx(xs[dx], ys[dy], zs[dz], ny, nz);
+                        double vx = wa * (double)d_vxa[idx] + wb * (double)d_vxb[idx];
+                        double vy = wa * (double)d_vya[idx] + wb * (double)d_vyb[idx];
+                        double vz = wa * (double)d_vza[idx] + wb * (double)d_vzb[idx];
+                        acc += (wxy * wzs[dz]) * (ux * vx + uy * vy + uz * vz);
+                    }
+                }
+            }
+            d_out[i] = (float)acc;
+        }
+    }
+}
+
 }  // namespace
 
 extern "C" {
@@ -882,6 +1023,129 @@ int p21_cuda_power_spectrum_2d(const float *h_field_a, const float *h_field_b, i
         }
     }
     return 0;
+}
+
+int p21_cuda_angular_slice(const float *h_box_a, const float *h_box_b, int nx, int ny, int nz,
+                           int n_coords, const double *h_coords_xyz, float w_a, float w_b,
+                           int order, int kind, float *h_out) {
+    if (!h_box_a || !h_box_b || !h_coords_xyz || !h_out || nx <= 0 || ny <= 0 || nz <= 0 ||
+        n_coords <= 0 || (order != 0 && order != 1) || (kind != 0 && kind != 1)) {
+        return -1;
+    }
+    if (!p21_cuda_ensure_init()) {
+        return -1;
+    }
+
+    cudaStream_t stream = p21_cuda_stream();
+    size_t box_bytes = (size_t)nx * (size_t)ny * (size_t)nz * sizeof(float);
+    size_t coords_bytes = 3ULL * (size_t)n_coords * sizeof(double);
+    size_t out_bytes = (size_t)n_coords * sizeof(float);
+
+    DeviceFloatView v_a = acquire_float_view(h_box_a, box_bytes, stream);
+    DeviceFloatView v_b = acquire_float_view(h_box_b, box_bytes, stream);
+    double *d_coords = (double *)p21_cuda_pool_alloc(coords_bytes, stream);
+    float *d_out = (float *)p21_cuda_pool_alloc(out_bytes, stream);
+
+    auto cleanup = [&]() {
+        p21_cuda_pool_free(d_out, stream);
+        p21_cuda_pool_free(d_coords, stream);
+        release_float_view(v_b, stream);
+        release_float_view(v_a, stream);
+    };
+
+    if (!v_a.d_ptr || !v_b.d_ptr || !d_coords || !d_out) {
+        cleanup();
+        return -1;
+    }
+    if (!P21_CUDA_OK(cudaMemcpyAsync(d_coords, h_coords_xyz, coords_bytes,
+                                     cudaMemcpyHostToDevice, stream))) {
+        cleanup();
+        return -1;
+    }
+
+    constexpr int kTpb = 256;
+    int blocks = compute_grid_blocks((size_t)n_coords, kTpb);
+    angular_slice_kernel<<<blocks, kTpb, 0, stream>>>(
+        v_a.d_ptr, v_b.d_ptr, nx, ny, nz, n_coords, d_coords, w_a, w_b, order, kind, d_out);
+    bool ok =
+        P21_CUDA_OK(cudaGetLastError()) &&
+        P21_CUDA_OK(cudaMemcpyAsync(h_out, d_out, out_bytes, cudaMemcpyDeviceToHost, stream)) &&
+        P21_CUDA_OK(cudaStreamSynchronize(stream));
+    if (ok) {
+        p21_cuda_stats_add_d2h(out_bytes);
+    }
+    cleanup();
+    return ok ? 0 : -1;
+}
+
+int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const float *h_vza,
+                                  const float *h_vxb, const float *h_vyb, const float *h_vzb,
+                                  int nx, int ny, int nz, int n_coords,
+                                  const double *h_coords_xyz, const double *h_unit_xyz, float w_a,
+                                  float w_b, int order, float *h_out) {
+    if (!h_vxa || !h_vya || !h_vza || !h_vxb || !h_vyb || !h_vzb || !h_coords_xyz ||
+        !h_unit_xyz || !h_out || nx <= 0 || ny <= 0 || nz <= 0 || n_coords <= 0 ||
+        (order != 0 && order != 1)) {
+        return -1;
+    }
+    if (!p21_cuda_ensure_init()) {
+        return -1;
+    }
+
+    cudaStream_t stream = p21_cuda_stream();
+    size_t box_bytes = (size_t)nx * (size_t)ny * (size_t)nz * sizeof(float);
+    size_t vec_bytes = 3ULL * (size_t)n_coords * sizeof(double);
+    size_t out_bytes = (size_t)n_coords * sizeof(float);
+
+    DeviceFloatView vxa = acquire_float_view(h_vxa, box_bytes, stream);
+    DeviceFloatView vya = acquire_float_view(h_vya, box_bytes, stream);
+    DeviceFloatView vza = acquire_float_view(h_vza, box_bytes, stream);
+    DeviceFloatView vxb = acquire_float_view(h_vxb, box_bytes, stream);
+    DeviceFloatView vyb = acquire_float_view(h_vyb, box_bytes, stream);
+    DeviceFloatView vzb = acquire_float_view(h_vzb, box_bytes, stream);
+    double *d_coords = (double *)p21_cuda_pool_alloc(vec_bytes, stream);
+    double *d_unit = (double *)p21_cuda_pool_alloc(vec_bytes, stream);
+    float *d_out = (float *)p21_cuda_pool_alloc(out_bytes, stream);
+
+    auto cleanup = [&]() {
+        p21_cuda_pool_free(d_out, stream);
+        p21_cuda_pool_free(d_unit, stream);
+        p21_cuda_pool_free(d_coords, stream);
+        release_float_view(vzb, stream);
+        release_float_view(vyb, stream);
+        release_float_view(vxb, stream);
+        release_float_view(vza, stream);
+        release_float_view(vya, stream);
+        release_float_view(vxa, stream);
+    };
+
+    if (!vxa.d_ptr || !vya.d_ptr || !vza.d_ptr || !vxb.d_ptr || !vyb.d_ptr || !vzb.d_ptr ||
+        !d_coords || !d_unit || !d_out) {
+        cleanup();
+        return -1;
+    }
+    if (!P21_CUDA_OK(cudaMemcpyAsync(d_coords, h_coords_xyz, vec_bytes, cudaMemcpyHostToDevice,
+                                     stream)) ||
+        !P21_CUDA_OK(
+            cudaMemcpyAsync(d_unit, h_unit_xyz, vec_bytes, cudaMemcpyHostToDevice, stream))) {
+        cleanup();
+        return -1;
+    }
+
+    constexpr int kTpb = 256;
+    int blocks = compute_grid_blocks((size_t)n_coords, kTpb);
+    angular_los_vel_kernel<<<blocks, kTpb, 0, stream>>>(
+        vxa.d_ptr, vya.d_ptr, vza.d_ptr, vxb.d_ptr, vyb.d_ptr, vzb.d_ptr, nx, ny, nz, n_coords,
+        d_coords, d_unit, w_a, w_b, order, d_out);
+    bool ok =
+        P21_CUDA_OK(cudaGetLastError()) &&
+        P21_CUDA_OK(cudaMemcpyAsync(h_out, d_out, out_bytes, cudaMemcpyDeviceToHost, stream)) &&
+        P21_CUDA_OK(cudaStreamSynchronize(stream));
+    if (ok) {
+        p21_cuda_stats_add_d2h(out_bytes);
+    }
+    cleanup();
+    return ok ? 0 : -1;
 }
 
 }  // extern "C"

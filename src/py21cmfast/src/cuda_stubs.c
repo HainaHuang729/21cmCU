@@ -657,6 +657,48 @@ int p21_cuda_power_spectrum_2d(const float *h_field_a, const float *h_field_b, i
     return -1;
 }
 
+int p21_cuda_angular_slice(const float *h_box_a, const float *h_box_b, int nx, int ny, int nz,
+                           int n_coords, const double *h_coords_xyz, float w_a, float w_b,
+                           int order, int kind, float *h_out) {
+    (void)h_box_a;
+    (void)h_box_b;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)n_coords;
+    (void)h_coords_xyz;
+    (void)w_a;
+    (void)w_b;
+    (void)order;
+    (void)kind;
+    (void)h_out;
+    return -1;
+}
+
+int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const float *h_vza,
+                                  const float *h_vxb, const float *h_vyb, const float *h_vzb,
+                                  int nx, int ny, int nz, int n_coords,
+                                  const double *h_coords_xyz, const double *h_unit_xyz, float w_a,
+                                  float w_b, int order, float *h_out) {
+    (void)h_vxa;
+    (void)h_vya;
+    (void)h_vza;
+    (void)h_vxb;
+    (void)h_vyb;
+    (void)h_vzb;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)n_coords;
+    (void)h_coords_xyz;
+    (void)h_unit_xyz;
+    (void)w_a;
+    (void)w_b;
+    (void)order;
+    (void)h_out;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

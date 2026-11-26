@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from collections.abc import Sequence
 from functools import cached_property, partial
+import threading
 from typing import TYPE_CHECKING
 
 import attrs
@@ -36,6 +38,14 @@ if TYPE_CHECKING:
 
 _LIGHTCONERS = {}
 _LENGTH = "length"
+_LIGHTCONER_CLASSY_CACHE: OrderedDict[tuple, Class] = OrderedDict()
+_LIGHTCONER_CLASSY_LOCK = threading.RLock()
+
+
+def clear_lightconer_class_cache() -> None:
+    """Clear the cached CLASS instances used by lightcone RSD boundary estimation."""
+    with _LIGHTCONER_CLASSY_LOCK:
+        _LIGHTCONER_CLASSY_CACHE.clear()
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -413,14 +423,31 @@ class Lightconer(ABC):
             return lightconer
 
         if classy_output is None:
-            classy_output = run_classy(
-                h=inputs.cosmo_params.hlittle,
-                Omega_cdm=inputs.cosmo_params.OMm - inputs.cosmo_params.OMb,
-                Omega_b=inputs.cosmo_params.OMb,
-                n_s=inputs.cosmo_params.POWER_INDEX,
-                sigma8=inputs.cosmo_params.SIGMA_8,
-                output="vTk",
+            ckey = (
+                float(inputs.cosmo_params.hlittle),
+                float(inputs.cosmo_params.OMm - inputs.cosmo_params.OMb),
+                float(inputs.cosmo_params.OMb),
+                float(inputs.cosmo_params.POWER_INDEX),
+                float(inputs.cosmo_params.SIGMA_8),
             )
+            with _LIGHTCONER_CLASSY_LOCK:
+                classy_output = _LIGHTCONER_CLASSY_CACHE.get(ckey)
+                if classy_output is not None:
+                    _LIGHTCONER_CLASSY_CACHE.move_to_end(ckey)
+            if classy_output is None:
+                classy_output = run_classy(
+                    h=inputs.cosmo_params.hlittle,
+                    Omega_cdm=inputs.cosmo_params.OMm - inputs.cosmo_params.OMb,
+                    Omega_b=inputs.cosmo_params.OMb,
+                    n_s=inputs.cosmo_params.POWER_INDEX,
+                    sigma8=inputs.cosmo_params.SIGMA_8,
+                    output="vTk",
+                )
+                with _LIGHTCONER_CLASSY_LOCK:
+                    _LIGHTCONER_CLASSY_CACHE[ckey] = classy_output
+                    _LIGHTCONER_CLASSY_CACHE.move_to_end(ckey)
+                    while len(_LIGHTCONER_CLASSY_CACHE) > 16:
+                        _LIGHTCONER_CLASSY_CACHE.popitem(last=False)
         lcd_limits_rsd = self.find_required_lightcone_limits(
             classy_output=classy_output, inputs=inputs
         )
@@ -834,6 +861,51 @@ class AngularLightconer(Lightconer):
         result as sampling the interpolated box.
         """
         interpolator = self._get_interpolator(lcd)
+        denom = float(np.abs(dc_a - dc_b).value)
+        if (
+            config["USE_CUDA"]
+            and lib.p21_cuda_is_compiled()
+            and lib.p21_cuda_is_available()
+            and self.interpolation_order in (0, 1)
+            and kind in ("mean", "mean_max")
+            and coeval_a.ndim == 3
+            and coeval_a.shape == coeval_b.shape
+            and denom > 0.0
+        ):
+            coords = np.ascontiguousarray(
+                Quantity(interpolator.keywords["coordinates"], pixel).value,
+                dtype=np.float64,
+            )
+            n_coords = int(coords.shape[1])
+            nx, ny, nz = coeval_a.shape
+            a32 = np.ascontiguousarray(coeval_a, dtype=np.float32)
+            b32 = np.ascontiguousarray(coeval_b, dtype=np.float32)
+            out = np.empty(n_coords, dtype=np.float32)
+            w_a = float(np.abs(dc_b - lcd).value / denom)
+            w_b = float(np.abs(dc_a - lcd).value / denom)
+            rc = lib.p21_cuda_angular_slice(
+                ffi.cast("const float *", ffi.from_buffer(a32)),
+                ffi.cast("const float *", ffi.from_buffer(b32)),
+                int(nx),
+                int(ny),
+                int(nz),
+                n_coords,
+                ffi.cast("const double *", ffi.from_buffer(coords)),
+                w_a,
+                w_b,
+                int(self.interpolation_order),
+                1 if kind == "mean_max" else 0,
+                ffi.cast("float *", ffi.from_buffer(out)),
+            )
+            if rc == 0:
+                weights = interpolator.keywords.get("weights")
+                if weights is not None:
+                    w = np.asarray(weights, dtype=np.float64)
+                    out = (w[:, None] * out.reshape(w.size, -1)).sum(axis=0).astype(
+                        np.float32
+                    )
+                return out
+
         if not self.samples_first(coeval_a.size, interpolator):
             return super().interpolate_slice(
                 lcd, coeval_a, coeval_b, dc_a, dc_b, coeval_res, kind=kind
@@ -873,6 +945,68 @@ class AngularLightconer(Lightconer):
         """
         kind = self.interp_kinds.get("velocity", "mean")
         interpolator = self._get_interpolator(lcd)
+        denom = float(np.abs(dc_a - dc_b).value)
+        if (
+            config["USE_CUDA"]
+            and lib.p21_cuda_is_compiled()
+            and lib.p21_cuda_is_available()
+            and self.interpolation_order in (0, 1)
+            and kind == "mean"
+            and denom > 0.0
+        ):
+            coords = np.ascontiguousarray(
+                Quantity(interpolator.keywords["coordinates"], pixel).value,
+                dtype=np.float64,
+            )
+            rel_coords = coords
+            if getattr(interpolator, "origin", None) is not None:
+                orig = np.asarray(
+                    Quantity(interpolator.origin, pixel).value, dtype=np.float64
+                )
+                rel_coords = coords - orig[:, None]
+            norms = np.sqrt(np.sum(np.square(rel_coords), axis=0))
+            if np.all(norms > 0.0):
+                unit_xyz = np.ascontiguousarray(-rel_coords / norms, dtype=np.float64)
+                n_coords = int(coords.shape[1])
+                vxa = np.ascontiguousarray(c_a.velocity_x, dtype=np.float32)
+                vya = np.ascontiguousarray(c_a.velocity_y, dtype=np.float32)
+                vza = np.ascontiguousarray(c_a.velocity_z, dtype=np.float32)
+                vxb = np.ascontiguousarray(c_b.velocity_x, dtype=np.float32)
+                vyb = np.ascontiguousarray(c_b.velocity_y, dtype=np.float32)
+                vzb = np.ascontiguousarray(c_b.velocity_z, dtype=np.float32)
+                nx, ny, nz = vxa.shape
+                out = np.empty(n_coords, dtype=np.float32)
+                w_a = float(np.abs(dc_b - lcd).value / denom)
+                w_b = float(np.abs(dc_a - lcd).value / denom)
+                rc = lib.p21_cuda_angular_los_velocity(
+                    ffi.cast("const float *", ffi.from_buffer(vxa)),
+                    ffi.cast("const float *", ffi.from_buffer(vya)),
+                    ffi.cast("const float *", ffi.from_buffer(vza)),
+                    ffi.cast("const float *", ffi.from_buffer(vxb)),
+                    ffi.cast("const float *", ffi.from_buffer(vyb)),
+                    ffi.cast("const float *", ffi.from_buffer(vzb)),
+                    int(nx),
+                    int(ny),
+                    int(nz),
+                    n_coords,
+                    ffi.cast("const double *", ffi.from_buffer(coords)),
+                    ffi.cast("const double *", ffi.from_buffer(unit_xyz)),
+                    w_a,
+                    w_b,
+                    int(self.interpolation_order),
+                    ffi.cast("float *", ffi.from_buffer(out)),
+                )
+                if rc == 0:
+                    weights = interpolator.keywords.get("weights")
+                    if weights is not None:
+                        w = np.asarray(weights, dtype=np.float64)
+                        out = (
+                            (w[:, None] * out.reshape(w.size, -1))
+                            .sum(axis=0)
+                            .astype(np.float32)
+                        )
+                    return out
+
         if kind == "mean" and self.samples_first(c_a.velocity_x.size, interpolator):
             # cosmotile needs Quantities here, since the pixel coordinates are.
             los_a, los_b = make_lightcone_slice_vector_field(

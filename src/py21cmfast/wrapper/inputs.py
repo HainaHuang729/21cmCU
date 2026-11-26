@@ -11,7 +11,10 @@ listed in the documentation for each class below.
 
 # we use a few nested if statments in the validators here
 
+import hashlib
 import logging
+import os
+import threading
 import warnings
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -48,6 +51,16 @@ logger = logging.getLogger(__name__)
 # but not hashable). See _shared_cosmology.
 _SHARED_COSMOLOGIES: OrderedDict[tuple, tuple[FLRW, FLRW]] = OrderedDict()
 _SHARED_COSMOLOGIES_MAXSIZE = 64
+
+_COSMO_TABLES_CACHE: OrderedDict[tuple, Any] = OrderedDict()
+_COSMO_TABLES_CACHE_MAXSIZE = 64
+_COSMO_TABLES_LOCK = threading.RLock()
+
+
+def clear_cosmo_tables_cache() -> None:
+    """Clear the in-memory CLASS CosmoTables LRU cache."""
+    with _COSMO_TABLES_LOCK:
+        _COSMO_TABLES_CACHE.clear()
 
 
 def _shared_cosmology(base: FLRW, *, hlittle: float, OMm: float, OMb: float) -> FLRW:
@@ -2538,6 +2551,80 @@ class InputParameters:
                     "1/Mpc"
                 ) * 1.5  # Multiply by 1.5 for better precision
 
+            use_mem_cache = os.environ.get("P21_CLASS_CACHE", "1").strip() != "0"
+            use_disk_cache = (
+                use_mem_cache
+                and os.environ.get("P21_CLASS_DISK_CACHE", "1").strip() != "0"
+            )
+            cache_key = (
+                float(self.cosmo_params.hlittle),
+                float(self.cosmo_params.OMm),
+                float(self.cosmo_params.OMb),
+                float(self.cosmo_params.POWER_INDEX),
+                None
+                if self.cosmo_params._SIGMA_8 is None
+                else float(self.cosmo_params._SIGMA_8),
+                None
+                if self.cosmo_params._A_s is None
+                else float(self.cosmo_params._A_s),
+                float(self.cosmo_params.OMn),
+                float(self.cosmo_params.OMk),
+                float(self.cosmo_params.OMr),
+                float(self.cosmo_params.Y_He),
+                float(self.cosmo_params.wl),
+                self.matter_options.V_CB_MODEL,
+                bool(self.astro_options.USE_MCGS),
+                float(k_max.to_value("1/Mpc")),
+            )
+
+            if use_mem_cache:
+                with _COSMO_TABLES_LOCK:
+                    cached = _COSMO_TABLES_CACHE.get(cache_key)
+                    if cached is not None:
+                        _COSMO_TABLES_CACHE.move_to_end(cache_key)
+                        return cached
+
+            disk_path: Path | None = None
+            if use_disk_cache:
+                key_hash = hashlib.sha256(repr(cache_key).encode("utf-8")).hexdigest()[:24]
+                disk_path = (
+                    Path(config["direc"])
+                    / "class_tables_cache"
+                    / f"cosmo_{key_hash}.npz"
+                )
+                if disk_path.exists():
+                    try:
+                        with np.load(disk_path, allow_pickle=False) as npz:
+                            td = Table1D(
+                                size=int(npz["dens_x"].size),
+                                x_values=npz["dens_x"],
+                                y_values=npz["dens_y"],
+                            )
+                            tv = (
+                                Table1D(
+                                    size=int(npz["vcb_x"].size),
+                                    x_values=npz["vcb_x"],
+                                    y_values=npz["vcb_y"],
+                                )
+                                if bool(int(npz["has_vcb"]))
+                                else None
+                            )
+                            cosmo_tables = CosmoTables(
+                                transfer_density=td,
+                                transfer_vcb=tv,
+                                ps_norm=float(npz["ps_norm"]),
+                                USE_SIGMA_8=bool(int(npz["use_sigma_8"])),
+                                V_CB_AVG=float(npz["v_cb_avg"]),
+                            )
+                        with _COSMO_TABLES_LOCK:
+                            _COSMO_TABLES_CACHE[cache_key] = cosmo_tables
+                            _COSMO_TABLES_CACHE.move_to_end(cache_key)
+                            while len(_COSMO_TABLES_CACHE) > _COSMO_TABLES_CACHE_MAXSIZE:
+                                _COSMO_TABLES_CACHE.popitem(last=False)
+                        return cosmo_tables
+                    except Exception:
+                        pass
+
             classy_output = run_classy(
                 h=self.cosmo_params.hlittle,
                 Omega_cdm=self.cosmo_params.OMm - self.cosmo_params.OMb,
@@ -2611,6 +2698,40 @@ class InputParameters:
                 USE_SIGMA_8=USE_SIGMA_8,
                 V_CB_AVG=V_CB_AVG,
             )
+
+            if use_mem_cache:
+                with _COSMO_TABLES_LOCK:
+                    _COSMO_TABLES_CACHE[cache_key] = cosmo_tables
+                    _COSMO_TABLES_CACHE.move_to_end(cache_key)
+                    while len(_COSMO_TABLES_CACHE) > _COSMO_TABLES_CACHE_MAXSIZE:
+                        _COSMO_TABLES_CACHE.popitem(last=False)
+
+            if use_disk_cache and disk_path is not None:
+                try:
+                    disk_path.parent.mkdir(parents=True, exist_ok=True)
+                    tmp_file = disk_path.with_suffix(f".{os.getpid()}.tmp.npz")
+                    payload = {
+                        "dens_x": transfer_density.x_values,
+                        "dens_y": transfer_density.y_values,
+                        "has_vcb": np.array(int(transfer_vcb is not None)),
+                        "vcb_x": (
+                            transfer_vcb.x_values
+                            if transfer_vcb is not None
+                            else np.empty(0, dtype=np.float64)
+                        ),
+                        "vcb_y": (
+                            transfer_vcb.y_values
+                            if transfer_vcb is not None
+                            else np.empty(0, dtype=np.float64)
+                        ),
+                        "ps_norm": np.array(float(cosmo_tables.ps_norm)),
+                        "use_sigma_8": np.array(int(bool(USE_SIGMA_8))),
+                        "v_cb_avg": np.array(float(V_CB_AVG)),
+                    }
+                    np.savez(tmp_file, **payload)
+                    os.replace(tmp_file, disk_path)
+                except Exception:
+                    pass
         else:
             # we ALWAYS use sigma8 to normalize the power spectrum if we don't use CLASS
             cosmo_tables = CosmoTables(

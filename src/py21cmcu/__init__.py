@@ -10,6 +10,10 @@ from py21cmfast import *  # noqa: F403
 from py21cmfast import config
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
+from py21cmfast.lightconers import clear_lightconer_class_cache as _clear_lc_class_cache
+from py21cmfast.wrapper.inputs import (
+    clear_cosmo_tables_cache as _clear_cosmo_tables_cache,
+)
 
 from .analysis import (
     lightcone_chunk_power_spectra,
@@ -53,6 +57,12 @@ def cleanup_cuda() -> None:
     _lib.p21_cuda_cleanup()
 
 
+def clear_class_cache() -> None:
+    """Clear in-memory CLASS transfer-table and lightconer caches."""
+    _clear_cosmo_tables_cache()
+    _clear_lc_class_cache()
+
+
 def get_cuda_mode() -> CudaMode:
     """Return the active CUDA execution precision mode (``strict`` or ``fast``)."""
     return config["CUDA_MODE"]
@@ -76,6 +86,7 @@ __all__ = [
     "BatchTask",
     "CudaMode",
     "cleanup_cuda",
+    "clear_class_cache",
     "cuda_available",
     "cuda_compiled",
     "cuda_stats",

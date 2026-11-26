@@ -211,4 +211,12 @@ int p21_cuda_power_spectrum_2d(const float *h_field_a, const float *h_field_b, i
                                const double *h_kpara_edges, int skip_dc,
                                double *h_kperp_mean_out, double *h_kpara_mean_out,
                                double *h_pk_out, unsigned long long *h_counts_out);
+int p21_cuda_angular_slice(const float *h_box_a, const float *h_box_b, int nx, int ny, int nz,
+                           int n_coords, const double *h_coords_xyz, float w_a, float w_b,
+                           int order, int kind, float *h_out);
+int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const float *h_vza,
+                                  const float *h_vxb, const float *h_vyb, const float *h_vzb,
+                                  int nx, int ny, int nz, int n_coords,
+                                  const double *h_coords_xyz, const double *h_unit_xyz, float w_a,
+                                  float w_b, int order, float *h_out);
 /*-----------------------*/
