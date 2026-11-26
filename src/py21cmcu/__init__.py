@@ -18,7 +18,7 @@ from .analysis import (
 )
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 CudaMode = Literal["strict", "fast"]
 

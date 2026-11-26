@@ -2,11 +2,11 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
-## [0.3.0-dev] — In Progress (Directions D / E / F)
-### Planned & Implementing
-- **Direction D**: Native CUDA `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds`, `RectilinearLightconer` batch GPU slicing, and cuFFT-backed 1D spherical & 2D cylindrical power spectra (`power_spectrum_1d`, `power_spectrum_2d`, `lightcone_chunk_power_spectra`).
-- **Direction E**: Spawned multi-GPU / concurrent batch runner (`py21cmcu.run_batch`) for parameter sweeps & SBI plus statistical `strict` vs `fast` calibration across source models (`docs/CALIBRATION.md`).
-- **Direction F**: `build_cffi.py` toolchain & SM architecture auto-detection (`CUDA_ARCHS=auto`), reproducible `benchmarks/bench_21cmcu.py` CLI, and `v0.3.0` release packaging.
+## [0.3.0] — 2026-11-26 (Directions D, E & F)
+### Added
+- **Direction D (`fa22efc`)**: Native CUDA `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds` (`476.90×` speedup at `128×128×512`), `RectilinearLightconer` batch GPU slicing, `BrightnessTemp`/`tau_21` `DeviceFieldRegistry` retention, and cuFFT-backed `power_spectrum_1d` / `power_spectrum_2d` / `lightcone_chunk_power_spectra` (`19/19` tests passing in `tests/native/test_21cmcu_phase3_d.py`).
+- **Direction E (`b8e7950`)**: Spawned multi-GPU / concurrent batch runner (`py21cmcu.run_batch`, `save_batch_h5`, `4,797.8 tasks/h` at `192/96` on RTX 4090 with `workers_per_gpu=2`) and 6-seed `strict` vs `fast` calibration across `E-INTEGRAL`, `L-INTEGRAL`, and `CHMF-SAMPLER+MCG+CLASS` (`docs/CALIBRATION.md`, `tests/native/test_21cmcu_phase3_e.py`).
+- **Direction F**: `build_cffi.py` toolchain & `CUDA_ARCHS=auto` SM auto-detection (verified compiling `sm_89` on RTX 4090 without `CUDA_HOME`), unified `benchmarks/bench_21cmcu.py` CLI, and `v0.3.0` release verification (`135/135` passing tests across all native suites).
 
 ## [0.2.0] — 2026-11-26 (Phase 1 / C & Phase 2 / B)
 ### Added

@@ -142,6 +142,48 @@ for k, v in os.environ.items():
         library_dirs += [p for p in v.split(os.pathsep) if p]
 
 
+def _auto_detect_dep_dirs(inc_dirs: list[str], lib_dirs: list[str]) -> None:
+    """Append existing conda/venv/pkg-config/homebrew header & lib dirs as low-priority fallbacks."""
+    candidate_prefixes: list[Path] = []
+    for env_key in ("CONDA_PREFIX", "VIRTUAL_ENV"):
+        val = os.environ.get(env_key, "").strip()
+        if val:
+            candidate_prefixes.append(Path(val))
+    candidate_prefixes.extend([Path("/usr/local"), Path("/opt/homebrew")])
+
+    skip_sys = {"/usr/include", "/usr/lib", "/usr/lib64"}
+    for pkg in ("gsl", "fftw3f"):
+        for flag, target in (("--cflags-only-I", inc_dirs), ("--libs-only-L", lib_dirs)):
+            prefix = "-I" if flag == "--cflags-only-I" else "-L"
+            try:
+                res = subprocess.run(
+                    ["pkg-config", flag, pkg],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except OSError:
+                break
+            if res.returncode == 0:
+                for tok in res.stdout.split():
+                    if tok.startswith(prefix):
+                        p = tok[len(prefix) :]
+                        if p and p not in skip_sys and Path(p).is_dir() and p not in target:
+                            target.append(p)
+
+    for pfx in candidate_prefixes:
+        inc = pfx / "include"
+        if inc.is_dir() and str(inc) not in skip_sys and str(inc) not in inc_dirs:
+            inc_dirs.append(str(inc))
+        for lib_sub in ("lib", "lib64"):
+            libd = pfx / lib_sub
+            if libd.is_dir() and str(libd) not in skip_sys and str(libd) not in lib_dirs:
+                lib_dirs.append(str(libd))
+
+
+_auto_detect_dep_dirs(include_dirs, library_dirs)
+
+
 def _resolve_cuda_toolchain() -> tuple[Path, Path, Path]:
     """Locate ``nvcc`` and the corresponding CUDA include and library directories.
 
@@ -161,8 +203,23 @@ def _resolve_cuda_toolchain() -> tuple[Path, Path, Path]:
     elif cuda_home_env:
         nvcc = Path(cuda_home_env) / "bin" / "nvcc"
     else:
+        candidates: list[Path] = []
+        if Path("/usr/local/cuda/bin/nvcc").exists():
+            candidates.append(Path("/usr/local/cuda/bin/nvcc"))
+        for cand in sorted(Path("/usr/local").glob("cuda-*/bin/nvcc")):
+            if cand not in candidates:
+                candidates.append(cand)
         which_nvcc = shutil.which("nvcc")
-        nvcc = Path(which_nvcc) if which_nvcc else Path("/usr/local/cuda/bin/nvcc")
+        if which_nvcc and Path(which_nvcc) not in candidates:
+            candidates.append(Path(which_nvcc))
+
+        if candidates:
+            nvcc = max(
+                candidates,
+                key=lambda p: _detect_nvcc_version(p) or (0, 0),
+            )
+        else:
+            nvcc = Path("/usr/local/cuda/bin/nvcc")
 
     if not nvcc.exists():
         raise FileNotFoundError(
@@ -195,18 +252,44 @@ def _detect_nvcc_version(nvcc: Path) -> tuple[int, int] | None:
     return int(match.group(1)), int(match.group(2))
 
 
+def _detect_local_gpu_archs() -> list[str]:
+    """Detect SM architectures (e.g. ['89']) from local GPUs via ``nvidia-smi``."""
+    try:
+        res = subprocess.run(
+            ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return []
+    if res.returncode != 0:
+        return []
+    archs: list[str] = []
+    for line in res.stdout.splitlines():
+        cap = line.strip().replace(".", "")
+        if cap.isdigit() and cap not in archs:
+            archs.append(cap)
+    return archs
+
+
 def _parse_cuda_archs(nvcc_version: tuple[int, int] | None = None) -> list[str]:
     """Parse ``CUDA_ARCHS`` into numeric SM architecture strings."""
     raw = os.environ.get("CUDA_ARCHS", "").strip()
     if raw:
-        tokens = raw.replace(",", " ").replace(";", " ").split()
-        archs: list[str] = []
-        for tok in tokens:
-            cleaned = tok.removeprefix("sm_").removeprefix("compute_")
-            if cleaned and cleaned not in archs:
-                archs.append(cleaned)
-        if archs:
-            return archs
+        if raw.lower() in ("auto", "native"):
+            detected = _detect_local_gpu_archs()
+            if detected:
+                return detected
+        else:
+            tokens = raw.replace(",", " ").replace(";", " ").split()
+            archs: list[str] = []
+            for tok in tokens:
+                cleaned = tok.removeprefix("sm_").removeprefix("compute_")
+                if cleaned and cleaned not in archs:
+                    archs.append(cleaned)
+            if archs:
+                return archs
 
     if nvcc_version is None:
         return ["75", "80", "86", "89"]

@@ -49,21 +49,28 @@
 
 ---
 
-## Ongoing Directions (D → E → F → G)
+## Completed Directions (D → E → F, `v0.3.0`)
 
-### Direction D — Lightcone Pipeline, GPU RSDs & GPU Power Spectra
-- **Native CUDA `include_dvdr_in_tau21` & `rsds_shift` (`cuda_analysis.cu`)**: Replace CPU `scipy.fft`, `RegularGridInterpolator`, and `cosmotile.cic.cloud_in_cell_los` with fused column-parallel GPU kernels handling both periodic FFT and non-periodic 2nd-order velocity gradients plus subcell CIC displacements without `4×` host allocations.
-- **Native CUDA `RectilinearLightconer` Batch Slicing**: Extract all `[z_lo, z_hi]` lightcone slices in a single GPU kernel directly from `DeviceFieldRegistry`-resident coevals.
-- **Native CUDA 1D & 2D Power Spectra (`power_spectrum_1d`, `power_spectrum_2d`, `lightcone_chunk_power_spectra`)**: cuFFT-backed spherical `P(k)` / `Δ²(k)` and cylindrical `P(k_⊥, k_∥)` with exact R2C Hermitian multiplicity directly from GPU-resident fields.
+### Direction D (`fa22efc`) — Lightcone Pipeline, GPU RSDs & GPU Power Spectra
+- **Native CUDA `include_dvdr_in_tau21` & `rsds_shift` (`cuda_analysis.cu`)**: Replaced CPU `scipy.fft`, `RegularGridInterpolator`, and `cosmotile.cic.cloud_in_cell_los` with fused column-parallel GPU kernels (`double` interpolation/CIC accumulation, zero `4×` host temporary).
+  - Verified on RTX 4090 (`128 × 128 × 512`, `USE_TS_FLUCT=True`): `include_dvdr_in_tau21` **`0.0231 s`** vs `0.3223 s` CPU (**`13.94×`**); `apply_rsds` **`0.0794 s`** vs `37.8637 s` CPU (**`476.90×`**).
+- **Native CUDA `RectilinearLightconer` Batch Slicing & `BrightnessTemp` Registry Retention (`cuda_brightness.cu`, `lightconers.py`)**: Batch slice interpolation in a single kernel directly from GPU-resident coeval arrays. End-to-end `256/128` `L-INTEGRAL` lightcone (`z=6.5–11`, `apply_rsds=True`, 777 slices) completes in **`4.066 s`** (`1,212` registry hits, `0.56 GB` H2D).
+- **Native CUDA 1D & 2D Power Spectra (`power_spectrum_1d`, `power_spectrum_2d`, `lightcone_chunk_power_spectra`)**: cuFFT-backed spherical `P(k)` / `Δ²(k)` and cylindrical `P(k_⊥, k_∥)` matching `powerbox.get_power` (`19.68×` speedup at `128³`: `0.0067 s` vs `0.1311 s` CPU; `6` lightcone chunk PS in `0.1823 s`).
+- Verified by `tests/native/test_21cmcu_phase3_d.py` (`19/19 passed`).
 
-### Direction E — Multi-GPU Batch / SBI Runner & `strict` vs `fast` Calibration
-- **Spawned Multi-GPU / Multi-Worker Batch Runner (`py21cmcu.run_batch`)**: Concurrent parameter-sweep and SBI pipeline extracting global histories + GPU 1D/2D power spectra in memory with optional summary HDF5 persistence and per-worker GPU isolation.
-- **Statistical Calibration (`docs/CALIBRATION.md`)**: Ensemble benchmarks across `E-INTEGRAL`, `L-INTEGRAL`, and `CHMF-SAMPLER + USE_MCGS + CLASS` quantifying `strict` vs `fast` global and power-spectrum consistency against cosmic variance.
+### Direction E (`b8e7950`) — Multi-GPU Batch / SBI Runner & `strict` vs `fast` Calibration
+- **Spawned Multi-GPU / Multi-Worker Batch Runner (`py21cmcu.run_batch`, `save_batch_h5`)**: Concurrent in-memory sweeps with `CUDA_VISIBLE_DEVICES` isolation, GPU 1D/2D PS extraction, error isolation, and compact summary HDF5 output (`tests/native/test_21cmcu_phase3_e.py` `2/2 passed`).
+  - RTX 4090 single-GPU throughput (`4 × 192/96` coevals, `fast`): `3.816 s` (`3,773.5 tasks/h`) with 1 worker; **`3.001 s` (`4,797.8 tasks/h`)** with `workers_per_gpu=2`.
+- **Statistical Calibration (`docs/CALIBRATION.md`)**: 6-seed ensembles across `E-INTEGRAL`, `L-INTEGRAL`, and `CHMF-SAMPLER + USE_MCGS + CLASS` establish global agreement (`max |ΔxH| ≤ 0.00147`, `max |ΔTb| ≤ 0.3719 mK`, `max |ΔTs|/Ts ≤ 1.07%`) and unbiased 1D/2D power spectra (`median |Δ|/SEM = 0.68–1.11`).
 
-### Direction F — Engineering Polish & Release Readiness
-- **`build_cffi.py` Auto-Detection**: Automatic discovery of CUDA (`nvcc` / `CUDA_HOME`), GSL, FFTW, and local GPU compute architectures (`CUDA_ARCHS=auto`).
-- **Reproducible Benchmark CLI (`benchmarks/bench_21cmcu.py`)**: Single-command suite covering `B1`–`B6`, lightcone/RSD/PS, and concurrent batch throughput.
-- **Release Packaging (`v0.3.0`)**: Clean documentation, changelog, and clean separation from legacy `archive-cupy-v4` references.
+### Direction F (`v0.3.0`) — Build Auto-Detection & Release Polish
+- **`build_cffi.py` Auto-Detection**: Version-aware CUDA toolkit discovery (preferring highest `/usr/local/cuda*`), `CUDA_ARCHS=auto` / `native` (`nvidia-smi` SM cap detection, verified compiling `sm_89` on RTX 4090), and low-priority `conda`/`venv`/`pkg-config` GSL & FFTW discovery.
+- **Reproducible Benchmark CLI ([`benchmarks/bench_21cmcu.py`](../benchmarks/bench_21cmcu.py))**: Single-command `--suite core|highres|lightcone|batch|all` harness.
+- **Full `v0.3.0` native test suite**: **`135/135` passing tests** on RTX 4090 (`phase0`, `phase1`, `phase2`, `phase3_d`, `phase3_e`, `cuda_phase1`, `cuda_phase2 -k "not speed"`, `cuda_phase3`).
 
-### Direction G (Future) — Multi-GPU Domain Decomposition
+---
+
+## Future Roadmap
+
+### Direction G — Multi-GPU Domain Decomposition
 - Distributed 2D slab cuFFT / MPI across multiple GPUs for `>= 2048³` grids beyond single-card VRAM limits.
