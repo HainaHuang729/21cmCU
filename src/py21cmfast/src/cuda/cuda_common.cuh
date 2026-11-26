@@ -131,6 +131,8 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
                                 cudaStream_t stream);
 bool p21_cuda_registry_put_owned(const void *host_ptr, void *d_buf, size_t nbytes,
                                  cudaStream_t stream);
+bool p21_cuda_registry_put_owned_lazy(const void *host_ptr, void *d_buf, size_t nbytes,
+                                      cudaStream_t stream);
 
 /* cuFFT cache & shared k-space filter (cuda_cufft.cu) */
 bool p21_cuda_fft_r2c(const float *d_real, cufftComplex *d_complex, int nx, int ny, int nz,

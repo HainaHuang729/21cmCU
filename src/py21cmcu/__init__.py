@@ -21,6 +21,7 @@ from .analysis import (
     power_spectrum_2d,
 )
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
+from .io import save_lightcone
 
 __version__ = "0.3.0"
 
@@ -74,8 +75,16 @@ def set_cuda_mode(mode: CudaMode) -> None:
 
 
 @contextlib.contextmanager
-def use_mode(mode: CudaMode, *, use_cuda: bool = True, **extra: Any):
+def use_mode(
+    mode: CudaMode,
+    *,
+    use_cuda: bool = True,
+    lazy_d2h: bool | None = None,
+    **extra: Any,
+):
     """Temporarily run under the requested CUDA precision mode and config overrides."""
+    if lazy_d2h is not None:
+        extra["CUDA_LAZY_D2H"] = bool(lazy_d2h)
     with config.use(USE_CUDA=use_cuda, CUDA_MODE=mode, **extra) as cfg:
         yield cfg
 
@@ -97,6 +106,7 @@ __all__ = [
     "reset_cuda_stats",
     "run_batch",
     "save_batch_h5",
+    "save_lightcone",
     "set_cuda_mode",
     "use_mode",
 ]

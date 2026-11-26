@@ -361,6 +361,7 @@ int ComputeTsBox(float redshift, float prev_redshift, PerturbedField *perturbed_
             if (cuda_stat == 0) return 0;
             if (cuda_stat > 0) Throw(cuda_stat);
         }
+        p21_cuda_registry_sync_all_lazy();
 #endif
 
         this_spin_temp->Q_HI = radiation_fields->Q_HI;

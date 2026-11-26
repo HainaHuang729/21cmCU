@@ -22,6 +22,7 @@ struct RegistryEntry {
     size_t nbytes;
     uint64_t hash;
     uint64_t lru_tick;
+    bool device_only;
 };
 
 std::mutex g_reg_mu;
@@ -181,6 +182,21 @@ size_t registry_budget_bytes(void) {
     return total / 2;
 }
 
+void release_evicted_entry(const void *host_ptr, void *d_old, size_t nbytes, bool device_only,
+                           cudaStream_t stream) {
+    if (!d_old) {
+        return;
+    }
+    if (device_only && host_ptr && nbytes > 0) {
+        if (P21_CUDA_OK(cudaMemcpyAsync(const_cast<void *>(host_ptr), d_old, nbytes,
+                                        cudaMemcpyDeviceToHost, stream)) &&
+            P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+            p21_cuda_stats_add_d2h(nbytes);
+        }
+    }
+    p21_cuda_pool_free(d_old, stream);
+}
+
 void evict_lru_locked(size_t incoming_bytes, const void *keep_host_ptr, cudaStream_t stream) {
     size_t budget = registry_budget_bytes();
     while (!g_registry.empty() && g_registry_bytes + incoming_bytes > budget) {
@@ -198,10 +214,13 @@ void evict_lru_locked(size_t incoming_bytes, const void *keep_host_ptr, cudaStre
         if (victim == g_registry.end()) {
             break;
         }
+        const void *h_old = victim->first;
         void *d_old = victim->second.d_ptr;
-        g_registry_bytes -= victim->second.nbytes;
+        size_t old_bytes = victim->second.nbytes;
+        bool old_lazy = victim->second.device_only;
+        g_registry_bytes -= old_bytes;
         g_registry.erase(victim);
-        p21_cuda_pool_free(d_old, stream);
+        release_evicted_entry(h_old, d_old, old_bytes, old_lazy, stream);
         p21_cuda_stats_mut()->registry_invalidations++;
     }
 }
@@ -234,7 +253,13 @@ void p21_cuda_pool_init(int device_id) {
 }
 
 bool reclaim_stale_registry_for_oom(size_t target_bytes, cudaStream_t stream) {
-    std::vector<void *> freed_ptrs;
+    struct EvictedItem {
+        const void *host_ptr;
+        void *d_ptr;
+        size_t nbytes;
+        bool device_only;
+    };
+    std::vector<EvictedItem> freed_items;
     size_t freed_bytes = 0;
     {
         std::lock_guard<std::mutex> lock(g_reg_mu);
@@ -257,7 +282,8 @@ bool reclaim_stale_registry_for_oom(size_t target_bytes, cudaStream_t stream) {
             if (it == g_registry.end()) {
                 continue;
             }
-            freed_ptrs.push_back(it->second.d_ptr);
+            freed_items.push_back(
+                {it->first, it->second.d_ptr, it->second.nbytes, it->second.device_only});
             freed_bytes += it->second.nbytes;
             g_registry_bytes -= it->second.nbytes;
             g_registry.erase(it);
@@ -267,11 +293,11 @@ bool reclaim_stale_registry_for_oom(size_t target_bytes, cudaStream_t stream) {
             }
         }
     }
-    for (void *p : freed_ptrs) {
-        p21_cuda_pool_free(p, stream);
+    for (const auto &item : freed_items) {
+        release_evicted_entry(item.host_ptr, item.d_ptr, item.nbytes, item.device_only, stream);
     }
     p21_cuda_pool_trim();
-    return !freed_ptrs.empty();
+    return !freed_items.empty();
 }
 
 void *p21_cuda_pool_alloc(size_t nbytes, cudaStream_t stream) {
@@ -378,7 +404,10 @@ void p21_cuda_registry_evict_to_free(size_t target_free_bytes, cudaStream_t stre
     }
 
     while (p21_cuda_free_mem_bytes() < target_free_bytes) {
+        const void *h_old = nullptr;
         void *d_old = nullptr;
+        size_t old_bytes = 0;
+        bool old_lazy = false;
         {
             std::lock_guard<std::mutex> lock(g_reg_mu);
             if (g_registry.empty()) {
@@ -395,13 +424,16 @@ void p21_cuda_registry_evict_to_free(size_t target_free_bytes, cudaStream_t stre
             if (victim == g_registry.end()) {
                 break;
             }
+            h_old = victim->first;
             d_old = victim->second.d_ptr;
-            g_registry_bytes -= victim->second.nbytes;
+            old_bytes = victim->second.nbytes;
+            old_lazy = victim->second.device_only;
+            g_registry_bytes -= old_bytes;
             g_registry.erase(victim);
             p21_cuda_stats_mut()->registry_invalidations++;
         }
         if (d_old) {
-            p21_cuda_pool_free(d_old, stream);
+            release_evicted_entry(h_old, d_old, old_bytes, old_lazy, stream);
             p21_cuda_pool_trim();
         }
     }
@@ -411,13 +443,31 @@ void *p21_cuda_registry_get_or_upload(const void *host_ptr, size_t nbytes, cudaS
     if (!host_ptr || nbytes == 0) {
         return nullptr;
     }
+
+    {
+        std::lock_guard<std::mutex> lock(g_reg_mu);
+        auto it = g_registry.find(host_ptr);
+        if (it != g_registry.end() && it->second.device_only) {
+            if (it->second.nbytes == nbytes) {
+                it->second.lru_tick = ++g_lru_counter;
+                p21_cuda_stats_mut()->registry_hits++;
+                return it->second.d_ptr;
+            }
+            void *d_stale = it->second.d_ptr;
+            g_registry_bytes -= it->second.nbytes;
+            g_registry.erase(it);
+            p21_cuda_pool_free(d_stale, stream);
+            p21_cuda_stats_mut()->registry_invalidations++;
+        }
+    }
+
     uint64_t hash = p21_hash_host_bytes(host_ptr, nbytes);
 
     {
         std::lock_guard<std::mutex> lock(g_reg_mu);
         auto it = g_registry.find(host_ptr);
         if (it != g_registry.end()) {
-            if (it->second.nbytes == nbytes && it->second.hash == hash) {
+            if (it->second.nbytes == nbytes && (it->second.device_only || it->second.hash == hash)) {
                 it->second.lru_tick = ++g_lru_counter;
                 p21_cuda_stats_mut()->registry_hits++;
                 return it->second.d_ptr;
@@ -452,7 +502,7 @@ void *p21_cuda_registry_get_or_upload(const void *host_ptr, size_t nbytes, cudaS
         g_registry.erase(existing);
     }
     evict_lru_locked(nbytes, host_ptr, stream);
-    g_registry.emplace(host_ptr, RegistryEntry{d_buf, nbytes, hash, ++g_lru_counter});
+    g_registry.emplace(host_ptr, RegistryEntry{d_buf, nbytes, hash, ++g_lru_counter, false});
     g_registry_bytes += nbytes;
     return d_buf;
 }
@@ -544,9 +594,11 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
         }
         it->second.hash = hash;
         it->second.lru_tick = ++g_lru_counter;
+        it->second.device_only = false;
     } else {
         evict_lru_locked(nbytes, host_ptr, stream);
-        g_registry.emplace(host_ptr, RegistryEntry{d_cached, nbytes, hash, ++g_lru_counter});
+        g_registry.emplace(host_ptr,
+                           RegistryEntry{d_cached, nbytes, hash, ++g_lru_counter, false});
         g_registry_bytes += nbytes;
     }
     return true;
@@ -593,12 +645,96 @@ bool p21_cuda_registry_put_owned(const void *host_ptr, void *d_buf, size_t nbyte
         p21_cuda_stats_mut()->registry_invalidations++;
     }
     evict_lru_locked(nbytes, host_ptr, stream);
-    g_registry.emplace(host_ptr, RegistryEntry{d_buf, nbytes, hash, ++g_lru_counter});
+    g_registry.emplace(host_ptr, RegistryEntry{d_buf, nbytes, hash, ++g_lru_counter, false});
+    g_registry_bytes += nbytes;
+    return true;
+}
+
+bool p21_cuda_registry_put_owned_lazy(const void *host_ptr, void *d_buf, size_t nbytes,
+                                      cudaStream_t stream) {
+    if (!host_ptr || !d_buf || nbytes == 0) {
+        return false;
+    }
+    if (nbytes > p21_cuda_registry_max_entry_bytes()) {
+        return false;
+    }
+    if (nbytes >= 64ULL * 1024 * 1024) {
+        size_t headroom = std::min<size_t>(nbytes, 2ULL * 1024 * 1024 * 1024);
+        if (p21_cuda_free_mem_bytes() < nbytes + headroom) {
+            return false;
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(g_reg_mu);
+    auto existing = g_registry.find(host_ptr);
+    if (existing != g_registry.end()) {
+        if (existing->second.d_ptr != d_buf) {
+            p21_cuda_pool_free(existing->second.d_ptr, stream);
+        }
+        g_registry_bytes -= existing->second.nbytes;
+        g_registry.erase(existing);
+        p21_cuda_stats_mut()->registry_invalidations++;
+    }
+    evict_lru_locked(nbytes, host_ptr, stream);
+    g_registry.emplace(host_ptr, RegistryEntry{d_buf, nbytes, 0ULL, ++g_lru_counter, true});
     g_registry_bytes += nbytes;
     return true;
 }
 
 extern "C" {
+
+int p21_cuda_registry_sync_to_host(const void *host_ptr) {
+    if (!host_ptr) {
+        return 0;
+    }
+    void *d_ptr = nullptr;
+    size_t nbytes = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_reg_mu);
+        auto it = g_registry.find(host_ptr);
+        if (it == g_registry.end() || !it->second.device_only) {
+            return 0;
+        }
+        d_ptr = it->second.d_ptr;
+        nbytes = it->second.nbytes;
+    }
+    cudaStream_t stream = p21_cuda_stream();
+    if (!d_ptr || nbytes == 0 ||
+        !P21_CUDA_OK(cudaMemcpyAsync(const_cast<void *>(host_ptr), d_ptr, nbytes,
+                                     cudaMemcpyDeviceToHost, stream)) ||
+        !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+        return 0;
+    }
+    p21_cuda_stats_add_d2h(nbytes);
+
+    uint64_t hash = 0ULL;
+    if (nbytes < kGpuHashThresholdBytes || !p21_hash_device_bytes(d_ptr, nbytes, stream, &hash)) {
+        hash = p21_hash_host_bytes(host_ptr, nbytes);
+    }
+    std::lock_guard<std::mutex> lock(g_reg_mu);
+    auto it = g_registry.find(host_ptr);
+    if (it != g_registry.end() && it->second.d_ptr == d_ptr) {
+        it->second.hash = hash;
+        it->second.device_only = false;
+        it->second.lru_tick = ++g_lru_counter;
+    }
+    return 1;
+}
+
+void p21_cuda_registry_sync_all_lazy(void) {
+    std::vector<const void *> keys;
+    {
+        std::lock_guard<std::mutex> lock(g_reg_mu);
+        for (const auto &kv : g_registry) {
+            if (kv.second.device_only) {
+                keys.push_back(kv.first);
+            }
+        }
+    }
+    for (const void *k : keys) {
+        p21_cuda_registry_sync_to_host(k);
+    }
+}
 
 void p21_cuda_invalidate_host_ptr(const void *ptr) {
     if (!ptr) {
@@ -628,7 +764,8 @@ void p21_cuda_registry_clear(void) {
         std::lock_guard<std::mutex> lock(g_reg_mu);
         cudaStream_t stream = p21_cuda_stream();
         for (auto &kv : g_registry) {
-            p21_cuda_pool_free(kv.second.d_ptr, stream);
+            release_evicted_entry(kv.first, kv.second.d_ptr, kv.second.nbytes,
+                                  kv.second.device_only, stream);
             p21_cuda_stats_mut()->registry_invalidations++;
         }
         g_registry.clear();

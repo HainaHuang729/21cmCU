@@ -558,6 +558,9 @@ void emissivity_fields_debug_print_avg(EmissivityFields *emissivity_fields,
                                        PerturbedField *perturbed_field, ScalingConstants *consts,
                                        double M_min, double M_max) {
     if (LOG_LEVEL < DEBUG_LEVEL) return;
+#ifdef USE_CUDA
+    p21_cuda_registry_sync_all_lazy();
+#endif
     IntegralProperties averages_box;
     averages_box = get_emissivity_fields_averages(emissivity_fields, perturbed_field);
     IntegralProperties averages_global;
@@ -947,6 +950,7 @@ int ComputeEmissivityFields(double redshift, InitialConditions *ini_boxes,
                 }
             }
         }
+        p21_cuda_registry_sync_all_lazy();
 #endif
 
         LOG_DEBUG("Resetting emissivity_fields dim %d %llu %llu",

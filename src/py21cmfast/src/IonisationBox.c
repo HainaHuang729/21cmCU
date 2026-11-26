@@ -1622,6 +1622,7 @@ int ComputeIonizedBox(float redshift, float prev_redshift, PerturbedField *pertu
                 return 0;
             }
         }
+        p21_cuda_registry_sync_all_lazy();
 #endif
 
 #pragma omp parallel shared(box) private(ct) num_threads(simulation_options_global -> N_THREADS)

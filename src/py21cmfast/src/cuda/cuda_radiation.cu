@@ -1069,38 +1069,51 @@ bool finalize_rad_fields_r0(float redshift, size_t total, int use_xray_heat, int
         accum->d_lya_inj, accum->d_lyw);
     bool ok = P21_CUDA_OK(cudaGetLastError());
 
+    const bool lazy_d2h = p21_cuda_get_lazy_d2h() != 0;
+    if (ok && lazy_d2h) {
+        auto try_lazy = [&](const void *hptr, double *&dbuf) {
+            if (dbuf && hptr && p21_cuda_registry_put_owned_lazy(hptr, dbuf, dbytes, stream)) {
+                dbuf = nullptr;
+            }
+        };
+        if (use_xray_heat) try_lazy(radiation_fields->xray_heating_rate, accum->d_xray_heating);
+        try_lazy(radiation_fields->xray_ionization_rate, accum->d_xray_ion);
+        try_lazy(radiation_fields->xray_lya_flux, accum->d_xray_lya);
+        if (use_mcgs) try_lazy(radiation_fields->lyw_flux, accum->d_lyw);
+        if (use_lya_heat) {
+            try_lazy(radiation_fields->lya_flux_continuum, accum->d_lya_cont);
+            try_lazy(radiation_fields->lya_flux_injected, accum->d_lya_inj);
+        } else {
+            try_lazy(radiation_fields->lya_flux_continuum_injected, accum->d_lya_cont_inj);
+        }
+    }
+
+    bool need_sync = false;
+    auto copy_d2h = [&](double *hptr, const double *dptr) {
+        if (!ok || !hptr || !dptr) return;
+        ok = P21_CUDA_OK(cudaMemcpyAsync(hptr, dptr, dbytes, cudaMemcpyDeviceToHost, stream));
+        if (ok) {
+            p21_cuda_stats_add_d2h(dbytes);
+            need_sync = true;
+        }
+    };
     if (ok && use_xray_heat) {
-        ok = P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->xray_heating_rate,
-                                         accum->d_xray_heating, dbytes, cudaMemcpyDeviceToHost,
-                                         stream));
-        if (ok) p21_cuda_stats_add_d2h(dbytes);
+        copy_d2h(radiation_fields->xray_heating_rate, accum->d_xray_heating);
     }
     if (ok) {
-        ok = P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->xray_ionization_rate,
-                                         accum->d_xray_ion, dbytes, cudaMemcpyDeviceToHost,
-                                         stream)) &&
-             P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->xray_lya_flux, accum->d_xray_lya,
-                                         dbytes, cudaMemcpyDeviceToHost, stream));
-        if (ok) p21_cuda_stats_add_d2h(2 * dbytes);
+        copy_d2h(radiation_fields->xray_ionization_rate, accum->d_xray_ion);
+        copy_d2h(radiation_fields->xray_lya_flux, accum->d_xray_lya);
     }
     if (ok && use_mcgs) {
-        ok = P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->lyw_flux, accum->d_lyw, dbytes,
-                                         cudaMemcpyDeviceToHost, stream));
-        if (ok) p21_cuda_stats_add_d2h(dbytes);
+        copy_d2h(radiation_fields->lyw_flux, accum->d_lyw);
     }
     if (ok && use_lya_heat) {
-        ok = P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->lya_flux_continuum, accum->d_lya_cont,
-                                         dbytes, cudaMemcpyDeviceToHost, stream)) &&
-             P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->lya_flux_injected, accum->d_lya_inj,
-                                         dbytes, cudaMemcpyDeviceToHost, stream));
-        if (ok) p21_cuda_stats_add_d2h(2 * dbytes);
+        copy_d2h(radiation_fields->lya_flux_continuum, accum->d_lya_cont);
+        copy_d2h(radiation_fields->lya_flux_injected, accum->d_lya_inj);
     } else if (ok) {
-        ok = P21_CUDA_OK(cudaMemcpyAsync(radiation_fields->lya_flux_continuum_injected,
-                                         accum->d_lya_cont_inj, dbytes, cudaMemcpyDeviceToHost,
-                                         stream));
-        if (ok) p21_cuda_stats_add_d2h(dbytes);
+        copy_d2h(radiation_fields->lya_flux_continuum_injected, accum->d_lya_cont_inj);
     }
-    if (ok) {
+    if (ok && need_sync) {
         ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
     }
 

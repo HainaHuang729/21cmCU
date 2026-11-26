@@ -699,6 +699,31 @@ int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const 
     return -1;
 }
 
+void p21_cuda_set_lazy_d2h(int enabled) { (void)enabled; }
+
+int p21_cuda_get_lazy_d2h(void) { return 0; }
+
+int p21_cuda_registry_sync_to_host(const void *host_ptr) {
+    (void)host_ptr;
+    return 0;
+}
+
+void p21_cuda_registry_sync_all_lazy(void) {}
+
+int p21_cuda_lzf_compress_batch_f32(const float *host_chunks, int n_chunks, size_t chunk_elems,
+                                    int shuffle, unsigned char *host_out, size_t max_out_bytes,
+                                    size_t *out_sizes, int *has_nonfinite_out) {
+    (void)host_chunks;
+    (void)n_chunks;
+    (void)chunk_elems;
+    (void)shuffle;
+    (void)host_out;
+    (void)max_out_bytes;
+    (void)out_sizes;
+    (void)has_nonfinite_out;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

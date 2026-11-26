@@ -31,7 +31,7 @@ from bidict import bidict
 
 from .._cfg import config
 from ..c_21cmfast import lib
-from .arrays import Array, expose_arrays
+from .arrays import Array, _sync_lazy_cuda_ptr, expose_arrays
 from .exceptions import _process_exitcode
 from .inputs import (
     AstroOptions,
@@ -268,7 +268,7 @@ class OutputStruct(ABC):
         for k in self._struct.primitive_fields:
             setattr(self, k, getattr(self._cstruct, k))
 
-    def get(self, ary: str | Array):
+    def get(self, ary: str | Array, *, _sync_cuda: bool = True):
         """If possible, load an array from disk, storing it and returning the underlying array."""
         if isinstance(ary, str):
             name = ary
@@ -291,6 +291,8 @@ class OutputStruct(ABC):
             ary = ary.loaded_from_disk()
             setattr(self, name, ary)
 
+        if _sync_cuda:
+            _sync_lazy_cuda_ptr(ary._value)
         return ary._value
 
     def set(self, name: str, value: Any):
@@ -348,7 +350,7 @@ class OutputStruct(ABC):
         # For everything we want to keep, we check if it is computed in memory,
         # and if not, load it from disk.
         for k in keep:
-            self.get(k)
+            self.get(k, _sync_cuda=False)
 
     def _remove_array(self, k: str, *, force=False):
         array = self.arrays[k]

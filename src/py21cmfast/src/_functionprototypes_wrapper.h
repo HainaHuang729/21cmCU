@@ -179,6 +179,10 @@ void p21_cuda_set_fast_ic(int enabled);
 int p21_cuda_get_fast_ic(void);
 void p21_cuda_set_fast_halo_sampler(int enabled);
 int p21_cuda_get_fast_halo_sampler(void);
+void p21_cuda_set_lazy_d2h(int enabled);
+int p21_cuda_get_lazy_d2h(void);
+int p21_cuda_registry_sync_to_host(const void *host_ptr);
+void p21_cuda_registry_sync_all_lazy(void);
 void p21_cuda_reset_stats(void);
 void p21_cuda_get_stats(P21CudaStats *out);
 void p21_cuda_cleanup(void);
@@ -219,4 +223,7 @@ int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const 
                                   int nx, int ny, int nz, int n_coords,
                                   const double *h_coords_xyz, const double *h_unit_xyz, float w_a,
                                   float w_b, int order, float *h_out);
+int p21_cuda_lzf_compress_batch_f32(const float *host_chunks, int n_chunks, size_t chunk_elems,
+                                    int shuffle, unsigned char *host_out, size_t max_out_bytes,
+                                    size_t *out_sizes, int *has_nonfinite_out);
 /*-----------------------*/

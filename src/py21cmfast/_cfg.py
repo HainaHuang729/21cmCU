@@ -56,6 +56,7 @@ class Config(dict):
         "safe_read": True,
         "CACHE_ARRAYS_ON_ACCESS": True,
         "USE_CUDA": _parse_env_bool("P21_USE_CUDA", default=False),
+        "CUDA_LAZY_D2H": _parse_env_bool("P21_CUDA_LAZY_D2H", default=False),
         "CUDA_MODE": _DEFAULT_CUDA_MODE,
         "CUDA_FAST_HALO_SAMPLER": (
             _parse_env_bool("P21_CUDA_FAST_HALO_SAMPLER", default=False)
@@ -129,6 +130,7 @@ class Config(dict):
         lib.p21_cuda_set_enabled(int(bool(self["USE_CUDA"])))
         self._sync_cuda_mode(self["CUDA_MODE"])
         lib.p21_cuda_set_fast_halo_sampler(int(bool(self["CUDA_FAST_HALO_SAMPLER"])))
+        lib.p21_cuda_set_lazy_d2h(int(bool(self["CUDA_LAZY_D2H"])))
 
     def __setitem__(self, key, value):
         """Set an item in the config. Also updating the backend if it exists there."""
@@ -139,12 +141,16 @@ class Config(dict):
         if key in self._c_config_settings:
             self._pass_to_backend(key, value)
         elif key == "USE_CUDA":
+            if not bool(value):
+                lib.p21_cuda_registry_sync_all_lazy()
             lib.p21_cuda_set_enabled(int(bool(value)))
         elif key == "CUDA_MODE":
             self._sync_cuda_mode(value)
             self["CUDA_FAST_HALO_SAMPLER"] = value == "fast"
         elif key == "CUDA_FAST_HALO_SAMPLER":
             lib.p21_cuda_set_fast_halo_sampler(int(bool(value)))
+        elif key == "CUDA_LAZY_D2H":
+            lib.p21_cuda_set_lazy_d2h(int(bool(value)))
 
     def _pass_to_backend(self, key, value):
         """Set the value in the backend."""

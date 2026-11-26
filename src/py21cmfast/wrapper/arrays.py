@@ -35,6 +35,42 @@ def _invalidate_cuda_ptr(arr: np.ndarray | None) -> None:
         lib.p21_cuda_invalidate_host_ptr(ffi.cast("const void *", arr.ctypes.data))
 
 
+def _sync_lazy_cuda_ptr(arr: np.ndarray | None) -> None:
+    """Materialize any lazy GPU-only copy into host memory before host access."""
+    if arr is not None and arr.flags.c_contiguous and arr.size > 0:
+        lib.p21_cuda_registry_sync_to_host(ffi.cast("const void *", arr.ctypes.data))
+
+
+class _CudaBufferOwner:
+    """Refcount-exact owner keeping a host ndarray alive until all views drop."""
+
+    __slots__ = ("_arr", "_ptr")
+
+    def __init__(self, arr: np.ndarray) -> None:
+        self._arr = arr
+        self._ptr = int(arr.ctypes.data)
+
+    def __buffer__(self, flags: int) -> memoryview:
+        return memoryview(self._arr)
+
+    def __del__(self) -> None:
+        lib.p21_cuda_invalidate_host_ptr(ffi.cast("const void *", self._ptr))
+
+
+def _track_cuda_array(arr: np.ndarray) -> np.ndarray:
+    """Return a plain ndarray view backed by ``_CudaBufferOwner`` for GC-safe CUDA tracking."""
+    if (
+        not arr.flags.c_contiguous
+        or not arr.flags.writeable
+        or arr.size == 0
+        or isinstance(arr.base, _CudaBufferOwner)
+        or isinstance(getattr(arr.base, "obj", None), _CudaBufferOwner)
+    ):
+        return arr
+    owner = _CudaBufferOwner(arr)
+    return np.frombuffer(owner, dtype=arr.dtype).reshape(arr.shape)
+
+
 class CacheBackend(ABC):
     """Abstract base class for cache backends."""
 
@@ -180,7 +216,7 @@ class Array:
         if self.state.initialized:
             return self
         else:
-            value = self.initfunc(self.shape, dtype=self.dtype)
+            value = _track_cuda_array(self.initfunc(self.shape, dtype=self.dtype))
             _invalidate_cuda_ptr(value)
             return attrs.evolve(
                 self,
@@ -191,14 +227,14 @@ class Array:
     def with_value(self, val: np.ndarray) -> Self:
         """Set the array to a given value and return a new Array."""
         _invalidate_cuda_ptr(self._value)
-        new_val = val.astype(self.dtype, copy=False)
+        new_val = _track_cuda_array(val.astype(self.dtype, copy=False))
         _invalidate_cuda_ptr(new_val)
         return attrs.evolve(self, value=new_val, state=self.state.computed())
 
     def _with_value_not_computed(self, val: np.ndarray) -> Self:
         """Set the array to a given value and return a new Array, but without indicating the array has been computed."""
         _invalidate_cuda_ptr(self._value)
-        new_val = val.astype(self.dtype, copy=False)
+        new_val = _track_cuda_array(val.astype(self.dtype, copy=False))
         _invalidate_cuda_ptr(new_val)
         return attrs.evolve(
             self,
@@ -221,6 +257,7 @@ class Array:
         if backend is None:
             raise ValueError("backend must be specified")
 
+        _sync_lazy_cuda_ptr(self._value)
         backend.write(self._value)
         return attrs.evolve(self, cache_backend=backend, state=self.state.written())
 
@@ -244,7 +281,7 @@ class Array:
             np.dtype(self.dtype).name,
             backend,
         )
-        value = backend.read().astype(self.dtype, copy=False)
+        value = _track_cuda_array(backend.read().astype(self.dtype, copy=False))
         _invalidate_cuda_ptr(value)
         return attrs.evolve(
             self,
@@ -255,6 +292,7 @@ class Array:
 
     def trimmed(self, trimmed_shape: tuple[int]) -> Self:
         """Return a new Array with the same data but a different shape, by slicing the original array."""
+        _sync_lazy_cuda_ptr(self._value)
         slc = tuple(slice(0, n) for n in trimmed_shape)
         trimmed_value = self._value[slc]
         return attrs.evolve(self, shape=trimmed_shape, value=trimmed_value)
@@ -271,6 +309,7 @@ class Array:
         instance is left untouched, and every access re-reads from disk.
         """
         if self._value is not None:
+            _sync_lazy_cuda_ptr(self._value)
             return self._value
 
         if not self.state.on_disk and not self.state.initialized:

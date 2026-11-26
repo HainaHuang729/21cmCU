@@ -1189,10 +1189,27 @@ extern "C" int p21_cuda_emissivity_eval_and_finish(P21CudaEmissivityCtx *ctx,
     ctx->d_mturn_mcg = nullptr;
 
     if (ok) {
+        const bool lazy_d2h = p21_cuda_get_lazy_d2h() != 0;
+        if (lazy_d2h) {
+            auto try_lazy = [&](const void *hptr, float *&dbuf) {
+                if (dbuf && hptr && p21_cuda_registry_put_owned_lazy(hptr, dbuf, fbytes, stream)) {
+                    dbuf = nullptr;
+                }
+            };
+            try_lazy(emissivity_fields->n_ion, d_nion);
+            try_lazy(emissivity_fields->sfrd_acg, d_sfrd_acg);
+            try_lazy(emissivity_fields->sfrd_mcg, d_sfrd_mcg);
+            try_lazy(emissivity_fields->xray_emissivity, d_xray);
+        }
+
+        bool need_sync = false;
         auto copy_d2h = [&](float *hptr, const float *dptr) {
             if (!ok || !hptr || !dptr) return;
             ok = P21_CUDA_OK(cudaMemcpyAsync(hptr, dptr, fbytes, cudaMemcpyDeviceToHost, stream));
-            if (ok) p21_cuda_stats_add_d2h(fbytes);
+            if (ok) {
+                p21_cuda_stats_add_d2h(fbytes);
+                need_sync = true;
+            }
         };
         copy_d2h(emissivity_fields->n_ion, d_nion);
         copy_d2h(emissivity_fields->sfrd_acg, d_sfrd_acg);
@@ -1202,7 +1219,7 @@ extern "C" int p21_cuda_emissivity_eval_and_finish(P21CudaEmissivityCtx *ctx,
         copy_d2h(emissivity_fields->halo_mass_density, d_hm);
         copy_d2h(emissivity_fields->stellar_mass_density_acg, d_sa);
         copy_d2h(emissivity_fields->stellar_mass_density_mcg, d_sm);
-        if (ok) ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
+        if (ok && need_sync) ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
     }
 
     if (ok) {
@@ -1590,10 +1607,28 @@ extern "C" int p21_cuda_lag_emissivity_finish(P21CudaLagEmissCtx *ctx,
     }
 
     if (ok) {
+        const bool lazy_d2h = p21_cuda_get_lazy_d2h() != 0;
+        if (lazy_d2h) {
+            auto try_lazy = [&](const void *hptr, float *&dbuf) {
+                if (dbuf && hptr && p21_cuda_registry_put_owned_lazy(hptr, dbuf, fbytes, stream)) {
+                    dbuf = nullptr;
+                }
+            };
+            try_lazy(emissivity_fields->n_ion, d_nion);
+            try_lazy(emissivity_fields->sfrd_acg, d_sfrd_acg);
+            try_lazy(emissivity_fields->sfrd_mcg, d_sfrd_mcg);
+            try_lazy(emissivity_fields->xray_emissivity, d_xray);
+            try_lazy(emissivity_fields->fesc_weighted_sfrd, d_fesc);
+        }
+
+        bool need_sync = false;
         auto copy_d2h = [&](float *hptr, const float *dptr) {
             if (!ok || !hptr || !dptr) return;
             ok = P21_CUDA_OK(cudaMemcpyAsync(hptr, dptr, fbytes, cudaMemcpyDeviceToHost, stream));
-            if (ok) p21_cuda_stats_add_d2h(fbytes);
+            if (ok) {
+                p21_cuda_stats_add_d2h(fbytes);
+                need_sync = true;
+            }
         };
         copy_d2h(emissivity_fields->n_ion, d_nion);
         copy_d2h(emissivity_fields->sfrd_acg, d_sfrd_acg);
@@ -1604,7 +1639,7 @@ extern "C" int p21_cuda_lag_emissivity_finish(P21CudaLagEmissCtx *ctx,
         copy_d2h(emissivity_fields->halo_mass_density, d_hm);
         copy_d2h(emissivity_fields->stellar_mass_density_acg, d_sa);
         copy_d2h(emissivity_fields->stellar_mass_density_mcg, d_sm);
-        if (ok) ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
+        if (ok && need_sync) ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
     }
 
     if (ok) {

@@ -11,6 +11,7 @@ int g_enabled = 0;
 int g_cuda_mode = 0;
 int g_fast_ic = 0;
 int g_fast_halo_sampler = 0;
+int g_lazy_d2h = 0;
 bool g_initialized = false;
 cudaStream_t g_stream = nullptr;
 int g_device_id = -1;
@@ -107,6 +108,16 @@ int p21_cuda_get_fast_ic(void) { return g_fast_ic; }
 void p21_cuda_set_fast_halo_sampler(int enabled) { g_fast_halo_sampler = enabled ? 1 : 0; }
 
 int p21_cuda_get_fast_halo_sampler(void) { return g_fast_halo_sampler; }
+
+void p21_cuda_set_lazy_d2h(int enabled) {
+    int next = enabled ? 1 : 0;
+    if (g_lazy_d2h && !next) {
+        p21_cuda_registry_sync_all_lazy();
+    }
+    g_lazy_d2h = next;
+}
+
+int p21_cuda_get_lazy_d2h(void) { return g_lazy_d2h; }
 
 void p21_cuda_reset_stats(void) {
     std::lock_guard<std::mutex> lock(g_runtime_mu);

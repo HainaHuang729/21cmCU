@@ -320,6 +320,7 @@ int UpdateRadiationFields(float redshift, EmissivityFields *emissivity_fields, i
             if (cuda_stat == 0) return 0;
             if (cuda_stat > 0) Throw(cuda_stat);
         }
+        p21_cuda_registry_sync_all_lazy();
 #endif
 
         double sfrd_avg_acg, filtered_sfrd_avg_acg, sfrd_avg_mcg = 0., filtered_sfrd_avg_mcg = 0.;
