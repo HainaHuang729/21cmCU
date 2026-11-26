@@ -9,8 +9,18 @@ from cosmotile.cic import cloud_in_cell_los
 from scipy import fft
 from scipy.interpolate import RegularGridInterpolator
 
+from ._cfg import config
+from .c_21cmfast import ffi, lib
 from .wrapper.classy_interface import compute_rms
 from .wrapper.inputs import InputParameters
+
+
+def _rsd_cuda_ready() -> bool:
+    return bool(
+        config["USE_CUDA"]
+        and lib.p21_cuda_is_compiled()
+        and lib.p21_cuda_is_available()
+    )
 
 
 def include_dvdr_in_tau21(
@@ -59,6 +69,52 @@ def include_dvdr_in_tau21(
     N = inputs.simulation_options.HII_DIM
 
     dx_los = inputs.simulation_options.BOX_LEN / N  # Mpc
+    if (
+        _rsd_cuda_ready()
+        and brightness_temp.ndim in (2, 3)
+        and brightness_temp.shape[-1] >= 3
+        and (not periodic or brightness_temp.ndim == 3)
+    ):
+        if brightness_temp.ndim == 3:
+            nx, ny, nz = brightness_temp.shape
+        else:
+            nx, nz = brightness_temp.shape
+            ny = 1
+        h_s_inv = np.broadcast_to(
+            np.asarray(
+                inputs.cosmo_params.cosmo.H(redshifts).to_value(1.0 / units.s),
+                dtype=np.float64,
+            ),
+            (nz,),
+        )
+        h_s_inv = np.ascontiguousarray(h_s_inv, dtype=np.float64)
+        tb32 = np.ascontiguousarray(brightness_temp, dtype=np.float32)
+        vel32 = np.ascontiguousarray(los_velocity, dtype=np.float32)
+        tau32 = (
+            np.ascontiguousarray(tau_21, dtype=np.float32)
+            if inputs.astro_options.USE_TS_FLUCT
+            else None
+        )
+        out32 = np.empty(brightness_temp.shape, dtype=np.float32)
+        rc = lib.p21_cuda_include_dvdr_in_tau21(
+            ffi.cast("const float *", ffi.from_buffer(tb32)),
+            ffi.cast("const float *", ffi.from_buffer(vel32)),
+            ffi.NULL
+            if tau32 is None
+            else ffi.cast("const float *", ffi.from_buffer(tau32)),
+            ffi.cast("const double *", ffi.from_buffer(h_s_inv)),
+            int(nx),
+            int(ny),
+            int(nz),
+            float(dx_los),
+            float(inputs.astro_params.MAX_DVDR),
+            int(bool(inputs.astro_options.USE_TS_FLUCT)),
+            int(bool(periodic)),
+            ffi.cast("float *", ffi.from_buffer(out32)),
+        )
+        if rc == 0:
+            return out32
+
     # TODO: currently the gradient is applied w.r.t to the z-axis, even if the user specified a different los-axis. Needs to make it more flexible in the future
     if periodic:
         k_real = fft.rfftfreq(N, dx_los) * 2.0 * np.pi
@@ -147,11 +203,38 @@ def apply_rsds(
         raise ValueError(
             "Redshifts must be a float or array with the same size as number of LoS slices"
         )
+    if not isinstance(n_rsd_subcells, int):
+        raise ValueError("n_rsd_subcells must be an integer")  # noqa: TRY004
 
     H = inputs.cosmo_params.cosmo.H(redshifts)
     los_displacement = los_velocity * units.Mpc / units.s / H
     equiv = units.pixel_scale(inputs.simulation_options.cell_size / units.pixel)
     los_displacement = los_displacement.to(units.pixel, equivalencies=equiv)
+
+    if (
+        _rsd_cuda_ready()
+        and field.ndim in (2, 3)
+        and field.shape[-1] >= 2
+        and n_rsd_subcells >= 1
+    ):
+        nz = field.shape[-1]
+        n_los = (field.shape[0] * field.shape[1]) if field.ndim == 3 else field.shape[0]
+        f32 = np.ascontiguousarray(field.reshape((n_los, nz)), dtype=np.float32)
+        d32 = np.ascontiguousarray(
+            np.asarray(los_displacement.value).reshape((n_los, nz)), dtype=np.float32
+        )
+        out32 = np.empty((n_los, nz), dtype=np.float32)
+        rc = lib.p21_cuda_rsds_shift(
+            ffi.cast("const float *", ffi.from_buffer(f32)),
+            ffi.cast("const float *", ffi.from_buffer(d32)),
+            int(n_los),
+            int(nz),
+            int(n_rsd_subcells),
+            int(bool(periodic)),
+            ffi.cast("float *", ffi.from_buffer(out32)),
+        )
+        if rc == 0:
+            return out32.reshape(field.shape)
 
     # We transform rectilinear lightcone to be an angular-like lightcone
     field_dimensions = len(field.shape)
@@ -218,6 +301,23 @@ def rsds_shift(
         # asserted verbatim by tests/test_rsds.py (the class holding
         # test_integer_shift and friends).
         raise ValueError("n_rsd_subcells must be an integer")  # noqa: TRY004
+
+    if _rsd_cuda_ready() and field.ndim == 2 and n_rsd_subcells >= 1:
+        nz, n_los = field.shape
+        f32 = np.ascontiguousarray(field.T, dtype=np.float32)
+        d32 = np.ascontiguousarray(los_displacement.T, dtype=np.float32)
+        out32 = np.empty((n_los, nz), dtype=np.float32)
+        rc = lib.p21_cuda_rsds_shift(
+            ffi.cast("const float *", ffi.from_buffer(f32)),
+            ffi.cast("const float *", ffi.from_buffer(d32)),
+            int(n_los),
+            int(nz),
+            int(n_rsd_subcells),
+            int(bool(periodic)),
+            ffi.cast("float *", ffi.from_buffer(out32)),
+        )
+        if rc == 0:
+            return np.ascontiguousarray(out32.T)
 
     ang_coords = np.arange(field.shape[1])
 

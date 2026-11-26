@@ -225,6 +225,28 @@ int p21_cuda_fill_uncond_emissivity_tables(
     const double *sfr_timescale_vals, int do_mcg, int n_mturn, double mcg_l10_min,
     double mcg_l10_max, const ScalingConstants *sc, double *acg_1d_out, double **mcg_2d_out);
 
+/* Direction D: RSDs, rectilinear lightcone slicing, and 1D/2D power spectra */
+int p21_cuda_include_dvdr_in_tau21(const float *h_tb, const float *h_los_vel,
+                                   const float *h_tau_21, const double *h_H_s_inv, int nx, int ny,
+                                   int nz, double dx_los_mpc, double max_dvdr, int use_ts_fluct,
+                                   int periodic, float *h_out);
+int p21_cuda_rsds_shift(const float *h_field, const float *h_disp, int n_los, int nz,
+                        int n_rsd_subcells, int periodic, float *h_out);
+int p21_cuda_rectilinear_slices(const float *h_box_a, const float *h_box_b, int nx, int ny, int nz,
+                                int n_slices, const int *h_z_indices, const float *h_w_a,
+                                const float *h_w_b, int kind, float *h_out);
+int p21_cuda_power_spectrum_1d(const float *h_field_a, const float *h_field_b, int nx, int ny,
+                               int nz, double lx, double ly, double lz, int n_bins,
+                               const double *h_k_edges, int skip_dc, double *h_k_mean_out,
+                               double *h_pk_out, double *h_delta_sq_out,
+                               unsigned long long *h_counts_out);
+int p21_cuda_power_spectrum_2d(const float *h_field_a, const float *h_field_b, int nx, int ny,
+                               int nz, double lx, double ly, double lz, int los_axis,
+                               int n_kperp, const double *h_kperp_edges, int n_kpara,
+                               const double *h_kpara_edges, int skip_dc,
+                               double *h_kperp_mean_out, double *h_kpara_mean_out,
+                               double *h_pk_out, unsigned long long *h_counts_out);
+
 #ifdef __cplusplus
 }
 #endif

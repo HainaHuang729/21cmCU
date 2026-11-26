@@ -11,6 +11,12 @@ from py21cmfast import config
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
+from .analysis import (
+    lightcone_chunk_power_spectra,
+    power_spectrum_1d,
+    power_spectrum_2d,
+)
+
 __version__ = "0.2.0"
 
 CudaMode = Literal["strict", "fast"]
@@ -71,6 +77,9 @@ __all__ = [
     "cuda_compiled",
     "cuda_stats",
     "get_cuda_mode",
+    "lightcone_chunk_power_spectra",
+    "power_spectrum_1d",
+    "power_spectrum_2d",
     "reset_cuda_stats",
     "set_cuda_mode",
     "use_mode",

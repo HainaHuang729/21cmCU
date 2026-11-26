@@ -2,21 +2,29 @@
 
 **21cmCU** is a standalone native C/CUDA + cuFFT 21cm cosmological simulation engine (originating from the `21cmFAST-GPU` fork and built on top of 21cmFAST v4.3.2 semantics with full `py21cmcu` / `py21cmfast` API and CLI compatibility and zero runtime CuPy dependency).
 
-## Key Capabilities (Phase 0)
+## Key Capabilities (`v0.2.0` — Phases 0, 1/C & 2/B Complete)
 
-- **Native C/CUDA + cuFFT core**: compiled directly into the CFFI shared library (`c_21cmfast`), supporting `E-INTEGRAL`, `CONST-ION-EFF`, `L-INTEGRAL`, `DEXM-ESF`, and `CHMF-SAMPLER`.
+- **Native C/CUDA + cuFFT core**: compiled directly into the CFFI shared library (`c_21cmfast`), supporting `E-INTEGRAL`, `CONST-ION-EFF`, `L-INTEGRAL`, `DEXM-ESF`, and `CHMF-SAMPLER` with `USE_MCGS`, `CLASS` (`V_CB_MODEL="FLUCTS"`), and `LYA_MULTIPLE_SCATTERING`.
 - **Dual precision modes (`CUDA_MODE`)**:
   - `strict` (default): CPU-matched parity mode (`rel_rms ~ 1e-4` on `384³ / 128³` lightcones, `< 0.02%` max 3D power spectrum deviation over `k ∈ [0.1, 1.0] Mpc⁻¹`).
-  - `fast`: statistically equivalent high-speed mode (enables parallel Philox RNG paths via `P21_CUDA_MODE=fast` / `CUDA_MODE="fast"` / `--cuda-mode fast` while keeping global histories and Δ²₂₁(k) statistically unbiased).
+  - `fast`: statistically equivalent high-speed mode (parallel Philox IC RNG, GPU chunk-tree hashing, adaptive accumulation via `P21_CUDA_MODE=fast` / `CUDA_MODE="fast"` / `--cuda-mode fast` while keeping global histories and Δ²₂₁(k) unbiased).
+- **High-resolution single-GPU residency (`512³–1024³`)**: 64-bit indexing, cuFFT plan LRU caching, `P21_CUDA_REGISTRY_MB` budget control, and OOM-safe LRU reclamation.
 - **Standalone bug fixes over v4.3.2**:
   - Photon-conservation calibration redshift/neutral-fraction length alignment (`photoncons.py`).
   - Safe null-output guard in Sheth–Tormen `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`).
   - Separate previous-redshift 1D ACG ionizing-efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True` without photoheating feedback (`interp_tables.c` / `cuda_ionization.cu`).
 
+### Verified RTX 4090 Highlights (24 GB VRAM, `N_THREADS=8`)
+
+- **`512 / 1024` 2LPT IC + Perturb (`fast`)**: `10.331 s` lo-res (**8.30×** vs `85.784 s` CPU) / `14.257 s` hi-res (**6.47×** vs `92.196 s` CPU).
+- **`512 / 1024` Full 2LPT Coeval (`fast`)**: `27.630 s` (`15.58 / 23.55 GB` VRAM).
+- **`768³` EoR Box (`fast`)**: `29.673 s` (`18.99 / 23.55 GB` VRAM).
+- **Full native GPU suite**: `108/108` tests passing on RTX 4090.
+
 ## Quick Start
 
 ```bash
-export USE_CUDA=1 CUDA_ARCHS=86   # adjust compute capability for your GPU
+export USE_CUDA=1 CUDA_ARCHS=86,89   # adjust compute capability for your GPU
 pip install -e . --no-build-isolation
 
 # Enable GPU via environment, Python API, or CLI:
@@ -33,11 +41,11 @@ with p21.use_mode("fast"):
     cv = p21.run_coeval(...)
 ```
 
-## Roadmap
+## Roadmap & Documentation
 
-- **Phase 0 (completed)**: Archive CuPy v4 adapter (`archive-cupy-v4`), unify native C/CUDA engine under `21cmCU` (`py21cmcu` / `21cmcu`), expose dual `strict` / `fast` modes, and fix upstream bugs blocking automation.
-- **Phase 1 (next — Option C)**: End-to-end GPU residency & profiling for `CHMF-SAMPLER` + molecular cooling (`USE_MCGS`) + `CLASS` (`V_CB_MODEL="FLUCTS"`) + `LYA_MULTIPLE_SCATTERING`.
-- **Phase 2 (Option B)**: Extreme-scale (`512³–1024³`) single-GPU lightcones via zero-D2H residency, parallel Philox ICs, native GPU lightcone slicing, and `DeviceLZF` HDF5 output.
+- Full milestone record, benchmark tables, and Directions D–G plan: [docs/ROADMAP.md](docs/ROADMAP.md)
+- Version history: [CHANGELOG.md](CHANGELOG.md)
+- **Active focus**: **Direction D** (GPU RSDs, batch rectilinear slicing, GPU 1D/2D power spectra) → **Direction E** (Multi-GPU batch/SBI runner & `strict` vs `fast` calibration) → **Direction F** (build auto-detection & `v0.3.0` polish).
 
 ---
 

@@ -182,17 +182,28 @@ extern "C" int p21_cuda_compute_brightness_temp(float redshift, TsBox *spin_temp
              P21_CUDA_OK(cudaStreamSynchronize(stream));
     }
 
-    p21_cuda_pool_free(d_bt, stream);
-    p21_cuda_pool_free(d_tau, stream);
     p21_cuda_pool_free(d_block_sums, stream);
     p21_cuda_pool_free(d_scalar_sum, stream);
     p21_cuda_pool_free(d_nonfinite, stream);
 
     if (!ok) {
+        p21_cuda_pool_free(d_bt, stream);
+        p21_cuda_pool_free(d_tau, stream);
         return -1;
     }
     if (h_nonfinite != 0 || !isfinite(h_ave_sum)) {
+        p21_cuda_pool_free(d_bt, stream);
+        p21_cuda_pool_free(d_tau, stream);
         return InfinityorNaNError;
+    }
+
+    if (!p21_cuda_registry_put_owned(box->brightness_temp, d_bt, nbytes, stream)) {
+        p21_cuda_pool_free(d_bt, stream);
+    }
+    if (use_ts_fluct) {
+        if (!p21_cuda_registry_put_owned(box->tau_21, d_tau, nbytes, stream)) {
+            p21_cuda_pool_free(d_tau, stream);
+        }
     }
 
     p21_cuda_stats_mut()->brightness_runs++;

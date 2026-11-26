@@ -21,6 +21,8 @@ from cosmotile import (
 )
 from scipy.spatial.transform import Rotation
 
+from ._cfg import config
+from .c_21cmfast import ffi, lib
 from .rsds import estimate_rsd_displacements
 from .wrapper.classy_interface import run_classy
 from .wrapper.inputs import (
@@ -557,6 +559,129 @@ class RectilinearLightconer(Lightconer):
             simulation_options.HII_DIM,
             len(self.lc_distances),
         )
+
+    def make_lightcone_slices(self, c1: Coeval, c2: Coeval):
+        """Batch-interpolate rectilinear lightcone slices on GPU when CUDA is enabled."""
+        if not (
+            config["USE_CUDA"]
+            and lib.p21_cuda_is_compiled()
+            and lib.p21_cuda_is_available()
+        ):
+            yield from super().make_lightcone_slices(c1, c2)
+            return
+
+        if c1.simulation_options != c2.simulation_options:
+            raise ValueError("c1 and c2 must have the same user parameters")
+        if c1.cosmo_params != c2.cosmo_params:
+            raise ValueError("c1 and c2 must have the same cosmological parameters")
+
+        cosmo = c1.cosmo_params.cosmo
+        coeval_res = c1.simulation_options.cell_size
+        pixeleq = pixel_scale(coeval_res / pixel)
+        dc1 = cosmo.comoving_distance(c1.redshift).to(pixel, equivalencies=pixeleq)
+        dc2 = cosmo.comoving_distance(c2.redshift).to(pixel, equivalencies=pixeleq)
+
+        dcmin = min(dc1, dc2)
+        dcmax = max(dc1, dc2)
+        denom = float(np.abs(dc1 - dc2).value)
+        if denom <= 0.0:
+            yield from super().make_lightcone_slices(c1, c2)
+            return
+
+        pixlcdist = self.get_lc_distances_in_pixels(coeval_res)
+        lcidx = np.nonzero((pixlcdist >= dcmin * (1 - 1e-6)) & (pixlcdist < dcmax))[0]
+        if len(lcidx) == 0:
+            yield None, lcidx, None
+            return
+
+        lc_distances = pixlcdist[lcidx]
+        max_lcpix = pixlcdist.max()
+        n_slices = int(len(lcidx))
+        w_a = np.ascontiguousarray(
+            np.abs(dc2 - lc_distances).value / denom, dtype=np.float32
+        )
+        w_b = np.ascontiguousarray(
+            np.abs(dc1 - lc_distances).value / denom, dtype=np.float32
+        )
+
+        # Resolve per-slice z-indices modulo nz from the first array's depth.
+        z_indices_raw = [
+            -int((max_lcpix - lcd + 1 * pixel).to_value(pixel)) + self.index_offset
+            for lcd in lc_distances
+        ]
+
+        batched: dict[str, np.ndarray] = {}
+
+        def _try_batch(name: str, attr_name: str, kind: str) -> None:
+            if kind not in ("mean", "mean_max"):
+                return
+            arr_a = np.asarray(getattr(c1, attr_name))
+            arr_b = np.asarray(getattr(c2, attr_name))
+            if arr_a.ndim != 3 or arr_a.shape != arr_b.shape:
+                return
+            nx, ny, nz = arr_a.shape
+            a32 = np.ascontiguousarray(arr_a, dtype=np.float32)
+            b32 = np.ascontiguousarray(arr_b, dtype=np.float32)
+            z_idx = np.ascontiguousarray(
+                np.mod(z_indices_raw, nz), dtype=np.int32
+            )
+            out = np.empty((n_slices, nx, ny), dtype=np.float32)
+            rc = lib.p21_cuda_rectilinear_slices(
+                ffi.cast("const float *", ffi.from_buffer(a32)),
+                ffi.cast("const float *", ffi.from_buffer(b32)),
+                int(nx),
+                int(ny),
+                int(nz),
+                n_slices,
+                ffi.cast("const int *", ffi.from_buffer(z_idx)),
+                ffi.cast("const float *", ffi.from_buffer(w_a)),
+                ffi.cast("const float *", ffi.from_buffer(w_b)),
+                1 if kind == "mean_max" else 0,
+                ffi.cast("float *", ffi.from_buffer(out)),
+            )
+            if rc == 0:
+                batched[name] = out
+
+        for q in self.quantities:
+            if q == "los_velocity":
+                continue
+            _try_batch(q, q, self.interp_kinds.get(q, "mean"))
+        if "los_velocity" in self.quantities:
+            _try_batch(
+                "los_velocity",
+                "velocity_z",
+                self.interp_kinds.get("velocity_z", "mean"),
+            )
+
+        for s, (idx, lcd) in enumerate(zip(lcidx, lc_distances, strict=True)):
+            for q in self.quantities:
+                if q == "los_velocity":
+                    continue
+                if q in batched:
+                    yield (q, idx, batched[q][s])
+                else:
+                    yield (
+                        q,
+                        idx,
+                        self.interpolate_slice(
+                            lcd,
+                            getattr(c1, q),
+                            getattr(c2, q),
+                            dc1,
+                            dc2,
+                            coeval_res,
+                            kind=self.interp_kinds.get(q, "mean"),
+                        ),
+                    )
+                if "los_velocity" in self.quantities and q == self.quantities[0]:
+                    if "los_velocity" in batched:
+                        yield ("los_velocity", idx, batched["los_velocity"][s])
+                    else:
+                        yield (
+                            "los_velocity",
+                            idx,
+                            self.interpolate_los_velocity_slice(lcd, c1, c2, dc1, dc2),
+                        )
 
 
 def _dimensionless(x: np.ndarray | Quantity) -> np.ndarray:
