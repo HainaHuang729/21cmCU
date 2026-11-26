@@ -1,0 +1,38 @@
+name: CPU CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu-build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install native C build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgsl-dev libfftw3-dev gcc g++
+
+      - name: Build 21cmCU CPU extension and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          USE_CUDA=0 pip install -e . --no-build-isolation
+          pip install pytest ruff
+
+      - name: Lint with ruff
+        run: ruff check --isolated src/py21cmcu benchmarks tests/native
+
+      - name: Run CPU-safe native tests
+        run: |
+          pytest -v \
+            tests/native/test_21cmcu_phase0.py \
+            tests/native/test_21cmcu_phase3_d.py \
+            tests/native/test_21cmcu_phase4_h.py \
+            tests/native/test_21cmcu_phase4_i.py

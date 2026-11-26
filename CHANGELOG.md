@@ -2,6 +2,12 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
+## [0.4.0] — 2026-11-26 (Directions H, I & J)
+### Added
+- **Direction H (`ec27d60`)**: In-memory + atomic `.npz` disk caching for `CLASS` `CosmoTables` (`17.1857 s` cold → `0.002208 s` memory **`7,783×`** / `0.0028 s` disk **`6,214×`**, `py21cmcu.clear_class_cache()`), `AngularLightconer` `run_classy` caching, and native CUDA `p21_cuda_angular_slice` / `p21_cuda_angular_los_velocity` (`0.0934 s` GPU vs `0.1644 s` CPU on `64 × 128³` `order=1` slices — **`1.76×`**; `6/6` tests passing in `tests/native/test_21cmcu_phase4_h.py`).
+- **Direction I (`0360f70`)**: Native CUDA `DeviceLZF` HDF5 compression (`cuda_io.cu`, `py21cmcu.save_lightcone`, **`2.91×`** faster than CPU LZF at `0.2366 s` vs `0.6893 s` on `129.11 MB` `256/128` lightcones) and opt-in `CUDA_LAZY_D2H` GPU-only intermediate residency (`use_mode(..., lazy_d2h=True)`, PEP 688 `_CudaBufferOwner` GC tracking, cutting `256/128` `L-INTEGRAL+TS` lightcone D2H transfers by **`24.3%`** (`1723.60 → 1304.17 MB`) and runtime `1.912 s → 1.322 s` (**`1.45×`**); `9/9` tests passing in `tests/native/test_21cmcu_phase4_i.py`).
+- **Direction J**: Removed legacy v3 (`lightcone/`, `gpu/`), CuPy v4 adapter (`v4/`, `reports/`), and obsolete fixtures from `main` (preserved under git tag `archive-cupy-v4`), added GitHub Actions CPU CI (`.github/workflows/ci.yml`), bumped version to `0.4.0`, and verified **`150/150` passing tests** on RTX 4090 (`sm_89`).
+
 ## [0.3.0] — 2026-11-26 (Directions D, E & F)
 ### Added
 - **Direction D (`fa22efc`)**: Native CUDA `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds` (`476.90×` speedup at `128×128×512`), `RectilinearLightconer` batch GPU slicing, `BrightnessTemp`/`tau_21` `DeviceFieldRegistry` retention, and cuFFT-backed `power_spectrum_1d` / `power_spectrum_2d` / `lightcone_chunk_power_spectra` (`19/19` tests passing in `tests/native/test_21cmcu_phase3_d.py`).

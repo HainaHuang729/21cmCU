@@ -29,7 +29,7 @@ def _stats() -> dict[str, int]:
 
 def test_py21cmcu_exports_and_no_cupy() -> None:
     """Verify ``py21cmcu`` exports core APIs and helpers without importing ``cupy``."""
-    assert py21cmcu.__version__ == "0.3.0"
+    assert py21cmcu.__version__ == "0.4.0"
     for name in (
         "InputParameters",
         "RectilinearLightconer",

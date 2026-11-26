@@ -1,1 +1,0 @@
-../lightcone/plan_cuda/inspect_fft_plans.py

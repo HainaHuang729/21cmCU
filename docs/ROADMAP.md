@@ -63,10 +63,32 @@
   - RTX 4090 single-GPU throughput (`4 × 192/96` coevals, `fast`): `3.816 s` (`3,773.5 tasks/h`) with 1 worker; **`3.001 s` (`4,797.8 tasks/h`)** with `workers_per_gpu=2`.
 - **Statistical Calibration (`docs/CALIBRATION.md`)**: 6-seed ensembles across `E-INTEGRAL`, `L-INTEGRAL`, and `CHMF-SAMPLER + USE_MCGS + CLASS` establish global agreement (`max |ΔxH| ≤ 0.00147`, `max |ΔTb| ≤ 0.3719 mK`, `max |ΔTs|/Ts ≤ 1.07%`) and unbiased 1D/2D power spectra (`median |Δ|/SEM = 0.68–1.11`).
 
-### Direction F (`v0.3.0`) — Build Auto-Detection & Release Polish
+### Direction F (`b04f812`, `v0.3.0`) — Build Auto-Detection & Release Polish
 - **`build_cffi.py` Auto-Detection**: Version-aware CUDA toolkit discovery (preferring highest `/usr/local/cuda*`), `CUDA_ARCHS=auto` / `native` (`nvidia-smi` SM cap detection, verified compiling `sm_89` on RTX 4090), and low-priority `conda`/`venv`/`pkg-config` GSL & FFTW discovery.
 - **Reproducible Benchmark CLI ([`benchmarks/bench_21cmcu.py`](../benchmarks/bench_21cmcu.py))**: Single-command `--suite core|highres|lightcone|batch|all` harness.
 - **Full `v0.3.0` native test suite**: **`135/135` passing tests** on RTX 4090 (`phase0`, `phase1`, `phase2`, `phase3_d`, `phase3_e`, `cuda_phase1`, `cuda_phase2 -k "not speed"`, `cuda_phase3`).
+
+---
+
+## Completed Directions (H → I → J, `v0.4.0`)
+
+### Direction H (`ec27d60`) — CLASS Startup Caching & GPU `AngularLightconer`
+- **CLASS Transfer-Table & Lightconer Caching (`inputs.py`, `lightconers.py`, `py21cmcu.clear_class_cache`)**: Thread-safe bounded LRU memory cache + atomic `.npz` disk cache under `config["direc"]/class_tables_cache` (`P21_CLASS_CACHE`, `P21_CLASS_DISK_CACHE`) and `AngularLightconer` `run_classy` cache.
+  - RTX 4090 (`192/64` `CHMF-SAMPLER + USE_MCGS + CLASS`): `CosmoTables` cold `17.1857 s` → **`0.002208 s`** memory (**`7,783×`**) / **`0.0028 s`** disk (**`6,214×`**); E2E `fast` coeval completes in **`7.713 s`** (`mem`) / **`7.795 s`** (`disk`).
+- **Native CUDA `AngularLightconer` Kernels (`cuda_analysis.cu`)**: `p21_cuda_angular_slice` and `p21_cuda_angular_los_velocity` (`64 × 128³` `order=1` slice interpolation **`0.0934 s`** GPU vs `0.1644 s` CPU, **`1.76×`**).
+- Verified by `tests/native/test_21cmcu_phase4_h.py` (`6/6 passed`).
+
+### Direction I (`0360f70`) — Native CUDA `DeviceLZF` HDF5 & `CUDA_LAZY_D2H` Residency
+- **Native CUDA `DeviceLZF` HDF5 (`cuda_io.cu`, `src/py21cmcu/io.py`)**: `py21cmcu.save_lightcone(..., compression="device-lzf")` compresses 3D `float32` lightcone chunks on GPU with HDF5 byte-shuffle + `liblzf`, non-finite flagging, incompressible fallback (`filter_mask`), and clean CPU fallback.
+  - RTX 4090 `256/128` 3-field `LightCone` (`129.11 MB` raw): **`0.2366 s`** GPU vs `0.6893 s` CPU LZF (**`2.91×`**).
+- **`CUDA_LAZY_D2H` Intermediate GPU Residency (`cuda_mempool.cu`, `cuda_radiation.cu`, `cuda_sources.cu`, `_cfg.py`, `arrays.py`, `outputs.py`)**: Opt-in GPU-only residency (`P21_CUDA_LAZY_D2H=1` or `use_mode(..., lazy_d2h=True)`) for `EmissivityFields` and `RadiationFields`, with PEP 688 GC-safe tracking (`_CudaBufferOwner`) and automatic materialization on host readback, eviction, or CPU fallback.
+  - RTX 4090 `256/128` `L-INTEGRAL + TS` lightcone (`z=7–11`): reduces D2H traffic by **`24.3%`** (`1723.60 MB → 1304.17 MB`) and improves wall time from `1.912 s` to **`1.322 s`** (**`1.45×`**).
+- Verified by `tests/native/test_21cmcu_phase4_i.py` (`9/9 passed`).
+
+### Direction J (`v0.4.0`) — Legacy Removal, CPU CI & Suite Verification
+- Removed legacy v3 (`lightcone/`, `gpu/`), CuPy v4 adapter (`v4/`, `reports/`), and obsolete top-level fixtures from `main` (preserved under git tag `archive-cupy-v4`).
+- Added GitHub Actions CPU CI (`.github/workflows/ci.yml`: `USE_CUDA=0` build, `ruff`, CPU-safe native suite).
+- Bumped package version to `0.4.0` and verified **`150/150` passing tests** on RTX 4090 (`cuda_arch=sm_89`).
 
 ---
 
