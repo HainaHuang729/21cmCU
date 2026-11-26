@@ -122,6 +122,9 @@ void p21_cuda_pool_init(int device_id);
 void *p21_cuda_pool_alloc(size_t nbytes, cudaStream_t stream);
 void p21_cuda_pool_free(void *ptr, cudaStream_t stream);
 void p21_cuda_pool_trim(void);
+size_t p21_cuda_free_mem_bytes(void);
+size_t p21_cuda_registry_max_entry_bytes(void);
+void p21_cuda_registry_evict_to_free(size_t target_free_bytes, cudaStream_t stream);
 
 void *p21_cuda_registry_get_or_upload(const void *host_ptr, size_t nbytes, cudaStream_t stream);
 bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t nbytes,
@@ -150,6 +153,7 @@ bool p21_cuda_build_mturn_grids(const ScalingConstants *consts, InitialCondition
                                 cudaStream_t stream, float **d_mturn_acg_out,
                                 float **d_mturn_mcg_out, double log10_mturn_averages_out[2]);
 void p21_cuda_radiation_invalidate_host_ptr(const void *ptr);
+void p21_cuda_radiation_clear_setup_cache(void);
 void p21_cuda_radiation_clear(void);
 void p21_cuda_spin_temp_cleanup(void);
 void p21_cuda_ionization_cleanup(void);

@@ -346,6 +346,67 @@ void p21_cuda_pool_trim(void) {
 #endif
 }
 
+size_t p21_cuda_free_mem_bytes(void) {
+    size_t free_b = 0;
+    size_t total_b = 0;
+    if (cudaMemGetInfo(&free_b, &total_b) != cudaSuccess) {
+        cudaGetLastError();
+        return 0;
+    }
+    return free_b;
+}
+
+size_t p21_cuda_registry_max_entry_bytes(void) {
+    const char *env_mb = getenv("P21_CUDA_REGISTRY_MAX_ENTRY_MB");
+    if (env_mb && *env_mb) {
+        char *end = nullptr;
+        unsigned long long mb = strtoull(env_mb, &end, 10);
+        if (end != env_mb && *end == '\0' && mb > 0ULL) {
+            return (size_t)mb << 20;
+        }
+    }
+    return registry_budget_bytes() / 4;
+}
+
+void p21_cuda_registry_evict_to_free(size_t target_free_bytes, cudaStream_t stream) {
+    if (target_free_bytes == 0 || p21_cuda_free_mem_bytes() >= target_free_bytes) {
+        return;
+    }
+    p21_cuda_pool_trim();
+    if (p21_cuda_free_mem_bytes() >= target_free_bytes) {
+        return;
+    }
+
+    while (p21_cuda_free_mem_bytes() < target_free_bytes) {
+        void *d_old = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(g_reg_mu);
+            if (g_registry.empty()) {
+                break;
+            }
+            auto victim = g_registry.end();
+            uint64_t best_tick = UINT64_MAX;
+            for (auto it = g_registry.begin(); it != g_registry.end(); ++it) {
+                if (it->second.lru_tick < best_tick) {
+                    best_tick = it->second.lru_tick;
+                    victim = it;
+                }
+            }
+            if (victim == g_registry.end()) {
+                break;
+            }
+            d_old = victim->second.d_ptr;
+            g_registry_bytes -= victim->second.nbytes;
+            g_registry.erase(victim);
+            p21_cuda_stats_mut()->registry_invalidations++;
+        }
+        if (d_old) {
+            p21_cuda_pool_free(d_old, stream);
+            p21_cuda_pool_trim();
+        }
+    }
+}
+
 void *p21_cuda_registry_get_or_upload(const void *host_ptr, size_t nbytes, cudaStream_t stream) {
     if (!host_ptr || nbytes == 0) {
         return nullptr;
@@ -367,6 +428,7 @@ void *p21_cuda_registry_get_or_upload(const void *host_ptr, size_t nbytes, cudaS
             p21_cuda_pool_free(d_stale, stream);
             p21_cuda_stats_mut()->registry_invalidations++;
         }
+        evict_lru_locked(nbytes, host_ptr, stream);
     }
 
     void *d_buf = p21_cuda_pool_alloc(nbytes, stream);
@@ -400,6 +462,35 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
     if (!host_ptr || !d_src || nbytes == 0) {
         return false;
     }
+    auto erase_existing = [&]() {
+        void *d_stale = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(g_reg_mu);
+            auto it = g_registry.find(host_ptr);
+            if (it != g_registry.end()) {
+                d_stale = it->second.d_ptr;
+                g_registry_bytes -= it->second.nbytes;
+                g_registry.erase(it);
+                p21_cuda_stats_mut()->registry_invalidations++;
+            }
+        }
+        if (d_stale) {
+            p21_cuda_pool_free(d_stale, stream);
+        }
+    };
+
+    if (nbytes > p21_cuda_registry_max_entry_bytes()) {
+        erase_existing();
+        return false;
+    }
+    if (nbytes >= 64ULL * 1024 * 1024) {
+        size_t headroom = std::min<size_t>(nbytes, 2ULL * 1024 * 1024 * 1024);
+        if (p21_cuda_free_mem_bytes() < nbytes + headroom) {
+            erase_existing();
+            return false;
+        }
+    }
+
     /* Compute hash after the stream finishes D2H copy so host_ptr matches device data. */
     uint64_t hash = 0ULL;
     if (nbytes < kGpuHashThresholdBytes || !p21_hash_device_bytes(d_src, nbytes, stream, &hash)) {
@@ -419,6 +510,9 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
                 g_registry.erase(it);
                 p21_cuda_stats_mut()->registry_invalidations++;
             }
+        }
+        if (!d_cached) {
+            evict_lru_locked(nbytes, host_ptr, stream);
         }
     }
 
@@ -461,6 +555,25 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
 bool p21_cuda_registry_put_owned(const void *host_ptr, void *d_buf, size_t nbytes,
                                  cudaStream_t stream) {
     if (!host_ptr || !d_buf || nbytes == 0) {
+        return false;
+    }
+    if (nbytes > p21_cuda_registry_max_entry_bytes()) {
+        void *d_stale = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(g_reg_mu);
+            auto existing = g_registry.find(host_ptr);
+            if (existing != g_registry.end()) {
+                if (existing->second.d_ptr != d_buf) {
+                    d_stale = existing->second.d_ptr;
+                }
+                g_registry_bytes -= existing->second.nbytes;
+                g_registry.erase(existing);
+                p21_cuda_stats_mut()->registry_invalidations++;
+            }
+        }
+        if (d_stale) {
+            p21_cuda_pool_free(d_stale, stream);
+        }
         return false;
     }
     /* Caller guarantees host_ptr already reflects completed D2H contents. */

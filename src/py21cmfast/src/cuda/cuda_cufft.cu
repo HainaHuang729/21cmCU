@@ -21,17 +21,28 @@ struct PlanKey {
 struct PlanEntry {
     PlanKey key;
     cufftHandle handle;
+    size_t work_size = 0;
 };
 
-constexpr size_t kMaxCachedPlans = 32;
+constexpr size_t kMaxCachedPlans = 16;
 std::mutex g_fft_mu;
 std::list<PlanEntry> g_plan_lru;
 
-bool create_plan_3d(const PlanKey &k, cufftHandle *out_plan) {
+bool create_plan_3d(const PlanKey &k, cufftHandle *out_plan, size_t *out_work_size) {
     cufftHandle plan = 0;
-    cufftResult res;
+    cufftResult res = cufftCreate(&plan);
+    if (!P21_CUFFT_OK(res)) {
+        return false;
+    }
+    res = cufftSetAutoAllocation(plan, 0);
+    if (!P21_CUFFT_OK(res)) {
+        cufftDestroy(plan);
+        return false;
+    }
+
+    size_t work_size = 0;
     if (!k.padded) {
-        res = cufftPlan3d(&plan, k.nx, k.ny, k.nz, (cufftType)k.type);
+        res = cufftMakePlan3d(plan, k.nx, k.ny, k.nz, (cufftType)k.type, &work_size);
     } else {
         int n[3] = {k.nx, k.ny, k.nz};
         int r_last = 2 * (k.nz / 2 + 1);
@@ -46,33 +57,39 @@ bool create_plan_3d(const PlanKey &k, cufftHandle *out_plan) {
         int idist = (k.type == CUFFT_R2C) ? r_dist : c_dist;
         int odist = (k.type == CUFFT_R2C) ? c_dist : r_dist;
 
-        res = cufftPlanMany(&plan, 3, n, inembed, 1, idist, onembed, 1, odist, (cufftType)k.type,
-                            1);
+        res = cufftMakePlanMany(plan, 3, n, inembed, 1, idist, onembed, 1, odist,
+                                (cufftType)k.type, 1, &work_size);
     }
     if (!P21_CUFFT_OK(res)) {
+        cufftDestroy(plan);
         return false;
     }
     *out_plan = plan;
+    *out_work_size = work_size;
     return true;
 }
 
 bool acquire_plan(int nx, int ny, int nz, cufftType type, bool padded, cudaStream_t stream,
-                  cufftHandle *out_plan) {
+                  cufftHandle *out_plan, size_t *out_work_size) {
     PlanKey key{nx, ny, nz, (int)type, padded};
 
     std::lock_guard<std::mutex> lock(g_fft_mu);
     for (auto it = g_plan_lru.begin(); it != g_plan_lru.end(); ++it) {
         if (it->key == key) {
             g_plan_lru.splice(g_plan_lru.begin(), g_plan_lru, it);
-            cufftSetStream(it->handle, stream);
+            if (!P21_CUFFT_OK(cufftSetStream(it->handle, stream))) {
+                return false;
+            }
             p21_cuda_stats_mut()->cufft_plan_hits++;
             *out_plan = it->handle;
+            *out_work_size = it->work_size;
             return true;
         }
     }
 
     cufftHandle plan = 0;
-    if (!create_plan_3d(key, &plan)) {
+    size_t work_size = 0;
+    if (!create_plan_3d(key, &plan, &work_size)) {
         return false;
     }
     if (!P21_CUFFT_OK(cufftSetStream(plan, stream))) {
@@ -86,8 +103,9 @@ bool acquire_plan(int nx, int ny, int nz, cufftType type, bool padded, cudaStrea
         g_plan_lru.pop_back();
         p21_cuda_stats_mut()->cufft_plan_evictions++;
     }
-    g_plan_lru.push_front(PlanEntry{key, plan});
+    g_plan_lru.push_front(PlanEntry{key, plan, work_size});
     *out_plan = plan;
+    *out_work_size = work_size;
     return true;
 }
 
@@ -292,10 +310,19 @@ __global__ void copy_filter_box_kernel(const cufftComplex *src, cufftComplex *ds
 bool p21_cuda_fft_r2c(const float *d_real, cufftComplex *d_complex, int nx, int ny, int nz,
                       bool padded, cudaStream_t stream) {
     cufftHandle plan = 0;
-    if (!acquire_plan(nx, ny, nz, CUFFT_R2C, padded, stream, &plan)) {
+    size_t work_size = 0;
+    if (!acquire_plan(nx, ny, nz, CUFFT_R2C, padded, stream, &plan, &work_size)) {
         return false;
     }
-    if (!P21_CUFFT_OK(cufftExecR2C(plan, (cufftReal *)const_cast<float *>(d_real), d_complex))) {
+    void *d_work = (work_size > 0) ? p21_cuda_pool_alloc(work_size, stream) : nullptr;
+    if (work_size > 0 && !d_work) {
+        return false;
+    }
+    bool ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work)) &&
+              P21_CUFFT_OK(cufftSetStream(plan, stream)) &&
+              P21_CUFFT_OK(cufftExecR2C(plan, (cufftReal *)const_cast<float *>(d_real), d_complex));
+    p21_cuda_pool_free(d_work, stream);
+    if (!ok) {
         return false;
     }
     p21_cuda_stats_mut()->cufft_exec_r2c++;
@@ -305,10 +332,19 @@ bool p21_cuda_fft_r2c(const float *d_real, cufftComplex *d_complex, int nx, int 
 bool p21_cuda_fft_c2r(cufftComplex *d_complex_scratch, float *d_real, int nx, int ny, int nz,
                       bool padded, cudaStream_t stream) {
     cufftHandle plan = 0;
-    if (!acquire_plan(nx, ny, nz, CUFFT_C2R, padded, stream, &plan)) {
+    size_t work_size = 0;
+    if (!acquire_plan(nx, ny, nz, CUFFT_C2R, padded, stream, &plan, &work_size)) {
         return false;
     }
-    if (!P21_CUFFT_OK(cufftExecC2R(plan, d_complex_scratch, (cufftReal *)d_real))) {
+    void *d_work = (work_size > 0) ? p21_cuda_pool_alloc(work_size, stream) : nullptr;
+    if (work_size > 0 && !d_work) {
+        return false;
+    }
+    bool ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work)) &&
+              P21_CUFFT_OK(cufftSetStream(plan, stream)) &&
+              P21_CUFFT_OK(cufftExecC2R(plan, d_complex_scratch, (cufftReal *)d_real));
+    p21_cuda_pool_free(d_work, stream);
+    if (!ok) {
         return false;
     }
     p21_cuda_stats_mut()->cufft_exec_c2r++;

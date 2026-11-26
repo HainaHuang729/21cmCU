@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -300,7 +301,7 @@ __global__ void enforce_real_planes_general_kernel(cufftComplex *modes, int nx, 
 }
 
 __global__ void resample_hi_to_out_kernel(const float *hi_real, int nx, int ny, int nz,
-                                          float *out_real, int ox, int oy, int oz,
+                                          int hi_z_stride, float *out_real, int ox, int oy, int oz,
                                           double dim_ratio, double volume, bool divide_vol,
                                           bool accum_sq) {
     size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
@@ -316,7 +317,7 @@ __global__ void resample_hi_to_out_kernel(const float *hi_real, int nx, int ny, 
     int ri = p21_resample_coord(i, dim_ratio);
     int rj = p21_resample_coord(j, dim_ratio);
     int rk = p21_resample_coord(k, dim_ratio);
-    float val = hi_real[p21_grid_idx(ri, rj, rk, ny, nz)];
+    float val = hi_real[p21_grid_idx(ri, rj, rk, ny, hi_z_stride)];
 
     if (accum_sq) {
         double dv = (double)val;
@@ -326,6 +327,36 @@ __global__ void resample_hi_to_out_kernel(const float *hi_real, int nx, int ny, 
     } else {
         out_real[idx] = val;
     }
+}
+
+__global__ void scale_padded_real_kernel(float *buf, int nx, int ny, int nz, int z_stride,
+                                         double factor) {
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total = (size_t)nx * ny * nz;
+    if (idx >= total) {
+        return;
+    }
+    int k = (int)(idx % nz);
+    size_t q = idx / nz;
+    int j = (int)(q % ny);
+    int i = (int)(q / ny);
+    size_t pidx = p21_grid_idx(i, j, k, ny, z_stride);
+    buf[pidx] = (float)((double)buf[pidx] * factor);
+}
+
+__global__ void pack_padded_to_dense_kernel(const float *src, float *dst, int nx, int ny, int nz,
+                                            int z_stride, double scale) {
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total = (size_t)nx * ny * nz;
+    if (idx >= total) {
+        return;
+    }
+    int k = (int)(idx % nz);
+    size_t q = idx / nz;
+    int j = (int)(q % ny);
+    int i = (int)(q / ny);
+    double val = (double)src[p21_grid_idx(i, j, k, ny, z_stride)];
+    dst[idx] = (scale == 1.0) ? (float)val : (float)(val * scale);
 }
 
 __global__ void vcb_kspace_axis_kernel(const cufftComplex *saved, cufftComplex *out, int nx, int ny,
@@ -423,30 +454,134 @@ __global__ void f_laplacian_kernel(const cufftComplex *in, cufftComplex *out, in
     out[idx] = make_float2((float)((double)v.x * factor), (float)((double)v.y * factor));
 }
 
-__global__ void accum_2lpt_rhs_kernel(float *rhs, const float *diag_i, const float *diag_j,
-                                      const float *phi_ij, size_t n) {
+__global__ void sub_sq_padded_2lpt_kernel(float *rhs, const float *phi_ab_padded, int nx, int ny,
+                                          int nz, int z_stride) {
     size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        double c_ii = (double)diag_i[idx];
-        double c_jj = (double)diag_j[idx];
-        double c_ij = (double)phi_ij[idx];
-        float acc = rhs[idx];
-        acc += (float)(c_ii * c_jj);
-        acc -= (float)(c_ij * c_ij);
-        rhs[idx] = acc;
+    size_t total = (size_t)nx * ny * nz;
+    if (idx >= total) {
+        return;
     }
+    int k = (int)(idx % nz);
+    size_t q = idx / nz;
+    int j = (int)(q % ny);
+    int i = (int)(q / ny);
+    double c_ij = (double)phi_ab_padded[p21_grid_idx(i, j, k, ny, z_stride)];
+    float acc = rhs[idx];
+    acc -= (float)(c_ij * c_ij);
+    rhs[idx] = acc;
+}
+
+__global__ void accum_2lpt_d01_padded_kernel(float *rhs, float *diag_acc, const float *d1_padded,
+                                             int nx, int ny, int nz, int z_stride) {
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total = (size_t)nx * ny * nz;
+    if (idx >= total) {
+        return;
+    }
+    int k = (int)(idx % nz);
+    size_t q = idx / nz;
+    int j = (int)(q % ny);
+    int i = (int)(q / ny);
+    double d0 = (double)diag_acc[idx];
+    double d1 = (double)d1_padded[p21_grid_idx(i, j, k, ny, z_stride)];
+    float acc = rhs[idx];
+    acc += (float)(d0 * d1);
+    rhs[idx] = acc;
+    diag_acc[idx] = (float)(d0 + d1);
+}
+
+__global__ void accum_2lpt_d01_d2_padded_kernel(float *rhs, const float *diag_acc,
+                                                const float *d2_padded, int nx, int ny, int nz,
+                                                int z_stride) {
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total = (size_t)nx * ny * nz;
+    if (idx >= total) {
+        return;
+    }
+    int k = (int)(idx % nz);
+    size_t q = idx / nz;
+    int j = (int)(q % ny);
+    int i = (int)(q / ny);
+    double d01 = (double)diag_acc[idx];
+    double d2 = (double)d2_padded[p21_grid_idx(i, j, k, ny, z_stride)];
+    float acc = rhs[idx];
+    acc += (float)(d01 * d2);
+    rhs[idx] = acc;
 }
 
 bool upload_and_register_d2h(float *host_ptr, const float *d_src, size_t nbytes,
-                             cudaStream_t stream) {
+                             cudaStream_t stream, bool register_in_cache = true) {
     if (!host_ptr || !d_src || nbytes == 0) {
         return false;
     }
-    if (!P21_CUDA_OK(cudaMemcpyAsync(host_ptr, d_src, nbytes, cudaMemcpyDeviceToHost, stream)) ||
-        !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+    if (!P21_CUDA_OK(cudaMemcpyAsync(host_ptr, d_src, nbytes, cudaMemcpyDeviceToHost, stream))) {
         return false;
     }
-    return p21_cuda_registry_put_copy(host_ptr, d_src, nbytes, stream);
+    p21_cuda_stats_add_d2h(nbytes);
+    if (!P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+        return false;
+    }
+    if (register_in_cache && p21_cuda_registry_put_copy(host_ptr, d_src, nbytes, stream)) {
+        return true;
+    }
+    p21_cuda_invalidate_host_ptr(host_ptr);
+    return true;
+}
+
+bool d2h_padded_and_register(float *host_ptr, float *d_padded, int nx, int ny, int nz, int z_stride,
+                             double scale, cudaStream_t stream, bool register_in_cache = true) {
+    if (!host_ptr || !d_padded || nx <= 0 || ny <= 0 || nz <= 0 || z_stride < nz) {
+        return false;
+    }
+    const size_t hi_pixels = (size_t)nx * ny * nz;
+    const size_t hi_bytes = hi_pixels * sizeof(float);
+    const int tpb = 256;
+    const int g = (int)((hi_pixels + tpb - 1) / tpb);
+
+    size_t max_entry = p21_cuda_registry_max_entry_bytes();
+    if (register_in_cache && hi_bytes <= max_entry &&
+        p21_cuda_free_mem_bytes() >= hi_bytes + 512ULL * 1024 * 1024) {
+        float *d_dense = (float *)p21_cuda_pool_alloc(hi_bytes, stream);
+        if (d_dense) {
+            pack_padded_to_dense_kernel<<<g, tpb, 0, stream>>>(d_padded, d_dense, nx, ny, nz,
+                                                               z_stride, scale);
+            bool ok = P21_CUDA_OK(cudaGetLastError()) &&
+                      P21_CUDA_OK(cudaMemcpyAsync(host_ptr, d_dense, hi_bytes,
+                                                  cudaMemcpyDeviceToHost, stream));
+            if (ok) {
+                p21_cuda_stats_add_d2h(hi_bytes);
+                ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
+            }
+            if (!ok) {
+                p21_cuda_pool_free(d_dense, stream);
+                return false;
+            }
+            if (!p21_cuda_registry_put_owned(host_ptr, d_dense, hi_bytes, stream)) {
+                p21_cuda_pool_free(d_dense, stream);
+                p21_cuda_invalidate_host_ptr(host_ptr);
+            }
+            return true;
+        }
+    }
+
+    if (scale != 1.0) {
+        scale_padded_real_kernel<<<g, tpb, 0, stream>>>(d_padded, nx, ny, nz, z_stride, scale);
+        if (!P21_CUDA_OK(cudaGetLastError())) {
+            return false;
+        }
+    }
+    if (!P21_CUDA_OK(cudaMemcpy2DAsync(host_ptr, (size_t)nz * sizeof(float), d_padded,
+                                       (size_t)z_stride * sizeof(float),
+                                       (size_t)nz * sizeof(float), (size_t)nx * ny,
+                                       cudaMemcpyDeviceToHost, stream))) {
+        return false;
+    }
+    p21_cuda_stats_add_d2h(hi_bytes);
+    if (!P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+        return false;
+    }
+    p21_cuda_invalidate_host_ptr(host_ptr);
+    return true;
 }
 
 }  // namespace
@@ -512,12 +647,21 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
     const size_t lo_pixels = (size_t)lx * ly * lz;
     const size_t pt_pixels = (size_t)pt_x * pt_y * pt_z;
     const size_t hi_k_pixels = (size_t)nx * ny * (nz / 2 + 1);
+    const int hi_r_stride = 2 * (nz / 2 + 1);
     const size_t hi_bytes = hi_pixels * sizeof(float);
     const size_t lo_bytes = lo_pixels * sizeof(float);
     const size_t pt_bytes = pt_pixels * sizeof(float);
     const size_t hi_k_bytes = hi_k_pixels * sizeof(cufftComplex);
 
     cudaStream_t stream = p21_cuda_stream();
+    if (hi_bytes >= 256ULL * 1024 * 1024) {
+        size_t total_mem = p21_cuda_total_mem_bytes();
+        size_t target_free = hi_bytes * 5;
+        if (total_mem > 0) {
+            target_free = std::min<size_t>(target_free, (total_mem * 3) / 4);
+        }
+        p21_cuda_registry_evict_to_free(target_free, stream);
+    }
 
     bool non_zero_input = false;
     for (size_t idx = 0; idx < hi_pixels; ++idx) {
@@ -528,17 +672,16 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
     }
 
     cufftComplex *d_kspace_saved = (cufftComplex *)p21_cuda_pool_alloc(hi_k_bytes, stream);
-    cufftComplex *d_kspace_work = (cufftComplex *)p21_cuda_pool_alloc(hi_k_bytes, stream);
-    float *d_real_work = (float *)p21_cuda_pool_alloc(hi_bytes, stream);
+    cufftComplex *d_kspace_work = nullptr;
     float *d_real_lo = (float *)p21_cuda_pool_alloc(lo_bytes, stream);
     float *d_real_pt = perturb_hires ? nullptr : d_real_lo;
     double *d_class_dens = nullptr;
     double *d_class_vcb = nullptr;
     double *d_gauss = nullptr;
-    float *d_diag[3] = {nullptr, nullptr, nullptr};
+    float *d_diag_acc = nullptr;
     float *d_phi2_rhs = nullptr;
 
-    bool ok = d_kspace_saved && d_kspace_work && d_real_work && d_real_lo;
+    bool ok = d_kspace_saved && d_real_lo;
     const int tpb = 256;
 
     double cosmo[9] = {};
@@ -604,17 +747,21 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
     };
 
     if (ok && non_zero_input) {
-        if (!P21_CUDA_OK(cudaMemcpyAsync(d_real_work, boxes->hires_density, hi_bytes,
-                                         cudaMemcpyHostToDevice, stream)) ||
-            !p21_cuda_registry_put_copy(boxes->hires_density, d_real_work, hi_bytes, stream)) {
+        d_kspace_work = (cufftComplex *)p21_cuda_pool_alloc(hi_k_bytes, stream);
+        float *d_tmp_real = (float *)d_kspace_work;
+        if (!d_kspace_work ||
+            !P21_CUDA_OK(cudaMemcpyAsync(d_tmp_real, boxes->hires_density, hi_bytes,
+                                         cudaMemcpyHostToDevice, stream))) {
             ok = false;
-        }
-        if (ok) {
+        } else {
+            if (!p21_cuda_registry_put_copy(boxes->hires_density, d_tmp_real, hi_bytes, stream)) {
+                p21_cuda_invalidate_host_ptr(boxes->hires_density);
+            }
             int g = (int)((hi_pixels + tpb - 1) / tpb);
-            scale_real_kernel<<<g, tpb, 0, stream>>>(d_real_work, d_real_work, hi_pixels,
+            scale_real_kernel<<<g, tpb, 0, stream>>>(d_tmp_real, d_tmp_real, hi_pixels,
                                                      volume / (double)hi_pixels);
             ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 p21_cuda_fft_r2c(d_real_work, d_kspace_saved, nx, ny, nz, false, stream);
+                 p21_cuda_fft_r2c(d_tmp_real, d_kspace_saved, nx, ny, nz, false, stream);
         }
     } else if (ok) {
         if (p21_cuda_get_fast_ic() != 0) {
@@ -660,20 +807,23 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
         }
 
         if (ok) {
+            d_kspace_work = (cufftComplex *)p21_cuda_pool_alloc(hi_k_bytes, stream);
+            if (!d_kspace_work) {
+                ok = false;
+            }
+        }
+        if (ok) {
             size_t plane_items = (size_t)2 * nx * ny;
             int pg = (int)((plane_items + tpb - 1) / tpb);
             enforce_real_planes_general_kernel<<<pg, tpb, 0, stream>>>(d_kspace_saved, nx, ny, nz);
             ok = P21_CUDA_OK(cudaGetLastError()) &&
                  P21_CUDA_OK(cudaMemcpyAsync(d_kspace_work, d_kspace_saved, hi_k_bytes,
                                              cudaMemcpyDeviceToDevice, stream)) &&
-                 p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+                 p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true, stream);
         }
         if (ok) {
-            int g = (int)((hi_pixels + tpb - 1) / tpb);
-            scale_real_kernel<<<g, tpb, 0, stream>>>(d_real_work, d_real_work, hi_pixels,
-                                                     1.0 / volume);
-            ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 upload_and_register_d2h(boxes->hires_density, d_real_work, hi_bytes, stream);
+            ok = d2h_padded_and_register(boxes->hires_density, (float *)d_kspace_work, nx, ny, nz,
+                                         hi_r_stride, 1.0 / volume, stream);
         }
     }
 
@@ -686,13 +836,13 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
                                      tophat_R, 0.0f, 0.0f, stream);
         }
         if (ok) {
-            ok = p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+            ok = p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true, stream);
         }
         if (ok) {
             int lg = (int)((lo_pixels + tpb - 1) / tpb);
             resample_hi_to_out_kernel<<<lg, tpb, 0, stream>>>(
-                d_real_work, nx, ny, nz, d_real_lo, lx, ly, lz, dim_ratio_hi_lo, volume, true,
-                false);
+                (const float *)d_kspace_work, nx, ny, nz, hi_r_stride, d_real_lo, lx, ly, lz,
+                dim_ratio_hi_lo, volume, true, false);
             ok = P21_CUDA_OK(cudaGetLastError()) &&
                  upload_and_register_d2h(boxes->lowres_density, d_real_lo, lo_bytes, stream);
         }
@@ -713,12 +863,13 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
                                          tophat_R, 0.0f, 0.0f, stream);
             }
             if (ok) {
-                ok = p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+                ok = p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true,
+                                      stream);
             }
             if (ok) {
                 resample_hi_to_out_kernel<<<lg, tpb, 0, stream>>>(
-                    d_real_work, nx, ny, nz, d_real_lo, lx, ly, lz, dim_ratio_hi_lo, volume, false,
-                    true);
+                    (const float *)d_kspace_work, nx, ny, nz, hi_r_stride, d_real_lo, lx, ly, lz,
+                    dim_ratio_hi_lo, volume, false, true);
                 ok = P21_CUDA_OK(cudaGetLastError());
             }
         }
@@ -727,6 +878,11 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
             ok = P21_CUDA_OK(cudaGetLastError()) &&
                  upload_and_register_d2h(boxes->lowres_vcb, d_real_lo, lo_bytes, stream);
         }
+    }
+
+    if (perturb_hires && d_real_lo) {
+        p21_cuda_pool_free(d_real_lo, stream);
+        d_real_lo = nullptr;
     }
 
     /* 1LPT velocities */
@@ -742,32 +898,26 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
                                          tophat_R, 0.0f, 0.0f, stream);
             }
             if (ok) {
-                ok = p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+                ok = p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true,
+                                      stream);
             }
             if (ok) {
-                float *dst_dev = perturb_hires ? (float *)d_kspace_work : d_real_pt;
                 if (perturb_hires) {
-                    scale_real_kernel<<<ptg, tpb, 0, stream>>>(d_real_work, dst_dev, pt_pixels,
-                                                             1.0 / volume);
+                    ok = d2h_padded_and_register(vel_pointers[ii], (float *)d_kspace_work, nx, ny,
+                                                 nz, hi_r_stride, 1.0 / volume, stream);
                 } else {
                     resample_hi_to_out_kernel<<<ptg, tpb, 0, stream>>>(
-                        d_real_work, nx, ny, nz, dst_dev, pt_x, pt_y, pt_z, dim_ratio_hi_pt,
-                        volume, true, false);
+                        (const float *)d_kspace_work, nx, ny, nz, hi_r_stride, d_real_pt, pt_x,
+                        pt_y, pt_z, dim_ratio_hi_pt, volume, true, false);
+                    ok = P21_CUDA_OK(cudaGetLastError()) &&
+                         upload_and_register_d2h(vel_pointers[ii], d_real_pt, pt_bytes, stream);
                 }
-                ok = P21_CUDA_OK(cudaGetLastError()) &&
-                     upload_and_register_d2h(vel_pointers[ii], dst_dev, pt_bytes, stream);
             }
         }
     }
 
-    /* 2LPT velocities */
+    /* 2LPT velocities (2-buffer exact algebraic decomposition: d0*d1 + (d0+d1)*d2) */
     if (ok && matter_options_global->PERTURB_ALGORITHM == PERTURB_ALGORITHM_2LPT) {
-        for (int a = 0; a < 3; ++a) {
-            d_diag[a] = (float *)p21_cuda_pool_alloc(hi_bytes, stream);
-            if (!d_diag[a]) {
-                ok = false;
-            }
-        }
         d_phi2_rhs = (float *)p21_cuda_pool_alloc(hi_bytes, stream);
         if (!d_phi2_rhs || !P21_CUDA_OK(cudaMemsetAsync(d_phi2_rhs, 0, hi_bytes, stream))) {
             ok = false;
@@ -775,22 +925,6 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
 
         int kg = (int)((hi_k_pixels + tpb - 1) / tpb);
         int hg = (int)((hi_pixels + tpb - 1) / tpb);
-        for (int a = 0; ok && a < 3; ++a) {
-            f_laplacian_kernel<<<kg, tpb, 0, stream>>>(d_kspace_saved, d_kspace_work, nx, ny, nz,
-                                                       box_len_x, box_len_y, box_len_z, a, a);
-            ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 p21_cuda_fft_c2r(d_kspace_work, d_diag[a], nx, ny, nz, false, stream);
-        }
-
-        if (ok && !perturb_hires) {
-            float *hires_2lpt[3] = {boxes->hires_vx_2LPT, boxes->hires_vy_2LPT,
-                                    boxes->hires_vz_2LPT};
-            for (int a = 0; ok && a < 3; ++a) {
-                if (hires_2lpt[a]) {
-                    ok = upload_and_register_d2h(hires_2lpt[a], d_diag[a], hi_bytes, stream);
-                }
-            }
-        }
 
         const int pairs[3][2] = {{0, 1}, {0, 2}, {1, 2}};
         for (int p_idx = 0; ok && p_idx < 3; ++p_idx) {
@@ -799,13 +933,69 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
             f_laplacian_kernel<<<kg, tpb, 0, stream>>>(d_kspace_saved, d_kspace_work, nx, ny, nz,
                                                        box_len_x, box_len_y, box_len_z, a, b);
             ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+                 p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true, stream);
             if (ok) {
-                accum_2lpt_rhs_kernel<<<hg, tpb, 0, stream>>>(d_phi2_rhs, d_diag[a], d_diag[b],
-                                                              d_real_work, hi_pixels);
+                sub_sq_padded_2lpt_kernel<<<hg, tpb, 0, stream>>>(
+                    d_phi2_rhs, (const float *)d_kspace_work, nx, ny, nz, hi_r_stride);
                 ok = P21_CUDA_OK(cudaGetLastError());
             }
         }
+
+        if (ok) {
+            d_diag_acc = (float *)p21_cuda_pool_alloc(hi_bytes, stream);
+            if (!d_diag_acc) {
+                ok = false;
+            }
+        }
+
+        /* Diagonal a=0 into dense d_diag_acc */
+        if (ok) {
+            f_laplacian_kernel<<<kg, tpb, 0, stream>>>(d_kspace_saved, d_kspace_work, nx, ny, nz,
+                                                       box_len_x, box_len_y, box_len_z, 0, 0);
+            ok = P21_CUDA_OK(cudaGetLastError()) &&
+                 p21_cuda_fft_c2r(d_kspace_work, d_diag_acc, nx, ny, nz, false, stream);
+            if (ok && !perturb_hires && boxes->hires_vx_2LPT) {
+                ok = upload_and_register_d2h(boxes->hires_vx_2LPT, d_diag_acc, hi_bytes, stream,
+                                             false);
+            }
+        }
+
+        /* Diagonal a=1 into in-place padded d_kspace_work */
+        if (ok) {
+            f_laplacian_kernel<<<kg, tpb, 0, stream>>>(d_kspace_saved, d_kspace_work, nx, ny, nz,
+                                                       box_len_x, box_len_y, box_len_z, 1, 1);
+            ok = P21_CUDA_OK(cudaGetLastError()) &&
+                 p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true, stream);
+            if (ok && !perturb_hires && boxes->hires_vy_2LPT) {
+                ok = d2h_padded_and_register(boxes->hires_vy_2LPT, (float *)d_kspace_work, nx, ny,
+                                             nz, hi_r_stride, 1.0, stream, false);
+            }
+            if (ok) {
+                accum_2lpt_d01_padded_kernel<<<hg, tpb, 0, stream>>>(
+                    d_phi2_rhs, d_diag_acc, (const float *)d_kspace_work, nx, ny, nz, hi_r_stride);
+                ok = P21_CUDA_OK(cudaGetLastError());
+            }
+        }
+
+        /* Diagonal a=2 into in-place padded d_kspace_work */
+        if (ok) {
+            f_laplacian_kernel<<<kg, tpb, 0, stream>>>(d_kspace_saved, d_kspace_work, nx, ny, nz,
+                                                       box_len_x, box_len_y, box_len_z, 2, 2);
+            ok = P21_CUDA_OK(cudaGetLastError()) &&
+                 p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true, stream);
+            if (ok && !perturb_hires && boxes->hires_vz_2LPT) {
+                ok = d2h_padded_and_register(boxes->hires_vz_2LPT, (float *)d_kspace_work, nx, ny,
+                                             nz, hi_r_stride, 1.0, stream, false);
+            }
+            if (ok) {
+                accum_2lpt_d01_d2_padded_kernel<<<hg, tpb, 0, stream>>>(
+                    d_phi2_rhs, d_diag_acc, (const float *)d_kspace_work, nx, ny, nz, hi_r_stride);
+                ok = P21_CUDA_OK(cudaGetLastError());
+            }
+        }
+
+        p21_cuda_pool_free(d_diag_acc, stream);
+        d_diag_acc = nullptr;
 
         if (ok) {
             double norm_2lpt = 1.0 / (volume * volume * (double)hi_pixels);
@@ -813,6 +1003,9 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
             ok = P21_CUDA_OK(cudaGetLastError()) &&
                  p21_cuda_fft_r2c(d_phi2_rhs, d_kspace_saved, nx, ny, nz, false, stream);
         }
+
+        p21_cuda_pool_free(d_phi2_rhs, stream);
+        d_phi2_rhs = nullptr;
 
         int ptg = (int)((pt_pixels + tpb - 1) / tpb);
         for (int ii = 0; ok && ii < 3; ++ii) {
@@ -824,16 +1017,17 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
                                          tophat_R, 0.0f, 0.0f, stream);
             }
             if (ok) {
-                ok = p21_cuda_fft_c2r(d_kspace_work, d_real_work, nx, ny, nz, false, stream);
+                ok = p21_cuda_fft_c2r(d_kspace_work, (float *)d_kspace_work, nx, ny, nz, true,
+                                      stream);
             }
             if (ok) {
                 if (perturb_hires) {
-                    ok = upload_and_register_d2h(vel_pointers_2lpt[ii], d_real_work, pt_bytes,
-                                                 stream);
+                    ok = d2h_padded_and_register(vel_pointers_2lpt[ii], (float *)d_kspace_work, nx,
+                                                 ny, nz, hi_r_stride, 1.0, stream);
                 } else {
                     resample_hi_to_out_kernel<<<ptg, tpb, 0, stream>>>(
-                        d_real_work, nx, ny, nz, d_real_pt, pt_x, pt_y, pt_z, dim_ratio_hi_pt,
-                        volume, false, false);
+                        (const float *)d_kspace_work, nx, ny, nz, hi_r_stride, d_real_pt, pt_x,
+                        pt_y, pt_z, dim_ratio_hi_pt, volume, false, false);
                     ok = P21_CUDA_OK(cudaGetLastError()) &&
                          upload_and_register_d2h(vel_pointers_2lpt[ii], d_real_pt, pt_bytes,
                                                  stream);
@@ -843,13 +1037,10 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
     }
 
     p21_cuda_pool_free(d_phi2_rhs, stream);
-    for (int a = 0; a < 3; ++a) {
-        p21_cuda_pool_free(d_diag[a], stream);
-    }
+    p21_cuda_pool_free(d_diag_acc, stream);
     p21_cuda_pool_free(d_class_vcb, stream);
     p21_cuda_pool_free(d_class_dens, stream);
     p21_cuda_pool_free(d_real_lo, stream);
-    p21_cuda_pool_free(d_real_work, stream);
     p21_cuda_pool_free(d_kspace_work, stream);
     p21_cuda_pool_free(d_kspace_saved, stream);
 

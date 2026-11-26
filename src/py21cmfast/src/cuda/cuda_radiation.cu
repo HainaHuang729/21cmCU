@@ -628,29 +628,19 @@ bool filter_one_ephemeral_shell(const float *host_src, int nx, int ny, int nz, d
     size_t fbytes = n * sizeof(float);
     size_t cbytes = (size_t)nx * (size_t)ny * (size_t)(nz / 2 + 1) * sizeof(cufftComplex);
 
-    float *d_in = (float *)p21_cuda_pool_alloc(fbytes, stream);
     float *d_out = (float *)p21_cuda_pool_alloc(fbytes, stream);
-    if (!d_in || !d_out) {
-        p21_cuda_pool_free(d_in, stream);
-        p21_cuda_pool_free(d_out, stream);
+    if (!d_out) {
         return false;
     }
-    if (!P21_CUDA_OK(cudaMemcpyAsync(d_in, host_src, fbytes, cudaMemcpyHostToDevice, stream))) {
-        p21_cuda_pool_free(d_in, stream);
+    if (!P21_CUDA_OK(cudaMemcpyAsync(d_out, host_src, fbytes, cudaMemcpyHostToDevice, stream))) {
         p21_cuda_pool_free(d_out, stream);
         return false;
     }
 
     if (R_ct == 0 || R_inner <= 0.0) {
-        if (!P21_CUDA_OK(cudaMemcpyAsync(d_out, d_in, fbytes, cudaMemcpyDeviceToDevice, stream))) {
-            p21_cuda_pool_free(d_in, stream);
-            p21_cuda_pool_free(d_out, stream);
-            return false;
-        }
         int grid = (int)((n + kBlockThreads - 1) / kBlockThreads);
         clamp_nonneg_kernel<<<grid, kBlockThreads, 0, stream>>>(d_out, n);
         bool ok = P21_CUDA_OK(cudaGetLastError());
-        p21_cuda_pool_free(d_in, stream);
         if (!ok) {
             p21_cuda_pool_free(d_out, stream);
             return false;
@@ -660,10 +650,10 @@ bool filter_one_ephemeral_shell(const float *host_src, int nx, int ny, int nz, d
         return true;
     }
 
-    cufftComplex *d_k_unfilt = (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream);
     cufftComplex *d_k_work = (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream);
-    if (!d_k_unfilt || !d_k_work) {
-        p21_cuda_pool_free(d_in, stream);
+    cufftComplex *d_k_unfilt =
+        keep_kspace ? (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream) : nullptr;
+    if (!d_k_work || (keep_kspace && !d_k_unfilt)) {
         p21_cuda_pool_free(d_out, stream);
         p21_cuda_pool_free(d_k_unfilt, stream);
         p21_cuda_pool_free(d_k_work, stream);
@@ -671,25 +661,28 @@ bool filter_one_ephemeral_shell(const float *host_src, int nx, int ny, int nz, d
     }
 
     float pre_scale = 1.0f / (float)n;
-    bool ok = p21_cuda_fft_r2c(d_in, d_k_unfilt, nx, ny, nz, false, stream) &&
-              p21_cuda_copy_and_filter_box(d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf,
-                                           filter_type, (float)R_inner, (float)R_outer,
-                                           (float)R_star, pre_scale, stream) &&
-              p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream);
+    bool ok;
+    if (keep_kspace) {
+        ok = p21_cuda_fft_r2c(d_out, d_k_unfilt, nx, ny, nz, false, stream) &&
+             p21_cuda_copy_and_filter_box(d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf,
+                                          filter_type, (float)R_inner, (float)R_outer,
+                                          (float)R_star, pre_scale, stream) &&
+             p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream);
+    } else {
+        ok = p21_cuda_fft_r2c(d_out, d_k_work, nx, ny, nz, false, stream) &&
+             p21_cuda_copy_and_filter_box(d_k_work, d_k_work, nx, ny, nz, box_len, ncf, filter_type,
+                                          (float)R_inner, (float)R_outer, (float)R_star, pre_scale,
+                                          stream) &&
+             p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream);
+    }
 
-    p21_cuda_pool_free(d_in, stream);
     p21_cuda_pool_free(d_k_work, stream);
     if (!ok) {
         p21_cuda_pool_free(d_k_unfilt, stream);
         p21_cuda_pool_free(d_out, stream);
         return false;
     }
-    if (keep_kspace) {
-        *d_kspace_out = d_k_unfilt;
-    } else {
-        p21_cuda_pool_free(d_k_unfilt, stream);
-        *d_kspace_out = nullptr;
-    }
+    *d_kspace_out = keep_kspace ? d_k_unfilt : nullptr;
     *d_real_out = d_out;
     return true;
 }
@@ -816,10 +809,11 @@ bool acquire_rad_setup_cache(RadiationFieldsSetup *rad_setup, size_t total, int 
         auto it = g_setup_cache.find(rad_setup->m_xHII_low_box);
         if (it == g_setup_cache.end() || it->second.num_pixels != total ||
             it->second.num_R != num_R) {
-            if (it != g_setup_cache.end()) {
-                free_setup_entry(&it->second, stream);
-                g_setup_cache.erase(it);
+            /* Keep at most 1 setup cache entry active across redshifts to save VRAM on 512^3+. */
+            for (auto &kv : g_setup_cache) {
+                free_setup_entry(&kv.second, stream);
             }
+            g_setup_cache.clear();
             need_setup_upload = true;
         } else {
             *setup_out = it->second;
@@ -830,6 +824,10 @@ bool acquire_rad_setup_cache(RadiationFieldsSetup *rad_setup, size_t total, int 
             return false;
         }
         std::lock_guard<std::mutex> lock(g_rad_mu);
+        for (auto &kv : g_setup_cache) {
+            free_setup_entry(&kv.second, stream);
+        }
+        g_setup_cache.clear();
         g_setup_cache.emplace(rad_setup->m_xHII_low_box, *setup_out);
     }
     return true;
@@ -1158,6 +1156,15 @@ void p21_cuda_radiation_invalidate_host_ptr(const void *ptr) {
     }
 }
 
+void p21_cuda_radiation_clear_setup_cache(void) {
+    cudaStream_t stream = p21_cuda_stream();
+    std::lock_guard<std::mutex> lock(g_rad_mu);
+    for (auto &kv : g_setup_cache) {
+        free_setup_entry(&kv.second, stream);
+    }
+    g_setup_cache.clear();
+}
+
 void p21_cuda_radiation_clear(void) {
     cudaStream_t stream = p21_cuda_stream();
     std::lock_guard<std::mutex> lock(g_rad_mu);
@@ -1251,11 +1258,10 @@ extern "C" int p21_cuda_setup_radiation_tables(TsBox *previous_spin_temp,
 
     {
         std::lock_guard<std::mutex> lock(g_rad_mu);
-        auto it = g_setup_cache.find(rad_setup->m_xHII_low_box);
-        if (it != g_setup_cache.end()) {
-            free_setup_entry(&it->second, stream);
-            g_setup_cache.erase(it);
+        for (auto &kv : g_setup_cache) {
+            free_setup_entry(&kv.second, stream);
         }
+        g_setup_cache.clear();
     }
 
     DeviceRadSetupCache entry{};
@@ -1265,11 +1271,10 @@ extern "C" int p21_cuda_setup_radiation_tables(TsBox *previous_spin_temp,
 
     {
         std::lock_guard<std::mutex> lock(g_rad_mu);
-        auto it = g_setup_cache.find(rad_setup->m_xHII_low_box);
-        if (it != g_setup_cache.end()) {
-            free_setup_entry(&it->second, stream);
-            g_setup_cache.erase(it);
+        for (auto &kv : g_setup_cache) {
+            free_setup_entry(&kv.second, stream);
         }
+        g_setup_cache.clear();
         g_setup_cache.emplace(rad_setup->m_xHII_low_box, entry);
     }
 
@@ -1469,20 +1474,21 @@ extern "C" int p21_cuda_compute_radiation_shells(float redshift, int n_shells, c
         return -1;
     }
 
-    float *d_interp = (float *)p21_cuda_pool_alloc(fbytes, stream);
+    const bool need_k_unfilt = (use_mcgs && lya_ms);
     float *d_sfr_acg_lya = (float *)p21_cuda_pool_alloc(fbytes, stream);
     float *d_xray_filt = (float *)p21_cuda_pool_alloc(fbytes, stream);
     float *d_sfr_mcg_lya = use_mcgs ? (float *)p21_cuda_pool_alloc(fbytes, stream) : nullptr;
     float *d_sfr_acg_lw =
-        (use_mcgs && lya_ms) ? (float *)p21_cuda_pool_alloc(fbytes, stream) : nullptr;
+        need_k_unfilt ? (float *)p21_cuda_pool_alloc(fbytes, stream) : nullptr;
     float *d_sfr_mcg_lw =
-        (use_mcgs && lya_ms) ? (float *)p21_cuda_pool_alloc(fbytes, stream) : nullptr;
-    cufftComplex *d_k_unfilt = (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream);
+        need_k_unfilt ? (float *)p21_cuda_pool_alloc(fbytes, stream) : nullptr;
+    cufftComplex *d_k_unfilt =
+        need_k_unfilt ? (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream) : nullptr;
     cufftComplex *d_k_work = (cufftComplex *)p21_cuda_pool_alloc(cbytes, stream);
 
-    bool ok = d_interp && d_sfr_acg_lya && d_xray_filt && d_k_unfilt && d_k_work &&
-              (!use_mcgs || d_sfr_mcg_lya) &&
-              (!(use_mcgs && lya_ms) || (d_sfr_acg_lw && d_sfr_mcg_lw));
+    bool ok = d_sfr_acg_lya && d_xray_filt && d_k_work &&
+              (!need_k_unfilt || d_k_unfilt) && (!use_mcgs || d_sfr_mcg_lya) &&
+              (!need_k_unfilt || (d_sfr_acg_lw && d_sfr_mcg_lw));
 
     for (int s = 0; ok && s < n_shells; ++s) {
         int R_ct = R_ct_arr[s];
@@ -1510,23 +1516,26 @@ extern "C" int p21_cuda_compute_radiation_shells(float redshift, int n_shells, c
                                                                       d_out, 1);
                 return P21_CUDA_OK(cudaGetLastError());
             }
-            lerp_field_kernel<<<grid, kBlockThreads, 0, stream>>>(total, d_desc, d_prog, w,
-                                                                  d_interp, 0);
+            lerp_field_kernel<<<grid, kBlockThreads, 0, stream>>>(total, d_desc, d_prog, w, d_out,
+                                                                  0);
             if (!P21_CUDA_OK(cudaGetLastError())) return false;
-            bool step_ok =
-                p21_cuda_fft_r2c(d_interp, d_k_unfilt, nx, ny, nz, false, stream) &&
-                p21_cuda_copy_and_filter_box(d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf, ftype,
-                                             (float)R_inner, (float)R_outer, (float)R_star,
-                                             pre_scale, stream) &&
-                p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream);
-            if (step_ok && also_lw && d_out_lw) {
-                step_ok = p21_cuda_copy_and_filter_box(
-                              d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf,
-                              FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, (float)R_inner, (float)R_outer,
-                              (float)R_star, pre_scale, stream) &&
-                          p21_cuda_fft_c2r(d_k_work, d_out_lw, nx, ny, nz, false, stream);
+            if (also_lw && d_out_lw && d_k_unfilt) {
+                return p21_cuda_fft_r2c(d_out, d_k_unfilt, nx, ny, nz, false, stream) &&
+                       p21_cuda_copy_and_filter_box(d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf,
+                                                    ftype, (float)R_inner, (float)R_outer,
+                                                    (float)R_star, pre_scale, stream) &&
+                       p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream) &&
+                       p21_cuda_copy_and_filter_box(
+                           d_k_unfilt, d_k_work, nx, ny, nz, box_len, ncf,
+                           FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, (float)R_inner, (float)R_outer,
+                           (float)R_star, pre_scale, stream) &&
+                       p21_cuda_fft_c2r(d_k_work, d_out_lw, nx, ny, nz, false, stream);
             }
-            return step_ok;
+            return p21_cuda_fft_r2c(d_out, d_k_work, nx, ny, nz, false, stream) &&
+                   p21_cuda_copy_and_filter_box(d_k_work, d_k_work, nx, ny, nz, box_len, ncf, ftype,
+                                                (float)R_inner, (float)R_outer, (float)R_star,
+                                                pre_scale, stream) &&
+                   p21_cuda_fft_c2r(d_k_work, d_out, nx, ny, nz, false, stream);
         };
 
         float *lw_acg_ptr = (use_mcgs && lya_ms) ? (no_fft ? d_sfr_acg_lya : d_sfr_acg_lw) : nullptr;
@@ -1553,7 +1562,6 @@ extern "C" int p21_cuda_compute_radiation_shells(float redshift, int n_shells, c
         }
     }
 
-    p21_cuda_pool_free(d_interp, stream);
     p21_cuda_pool_free(d_sfr_acg_lya, stream);
     p21_cuda_pool_free(d_xray_filt, stream);
     p21_cuda_pool_free(d_sfr_mcg_lya, stream);

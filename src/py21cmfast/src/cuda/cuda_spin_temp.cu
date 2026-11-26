@@ -715,6 +715,17 @@ extern "C" int p21_cuda_compute_ts_box(float redshift, float prev_redshift,
         return InfinityorNaNError;
     }
 
+    /* Release write-once double RadiationFields & setup cache before registering TsBox outputs
+       so large-box runs (512^3+) do not evict active float grids across stages/redshifts. */
+    p21_cuda_invalidate_host_ptr(radiation_fields->xray_heating_rate);
+    p21_cuda_invalidate_host_ptr(radiation_fields->xray_ionization_rate);
+    p21_cuda_invalidate_host_ptr(radiation_fields->xray_lya_flux);
+    p21_cuda_invalidate_host_ptr(radiation_fields->lya_flux_continuum_injected);
+    p21_cuda_invalidate_host_ptr(radiation_fields->lya_flux_continuum);
+    p21_cuda_invalidate_host_ptr(radiation_fields->lya_flux_injected);
+    p21_cuda_invalidate_host_ptr(radiation_fields->lyw_flux);
+    p21_cuda_radiation_clear_setup_cache();
+
     auto own_or_free = [&](const void *hptr, float *dbuf) {
         if (!dbuf) return;
         if (!p21_cuda_registry_put_owned(hptr, dbuf, fbytes, stream)) {
