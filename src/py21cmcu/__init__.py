@@ -16,6 +16,7 @@ from .analysis import (
     power_spectrum_1d,
     power_spectrum_2d,
 )
+from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
 
 __version__ = "0.2.0"
 
@@ -71,6 +72,8 @@ def use_mode(mode: CudaMode, *, use_cuda: bool = True, **extra: Any):
 
 __all__ = [
     *_p21.__all__,
+    "BatchResult",
+    "BatchTask",
     "CudaMode",
     "cleanup_cuda",
     "cuda_available",
@@ -81,6 +84,8 @@ __all__ = [
     "power_spectrum_1d",
     "power_spectrum_2d",
     "reset_cuda_stats",
+    "run_batch",
+    "save_batch_h5",
     "set_cuda_mode",
     "use_mode",
 ]
