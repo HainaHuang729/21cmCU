@@ -17,3 +17,10 @@ __pycache__/
 /runs/
 /cuda118_experiment_headers/
 .DS_Store
+._*
+build/
+*.egg-info/
+src/py21cmfast/c_21cmfast*.so
+src/py21cmfast/c_21cmfast.c
+src/py21cmfast/src/*.o
+.pytest_cache/

@@ -1,0 +1,1100 @@
+"""Test the C interpolation tables."""
+
+import matplotlib as mpl
+import numpy as np
+import pytest
+
+import py21cmfast as p21c
+from py21cmfast.wrapper import cfuncs as cf
+
+from .produce_integration_test_data import get_all_options_struct, print_failure_stats
+
+# NOTE: The relative tolerance is set to cover the inaccuracy in interpolaton
+#       Whereas absolute tolerances are set to avoid issues with minima
+#       i.e the SFRD table has a forced minima of exp(-50)
+#       Currently (with the #defined bin numbers) the mcg tables have a ~1.5 % error maximum
+#       With >1% error in less than 4% of bins (at the high turnover mass where fcoll is tiny)
+#       The rest of the tables (apart from the xfail inverse tables) are well under 1% error
+
+# The tables are much better than 2% but there are some problem bins (very high density, very small mass ranges)
+RELATIVE_TOLERANCE = 2e-2
+
+OPTIONS_PS = {
+    "EH": [10, {"POWER_SPECTRUM": "EH"}],
+    "BBKS": [10, {"POWER_SPECTRUM": "BBKS"}],
+    "BE": [10, {"POWER_SPECTRUM": "EFSTATHIOU"}],
+    "Peebles": [10, {"POWER_SPECTRUM": "PEEBLES"}],
+    "White": [10, {"POWER_SPECTRUM": "WHITE"}],
+    "CLASS": [10, {"POWER_SPECTRUM": "CLASS"}],
+}
+
+OPTIONS_HMF = {
+    "PS": [10, {"HMF": "PS"}],
+    "ST": [10, {"HMF": "ST"}],
+}
+
+OPTIONS_INTMETHOD = {
+    "QAG": "GSL-QAG",
+    "GL": "GAUSS-LEGENDRE",
+    "FFCOLL": "GAMMA-APPROX",
+}
+
+R_PARAM_LIST = [1.5, 5, 10, 30, 60]
+
+options_ps = list(OPTIONS_PS.keys())
+options_hmf = list(OPTIONS_HMF.keys())
+
+# This is confusing and we should change the dict to a list
+options_intmethod = list(OPTIONS_INTMETHOD.keys())
+# the mcg ffcoll tables have some bins (when Mturn -> M_turn_upper) which go above 10% error compared to their "integrals"
+#    they can pass by doubling the number of M_turn bins and setting relative error to 5% but I think this
+#    is better left for later
+
+
+# Test delta range for CMF integrals over cells
+@pytest.fixture(scope="module")
+def delta_range():
+    return np.linspace(-0.98, 1.7, num=800)
+
+
+# Mass condition range, and integral bound range for testing CMF integrals
+@pytest.fixture(scope="module")
+def mass_range():
+    return np.logspace(7, 13, num=200)
+
+
+# redshift range for testing UMF integrals
+@pytest.fixture(scope="module")
+def z_range():
+    return np.linspace(6, 35, num=100)
+
+
+@pytest.fixture(scope="module")
+def default_input_struct_mcgs(default_input_struct_lc):
+    """A default input struct with mcgs turned on."""
+    return default_input_struct_lc.evolve_input_structs(
+        USE_MCGS=True,
+        V_CB_MODEL="AVG-DEBUG",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        M_TURN_STELLAR_FEEDBACK=5.0,
+    ).with_logspaced_redshifts(zmin=6, step=1.2)
+
+
+@pytest.fixture(scope="module")
+def default_global_evolution_mcgs(default_input_struct_mcgs):
+    """A default global signal (with mcgs)."""
+    return p21c.run_global_evolution(inputs=default_input_struct_mcgs)
+
+
+def get_delta_subset(inputs, redshift, R, delta_range):
+    """Get a selection of delta values away from delta_crit for testing.
+
+    The integrals and tables perform poorly very close to delta_crit.
+    This was made a function for uniformity across tests.
+    """
+    delta_crit = cf.get_delta_crit(
+        inputs=inputs,
+        mass=cf.get_condition_mass(inputs, R),
+        redshift=redshift,
+    )
+    sel_delta = (delta_crit - delta_range) > 0.1
+
+    return sel_delta
+
+
+@pytest.mark.parametrize("name", options_ps)
+def test_sigma_table(name, mass_range, plt):
+    abs_tol = 0
+    redshift, kwargs = OPTIONS_PS[name]
+    inputs = get_all_options_struct(redshift, **kwargs)["inputs"]
+
+    sigma_tables, dsigma_tables = cf.evaluate_sigma(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation"
+        ),
+        masses=mass_range,
+    )
+
+    sigma_integrals, dsigma_integrals = cf.evaluate_sigma(
+        inputs=inputs.evolve_input_structs(USE_INTERPOLATION_TABLES="no-interpolation"),
+        masses=mass_range,
+    )
+
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [mass_range, mass_range],
+            [None, None],
+            [sigma_tables, -dsigma_tables],
+            [sigma_integrals, -dsigma_integrals],
+            plt,
+            reltol=RELATIVE_TOLERANCE,
+            xlabels=["Mass", "Mass"],
+            ylabels=["sigma", "dsigmasqdM"],
+        )
+
+    np.testing.assert_allclose(
+        sigma_integrals, sigma_tables, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+    np.testing.assert_allclose(
+        dsigma_integrals, dsigma_tables, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+
+
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("cond_type", ["cat", "grid"])
+def test_massfunc_conditional_tables(name, cond_type, mass_range, delta_range, plt):
+    redshift, kwargs = OPTIONS_HMF[name]
+    inputs = get_all_options_struct(redshift, **kwargs)["inputs"]
+    from_cat = "cat" in cond_type
+
+    # We limit our delta range here because it seems that the calculations are numerically unstable
+    # for high delta values (especially if name = "ST" and cond_type = "grid")
+    inputs_cond = mass_range if from_cat else delta_range[delta_range <= 1.44]
+    z_desc = (
+        (redshift + 1) / inputs.simulation_options.ZPRIME_STEP_FACTOR - 1
+        if from_cat
+        else None
+    )
+
+    # get the tables
+    nhalo_tbl, mcoll_tbl = cf.evaluate_condition_integrals(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation"
+        ),
+        redshift=redshift,
+        redshift_prev=z_desc,
+        cond_array=inputs_cond,
+    )
+    # get the integrals
+    nhalo_exp, mcoll_exp = cf.evaluate_condition_integrals(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation"
+        ),
+        redshift=redshift,
+        redshift_prev=z_desc,
+        cond_array=inputs_cond,
+    )
+
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [inputs_cond, inputs_cond],
+            [None, None],
+            [nhalo_tbl, mcoll_tbl],
+            [nhalo_exp, mcoll_exp],
+            plt,
+            reltol=RELATIVE_TOLERANCE,
+            logx=from_cat,
+            xlabels=["Mass" if from_cat else "delta"] * 2,
+            ylabels=["Nhalo", "Mcoll"],
+        )
+
+    print_failure_stats(
+        nhalo_tbl,
+        nhalo_exp,
+        [inputs_cond],
+        0.0,
+        RELATIVE_TOLERANCE,
+        "expected N halo",
+    )
+    print_failure_stats(
+        mcoll_tbl,
+        mcoll_exp,
+        [inputs_cond],
+        0.0,
+        RELATIVE_TOLERANCE,
+        "expected M halo",
+    )
+
+    np.testing.assert_allclose(nhalo_exp, nhalo_tbl, rtol=RELATIVE_TOLERANCE)
+    np.testing.assert_allclose(mcoll_exp, mcoll_tbl, rtol=RELATIVE_TOLERANCE)
+
+
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("cond_type", ["cat", "grid"])
+def test_inverse_cmf_tables(name, cond_type, delta_range, mass_range, plt):
+    redshift, kwargs = OPTIONS_HMF[name]
+    inputs = get_all_options_struct(redshift, **kwargs)["inputs"]
+
+    from_cat = "cat" in cond_type
+    lnMmin_range = np.log(mass_range)
+    # We limit our delta range here because it seems that the calculations are numerically unstable
+    # for high delta values (especially if name = "ST" and cond_type = "grid")
+    inputs_cond = mass_range if from_cat else delta_range[delta_range <= 1.44]
+    z_desc = (
+        (redshift + 1) / inputs.simulation_options.ZPRIME_STEP_FACTOR - 1
+        if from_cat
+        else None
+    )
+
+    # Get the full integrals
+    nhalo, _ = cf.evaluate_condition_integrals(
+        inputs=inputs,
+        redshift=redshift,
+        redshift_prev=z_desc,
+        cond_array=inputs_cond,
+    )
+    # Get the Integrals on mass limits
+    cmf_integral = cf.integrate_chmf_interval(
+        inputs=inputs,
+        lnm_lower=lnMmin_range,
+        lnm_upper=np.full_like(lnMmin_range, 16 * np.log(10)),
+        cond_values=inputs_cond,
+        redshift=redshift,
+        redshift_prev=z_desc,
+    )
+    probabilities = cmf_integral / nhalo[:, None]
+
+    inputs_cond_bc, inputs_mmin_bc = np.meshgrid(
+        inputs_cond, lnMmin_range, indexing="ij"
+    )
+    # Take those probabilites to the inverse table
+    icmf_table = cf.evaluate_inverse_table(
+        inputs=inputs,
+        probabilities=probabilities,
+        cond_array=inputs_cond_bc,
+        redshift=redshift,
+        redshift_prev=z_desc,
+    )
+
+    # ignore condition out-of-bounds (returned as -1 by evaluate_inverse_table)
+    sel_oob = icmf_table < 0.0
+    # ignore probability out-of-bounds (extrapolated by the backend)
+    sel_lowprob = cmf_integral < np.exp(inputs.simulation_options.MIN_LOGPROB)
+    if plt == mpl.pyplot:
+        last_cond = np.amax(np.where(np.any(~sel_oob, axis=-1)))
+        first_cond = np.amin(np.where(np.any(~sel_oob, axis=-1)))
+        sel_plot = np.linspace(first_cond, last_cond, num=6).astype(int)
+        make_table_comparison_plot(
+            [probabilities[sel_plot, :].T],
+            [inputs_cond[sel_plot]],
+            [icmf_table[sel_plot, :].T],
+            [np.exp(lnMmin_range)],
+            plt,
+            zlabels=[r"$\delta =$" if not from_cat else r"$M=$"],
+            logx=True,
+            logy=True,
+            label_test=[False, False],
+            xlabels=["Probability"],
+            ylabels=["Mass"],
+            xlim=[np.exp(inputs.simulation_options.MIN_LOGPROB) / 10, 1.0],
+            reltol=RELATIVE_TOLERANCE,
+        )
+
+    # easiest way to ignore in testing is to fix values to nan
+    inputs_mmin_bc[sel_lowprob | sel_oob] = np.nan
+    icmf_table[sel_lowprob | sel_oob] = np.nan
+
+    # NOTE: very dense cells can have ~3.5% errors at low mass, other bins much more accurate
+    # Previously I didn't test cells near delta_crit, but I think a 5% tolerance test is better
+    rtol = 5e-2
+    print_failure_stats(
+        np.log(icmf_table),
+        inputs_mmin_bc,
+        [inputs_cond, probabilities],
+        0.0,
+        rtol,
+        "Inverse CMF",
+    )
+
+    np.testing.assert_allclose(
+        inputs_mmin_bc,
+        np.log(icmf_table),
+        rtol=rtol,
+    )
+
+
+@pytest.mark.parametrize("R", R_PARAM_LIST)
+def test_FgtrM_conditional_tables(R, delta_range, plt):
+    redshift, kwargs = OPTIONS_HMF["PS"]  # always erfc
+    inputs = get_all_options_struct(redshift, **kwargs)["inputs"]
+
+    fcoll_tables, dfcoll_tables = cf.evaluate_FgtrM_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation"
+        ),
+        redshift=redshift,
+        densities=delta_range,
+        R=R,
+    )
+    fcoll_integrals, dfcoll_integrals = cf.evaluate_FgtrM_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation"
+        ),
+        redshift=redshift,
+        densities=delta_range,
+        R=R,
+    )
+
+    abs_tol = 0.0
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [delta_range, delta_range],
+            [None, None],
+            [fcoll_tables, np.fabs(dfcoll_tables)],
+            [fcoll_integrals, np.fabs(dfcoll_integrals)],
+            plt,
+            abstol=abs_tol,
+            reltol=RELATIVE_TOLERANCE,
+            xlabels=["delta", "delta"],
+            ylabels=["fcoll", "dfolldz"],
+        )
+
+    sel_delta = get_delta_subset(inputs, redshift, R, delta_range)
+
+    print_failure_stats(
+        fcoll_tables[sel_delta],
+        fcoll_integrals[sel_delta],
+        [delta_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "fcoll",
+    )
+
+    print_failure_stats(
+        dfcoll_tables[sel_delta],
+        dfcoll_integrals[sel_delta],
+        [delta_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "dfcoll",
+    )
+
+    np.testing.assert_allclose(
+        fcoll_tables[sel_delta],
+        fcoll_integrals[sel_delta],
+        atol=abs_tol,
+        rtol=RELATIVE_TOLERANCE,
+    )
+    np.testing.assert_allclose(
+        dfcoll_tables[sel_delta],
+        dfcoll_integrals[sel_delta],
+        atol=abs_tol,
+        rtol=RELATIVE_TOLERANCE,
+    )
+
+
+@pytest.mark.parametrize("name", options_hmf)
+def test_SFRD_z_tables(name, z_range, default_global_evolution_mcgs, plt):
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=True,
+        V_CB_MODEL="AVG-DEBUG",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    SFRD_tables_acg, SFRD_tables_mcg = cf.evaluate_SFRD_z(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation"
+        ),
+        redshifts=z_range,
+        global_evolution=global_evolution,
+    )
+    SFRD_integrals_acg, SFRD_integrals_mcg = cf.evaluate_SFRD_z(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation"
+        ),
+        redshifts=z_range,
+        global_evolution=global_evolution,
+    )
+
+    abs_tol = 1e-5
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [z_range, z_range],
+            [None, None],
+            [SFRD_tables_acg, SFRD_tables_mcg],
+            [SFRD_integrals_acg, SFRD_integrals_mcg],
+            plt,
+            abstol=abs_tol,
+            reltol=RELATIVE_TOLERANCE,
+            label_test=[True, False],
+            xlabels=["redshift", "redshift"],
+            ylabels=["SFRD_acg", "SFRD_mcg"],
+        )
+
+    print_failure_stats(
+        SFRD_tables_acg,
+        SFRD_integrals_acg,
+        [z_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "SFRD_z_acg",
+    )
+    print_failure_stats(
+        SFRD_tables_mcg,
+        SFRD_integrals_mcg,
+        [z_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "SFRD_z_mcg",
+    )
+
+    np.testing.assert_allclose(
+        SFRD_tables_acg, SFRD_integrals_acg, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+    np.testing.assert_allclose(
+        SFRD_tables_mcg, SFRD_integrals_mcg, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+
+
+@pytest.mark.parametrize("name", options_hmf)
+def test_Nion_z_tables(name, z_range, default_global_evolution_mcgs, plt):
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=True,
+        V_CB_MODEL="AVG-DEBUG",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    nion_tables_acg, nion_tables_mcg = cf.evaluate_Nion_z(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation"
+        ),
+        redshifts=z_range,
+        global_evolution=global_evolution,
+    )
+    nion_integrals_acg, nion_integrals_mcg = cf.evaluate_Nion_z(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation"
+        ),
+        redshifts=z_range,
+        global_evolution=global_evolution,
+    )
+
+    abs_tol = 2e-6
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [z_range, z_range],
+            [None, None],
+            [nion_tables_acg, nion_tables_mcg],
+            [nion_integrals_acg, nion_integrals_mcg],
+            plt,
+            abstol=abs_tol,
+            reltol=RELATIVE_TOLERANCE,
+            label_test=[True, False],
+            xlabels=["redshift", "redshift"],
+            ylabels=["Nion_acg", "Nion_mcg"],
+        )
+
+    print_failure_stats(
+        nion_tables_acg,
+        nion_integrals_acg,
+        [z_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "SFRD_z_acg",
+    )
+    print_failure_stats(
+        nion_tables_mcg,
+        nion_integrals_mcg,
+        [z_range],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "SFRD_z_mcg",
+    )
+
+    np.testing.assert_allclose(
+        nion_tables_acg, nion_integrals_acg, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+    np.testing.assert_allclose(
+        nion_tables_mcg, nion_integrals_mcg, atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+
+
+# A few notes on this test function:
+#   Mass limits are set explicitly using the param values
+#       and #defines are copied to hard code (not ideal)
+#   Density and Mturn limits are set to their maxima since we don't have cubes.
+#       Hence this is a worst case scenario
+#   While the EvaluateX() functions are useful in the main code to be agnostic to USE_INTERPOLATION_TABLES
+#       I do not use them here fully, instead calling the integrals directly to avoid parameter changes
+#       Mostly since if we set simulation_options.USE_INTERPOLATION_TABLES=False then the sigma tables aren't used
+#       and it takes forever
+@pytest.mark.parametrize("use_mcgs", [True, False])
+@pytest.mark.parametrize("R", R_PARAM_LIST)
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("intmethod", options_intmethod)
+@pytest.mark.parametrize("use_reionization_photoheating_feedback", [True, False])
+def test_Nion_conditional_tables(
+    name,
+    delta_range,
+    R,
+    use_mcgs,
+    use_reionization_photoheating_feedback,
+    intmethod,
+    default_global_evolution_mcgs,
+    plt,
+):
+    if intmethod == "FFCOLL":
+        if name != "PS":
+            pytest.skip("FAST FFCOLL INTEGRALS WORK ONLY WITH EPS")
+        else:
+            pytest.xfail(
+                "FFCOLL TABLES drop sharply at high Mturn, causing failure at 0.1 levels"
+            )
+
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=use_mcgs,
+        V_CB_MODEL="AVG-DEBUG" if use_mcgs else "NONE",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        USE_REIONIZATION_PHOTOHEATING_FEEDBACK=use_reionization_photoheating_feedback,
+        INTEGRATION_METHOD_ACGS=OPTIONS_INTMETHOD[intmethod],
+        INTEGRATION_METHOD_MCGS=OPTIONS_INTMETHOD[intmethod],
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    Nion_tables_acg, Nion_tables_mcg = cf.evaluate_Nion_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation",
+        ),
+        redshift=redshift,
+        radius=R,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    Nion_integrals_acg, Nion_integrals_mcg = cf.evaluate_Nion_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation",
+        ),
+        redshift=redshift,
+        radius=R,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    # The bilinear interpolation we use underperforms at high mturn due to the sharp
+    # dropoff. Setting an absolute tolerance to a level we care about for reionisation
+    # rather than a level we expect from interp tables remedies this for now.
+    # TODO: In future we should investigate cubic splines etc.
+    abs_tol = 1e-8
+
+    if plt == mpl.pyplot:
+        if use_mcgs:
+            make_table_comparison_plot(
+                [delta_range, delta_range],
+                [None, None],
+                [Nion_tables_acg, Nion_tables_mcg],
+                [Nion_integrals_acg, Nion_integrals_mcg],
+                plt,
+                abstol=abs_tol,
+                reltol=RELATIVE_TOLERANCE,
+                label_test=[True, False],
+                xlabels=["delta", "delta"],
+                ylabels=["Nion_acg", "Nion_mcg"],
+            )
+        else:
+            make_table_comparison_plot(
+                [delta_range],
+                [None],
+                [Nion_tables_acg],
+                [Nion_integrals_acg],
+                plt,
+                abstol=abs_tol,
+                reltol=RELATIVE_TOLERANCE,
+                label_test=[True],
+                xlabels=["delta"],
+                ylabels=["Nion_acg"],
+            )
+
+    sel_delta = get_delta_subset(inputs, redshift, R, delta_range)
+
+    print_failure_stats(
+        Nion_tables_acg[sel_delta],
+        Nion_integrals_acg[sel_delta],
+        [delta_range[sel_delta]],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "Nion_c_acg",
+    )
+
+    if use_mcgs:
+        print_failure_stats(
+            Nion_tables_mcg[sel_delta],
+            Nion_integrals_mcg[sel_delta],
+            [delta_range[sel_delta]],
+            abs_tol,
+            RELATIVE_TOLERANCE,
+            "Nion_c_mcg",
+        )
+
+    np.testing.assert_allclose(
+        Nion_tables_acg[sel_delta],
+        Nion_integrals_acg[sel_delta],
+        atol=abs_tol,
+        rtol=RELATIVE_TOLERANCE,
+    )
+
+    if use_mcgs:
+        np.testing.assert_allclose(
+            Nion_tables_mcg[sel_delta],
+            Nion_integrals_mcg[sel_delta],
+            atol=abs_tol,
+            rtol=RELATIVE_TOLERANCE,
+        )
+
+
+@pytest.mark.parametrize("use_mcgs", [True, False])
+@pytest.mark.parametrize("R", R_PARAM_LIST)
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("intmethod", options_intmethod)
+@pytest.mark.parametrize("use_reionization_photoheating_feedback", [True, False])
+def test_Xray_conditional_tables(
+    name,
+    delta_range,
+    R,
+    use_mcgs,
+    use_reionization_photoheating_feedback,
+    intmethod,
+    default_global_evolution_mcgs,
+    plt,
+):
+    if intmethod == "FFCOLL":
+        if name != "PS":
+            pytest.skip("FAST FFCOLL INTEGRALS WORK ONLY WITH EPS")
+        else:
+            pytest.xfail(
+                "FFCOLL TABLES drop sharply at high Mturn, causing failure at 0.1 levels"
+            )
+
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=use_mcgs,
+        V_CB_MODEL="AVG-DEBUG" if use_mcgs else "NONE",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        USE_REIONIZATION_PHOTOHEATING_FEEDBACK=use_reionization_photoheating_feedback,
+        INTEGRATION_METHOD_ACGS=OPTIONS_INTMETHOD[intmethod],
+        INTEGRATION_METHOD_MCGS=OPTIONS_INTMETHOD[intmethod],
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    Xray_tables = cf.evaluate_Xray_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation",
+        ),
+        redshift=redshift,
+        radius=R,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    Xray_integrals = cf.evaluate_Xray_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation",
+        ),
+        redshift=redshift,
+        radius=R,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    abs_tol = 0.0
+    if plt == mpl.pyplot:
+        make_table_comparison_plot(
+            [delta_range],
+            [None],
+            [Xray_tables],
+            [Xray_integrals],
+            plt,
+            abstol=abs_tol,
+            reltol=RELATIVE_TOLERANCE,
+            label_test=[True],
+            xlabels=["delta"],
+            ylabels=["Lx"],
+        )
+
+    sel_delta = get_delta_subset(inputs, redshift, R, delta_range)
+
+    print_failure_stats(
+        Xray_tables[sel_delta],
+        Xray_integrals[sel_delta],
+        [delta_range[sel_delta]],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "Xray_c",
+    )
+
+    np.testing.assert_allclose(
+        Xray_tables[sel_delta],
+        Xray_integrals[sel_delta],
+        atol=abs_tol,
+        rtol=RELATIVE_TOLERANCE,
+    )
+
+
+@pytest.mark.parametrize("use_mcgs", [True, False])
+@pytest.mark.parametrize("R", R_PARAM_LIST)
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("intmethod", options_intmethod)
+@pytest.mark.parametrize("use_reionization_photoheating_feedback", [True, False])
+def test_SFRD_conditional_table(
+    name,
+    delta_range,
+    R,
+    use_mcgs,
+    use_reionization_photoheating_feedback,
+    intmethod,
+    default_global_evolution_mcgs,
+    plt,
+):
+    if intmethod == "FFCOLL":
+        if name != "PS":
+            pytest.skip("FAST FFCOLL INTEGRALS WORK ONLY WITH EPS")
+        else:
+            pytest.xfail("FFCOLL TABLES drop sharply at high Mturn, causing failure")
+
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=use_mcgs,
+        V_CB_MODEL="AVG-DEBUG" if use_mcgs else "NONE",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        USE_REIONIZATION_PHOTOHEATING_FEEDBACK=use_reionization_photoheating_feedback,
+        INTEGRATION_METHOD_ACGS=OPTIONS_INTMETHOD[intmethod],
+        INTEGRATION_METHOD_MCGS=OPTIONS_INTMETHOD[intmethod],
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    SFRD_tables_acg, SFRD_tables_mcg = cf.evaluate_SFRD_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="hmf-interpolation",
+        ),
+        radius=R,
+        redshift=redshift,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    SFRD_integrals_acg, SFRD_integrals_mcg = cf.evaluate_SFRD_cond(
+        inputs=inputs.evolve_input_structs(
+            USE_INTERPOLATION_TABLES="sigma-interpolation",
+        ),
+        radius=R,
+        redshift=redshift,
+        densities=delta_range,
+        global_evolution=global_evolution,
+    )
+
+    # The bilinear interpolation we use underperforms at high mturn due to the sharp
+    # dropoff. Setting an absolute tolerance to a level we care about for reionisation
+    # rather than a level we expect from interp tables remedies this for now.
+    # TODO: In future we should investigate cubic splines etc.
+    abs_tol = 1e-8
+
+    if plt == mpl.pyplot:
+        if use_mcgs:
+            make_table_comparison_plot(
+                [delta_range, delta_range],
+                [None, None],
+                [SFRD_tables_acg, SFRD_tables_mcg],
+                [SFRD_integrals_acg, SFRD_integrals_mcg],
+                plt,
+                abstol=abs_tol,
+                reltol=RELATIVE_TOLERANCE,
+                label_test=[True, False],
+                xlabels=["delta", "delta"],
+                ylabels=["SFRD_acg", "SFRD_mcg"],
+            )
+        else:
+            make_table_comparison_plot(
+                [delta_range],
+                [None],
+                [SFRD_tables_acg],
+                [SFRD_integrals_acg],
+                plt,
+                abstol=abs_tol,
+                reltol=RELATIVE_TOLERANCE,
+                label_test=[True],
+                xlabels=["delta"],
+                ylabels=["SFRD_acg"],
+            )
+
+    sel_delta = get_delta_subset(inputs, redshift, R, delta_range)
+
+    print_failure_stats(
+        SFRD_tables_acg[sel_delta],
+        SFRD_integrals_acg[sel_delta],
+        [delta_range[sel_delta]],
+        abs_tol,
+        RELATIVE_TOLERANCE,
+        "SFRD_c_acg",
+    )
+
+    if use_mcgs:
+        print_failure_stats(
+            SFRD_tables_mcg[sel_delta],
+            SFRD_integrals_mcg[sel_delta],
+            [delta_range[sel_delta]],
+            abs_tol,
+            RELATIVE_TOLERANCE,
+            "SFRD_c_mcg",
+        )
+
+    np.testing.assert_allclose(
+        SFRD_tables_acg[sel_delta],
+        SFRD_integrals_acg[sel_delta],
+        atol=abs_tol,
+        rtol=RELATIVE_TOLERANCE,
+    )
+
+    if use_mcgs:
+        np.testing.assert_allclose(
+            SFRD_tables_mcg[sel_delta],
+            SFRD_integrals_mcg[sel_delta],
+            atol=abs_tol,
+            rtol=RELATIVE_TOLERANCE,
+        )
+
+
+INTEGRAND_OPTIONS = ["sfrd", "n_ion"]
+
+
+@pytest.mark.parametrize("R", R_PARAM_LIST)
+@pytest.mark.parametrize("name", options_hmf)
+@pytest.mark.parametrize("integrand", INTEGRAND_OPTIONS)
+def test_conditional_integral_methods(
+    R, delta_range, name, integrand, default_global_evolution_mcgs, plt
+):
+    redshift, kwargs = OPTIONS_HMF[name]
+    global_evolution = default_global_evolution_mcgs
+    inputs = get_all_options_struct(
+        redshift,
+        USE_MCGS=True,
+        V_CB_MODEL="AVG-DEBUG",
+        POWER_SPECTRUM="EH",
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        USE_TS_FLUCT=True,
+        ZPRIME_STEP_FACTOR=1.2,  # needed because we need inputs.node_redshifts == global_evolution.node_redshifts
+        M_TURN_STELLAR_FEEDBACK=5.0,
+        node_redshifts=global_evolution.node_redshifts,
+        **kwargs,
+    )["inputs"]
+
+    integrals_acg = []
+    integrals_mcg = []
+    for method in ["GSL-QAG", "GAUSS-LEGENDRE", "GAMMA-APPROX"]:
+        print(f"Starting method {method}", flush=True)
+        if name != "PS" and method == "GAMMA-APPROX":
+            continue
+
+        inputs = inputs.evolve_input_structs(
+            INTEGRATION_METHOD_ACGS=method,
+            INTEGRATION_METHOD_MCGS=method,
+        )
+
+        if "sfr" in integrand:
+            buf_acg, buf_mcg = cf.evaluate_SFRD_cond(
+                inputs=inputs,
+                redshift=redshift,
+                radius=R,
+                densities=delta_range,
+                global_evolution=global_evolution,
+            )
+        else:
+            buf_acg, buf_mcg = cf.evaluate_Nion_cond(
+                inputs=inputs,
+                redshift=redshift,
+                radius=R,
+                densities=delta_range,
+                global_evolution=global_evolution,
+            )
+        integrals_acg.append(buf_acg)
+        integrals_mcg.append(buf_mcg)
+
+    abs_tol = 1e-6  # minimum = exp(-40) ~1e-18
+    if plt == mpl.pyplot:
+        iplot_acg = [i[:, None] if i.ndim == 1 else i for i in integrals_acg]
+        iplot_mcg = [i[:, None] if i.ndim == 1 else i for i in integrals_mcg]
+        make_integral_comparison_plot(
+            delta_range,
+            None,
+            iplot_acg,
+            iplot_mcg,
+            plt,
+        )
+
+    np.testing.assert_allclose(
+        integrals_acg[1], integrals_acg[0], atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+    np.testing.assert_allclose(
+        integrals_mcg[1], integrals_mcg[0], atol=abs_tol, rtol=RELATIVE_TOLERANCE
+    )
+
+
+def make_table_comparison_plot(
+    x,
+    tb_z,
+    tables,
+    integrals,
+    plt,
+    **kwargs,
+):
+    # rows = values,fracitonal diff, cols = 1d table, 2d table
+    _fig, axs = plt.subplots(
+        nrows=2, ncols=len(x), figsize=(12 * len(x) / 2, 9), squeeze=False
+    )
+    xlabels = kwargs.pop("xlabels", ["delta"] * len(x))
+    ylabels = kwargs.pop("ylabels", ["MF_integral"] * len(x))
+    zlabels = kwargs.pop("zlabels", ["Mturn"] * len(x))
+    label_flags = kwargs.pop("label_test", [True] * len(tb_z))
+    for j, z in enumerate(tb_z):
+        n_lines = z.size if z is not None else 1
+        for i in range(n_lines):
+            zlab = zlabels[j] + f" = {z[i]:.2e}" if z is not None else ""
+            # allow single arrays
+            x_plot = x[j][:, i] if len(x[j].shape) > 1 else x[j]
+            i_plot = integrals[j][:, i] if len(integrals[j].shape) > 1 else integrals[j]
+            t_plot = tables[j][:, i] if len(tables[j].shape) > 1 else tables[j]
+            make_comparison_plot(
+                x_plot,
+                i_plot,
+                t_plot,
+                ax=axs[:, j],
+                xlab=xlabels[j],
+                ylab=ylabels[j],
+                label_base=zlab,
+                label_test=label_flags[j],
+                logx=kwargs.get("logx", False),
+                xlim=kwargs.get("xlim"),
+                reltol=kwargs.get("reltol"),
+                color=f"C{i:d}",
+            )
+
+
+# slightly different from comparison plot since each integral shares a "truth"
+def make_integral_comparison_plot(x1, x2, integral_list, integral_list_second, plt):
+    _fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(16, 8))
+
+    styles = ["-", ":", "--"]
+    for i, (i_first, i_second) in enumerate(
+        zip(integral_list, integral_list_second, strict=True)
+    ):
+        comparison = integral_list[0]
+        if len(i_first.shape) == 1:
+            i_first = i_first[:, None]
+            comparison = integral_list[0][:, None]
+        if len(i_second.shape) == 1:
+            i_second = i_second[:, None]
+        for j in range(i_first.shape[1]):
+            axs[0, 0].semilogy(
+                x1, i_first[:, j], color=f"C{j:d}", linestyle=styles[i], linewidth=2
+            )
+            axs[1, 0].semilogy(
+                x1,
+                i_first[:, j] / comparison[:, j],
+                color=f"C{j:d}",
+                linestyle=styles[i],
+                linewidth=2,
+            )
+
+        for j in range(i_second.shape[1]):
+            axs[0, 1].semilogy(x1, i_second[:, j], color=f"C{j:d}", linestyle=styles[i])
+            axs[1, 1].semilogy(
+                x1,
+                i_second[:, j] / integral_list_second[0][:, j],
+                color=f"C{j:d}",
+                linestyle=styles[i],
+            )
+
+    axs[1, 0].set_xlabel("delta")
+    axs[1, 1].set_xlabel("delta")
+    axs[1, 0].set_ylabel("Integral")
+    axs[0, 0].set_ylabel("Integral")
+    axs[0, 0].grid()
+    axs[0, 1].grid()
+    axs[1, 0].grid()
+    axs[1, 1].grid()
+
+
+# copied and expanded from test_integration_features.py
+def make_comparison_plot(
+    x,
+    true,
+    test,
+    ax,
+    logx=True,
+    logy=True,
+    xlab=None,
+    ylab=None,
+    xlim=None,
+    abstol=None,
+    reltol=None,
+    label_base="",
+    label_test=True,
+    **kwargs,
+):
+    true_label = label_base + " True" if label_test else label_base
+    test_label = label_base + " Test" if label_test else None
+    if logx:
+        ax[0].set_xscale("log")
+        ax[1].set_xscale("log")
+    if logy:
+        ax[0].set_yscale("log")
+    if xlab:
+        ax[0].set_xlabel(xlab)
+        ax[1].set_xlabel(xlab)
+    if ylab:
+        ax[0].set_ylabel(ylab)
+    if xlim:
+        ax[0].set_xlim(xlim)
+        ax[1].set_xlim(xlim)
+
+    ax[0].grid()
+    ax[1].grid()
+
+    ax[0].plot(x, true, label=true_label, linestyle="-", **kwargs)
+    ax[0].plot(x, test, label=test_label, linestyle=":", linewidth=3, **kwargs)
+    ax[0].legend()
+
+    ax[1].plot(x, (test - true) / true, **kwargs)
+    ax[1].set_ylabel("Fractional Difference")
+    if reltol:
+        ax[1].set_ylim([-2 * reltol, 2 * reltol])
+        ax[1].axhline(reltol, color="gray", linestyle="--")
+        ax[1].axhline(-reltol, color="gray", linestyle="--")

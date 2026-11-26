@@ -1,4 +1,49 @@
-# 21cmFAST-GPU
+# 21cmCU
+
+**21cmCU** is a standalone native C/CUDA + cuFFT 21cm cosmological simulation engine (originating from the `21cmFAST-GPU` fork and built on top of 21cmFAST v4.3.2 semantics with full `py21cmcu` / `py21cmfast` API and CLI compatibility and zero runtime CuPy dependency).
+
+## Key Capabilities (Phase 0)
+
+- **Native C/CUDA + cuFFT core**: compiled directly into the CFFI shared library (`c_21cmfast`), supporting `E-INTEGRAL`, `CONST-ION-EFF`, `L-INTEGRAL`, `DEXM-ESF`, and `CHMF-SAMPLER`.
+- **Dual precision modes (`CUDA_MODE`)**:
+  - `strict` (default): CPU-matched parity mode (`rel_rms ~ 1e-4` on `384³ / 128³` lightcones, `< 0.02%` max 3D power spectrum deviation over `k ∈ [0.1, 1.0] Mpc⁻¹`).
+  - `fast`: statistically equivalent high-speed mode (enables parallel Philox RNG paths via `P21_CUDA_MODE=fast` / `CUDA_MODE="fast"` / `--cuda-mode fast` while keeping global histories and Δ²₂₁(k) statistically unbiased).
+- **Standalone bug fixes over v4.3.2**:
+  - Photon-conservation calibration redshift/neutral-fraction length alignment (`photoncons.py`).
+  - Safe null-output guard in Sheth–Tormen `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`).
+  - Separate previous-redshift 1D ACG ionizing-efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True` without photoheating feedback (`interp_tables.c` / `cuda_ionization.cu`).
+
+## Quick Start
+
+```bash
+export USE_CUDA=1 CUDA_ARCHS=86   # adjust compute capability for your GPU
+pip install -e . --no-build-isolation
+
+# Enable GPU via environment, Python API, or CLI:
+P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny --out ./out
+```
+
+```python
+import py21cmcu as p21
+
+with p21.use_mode("strict"):
+    lc = p21.run_lightcone(...)
+
+with p21.use_mode("fast"):
+    cv = p21.run_coeval(...)
+```
+
+## Roadmap
+
+- **Phase 0 (completed)**: Archive CuPy v4 adapter (`archive-cupy-v4`), unify native C/CUDA engine under `21cmCU` (`py21cmcu` / `21cmcu`), expose dual `strict` / `fast` modes, and fix upstream bugs blocking automation.
+- **Phase 1 (next — Option C)**: End-to-end GPU residency & profiling for `CHMF-SAMPLER` + molecular cooling (`USE_MCGS`) + `CLASS` (`V_CB_MODEL="FLUCTS"`) + `LYA_MULTIPLE_SCATTERING`.
+- **Phase 2 (Option B)**: Extreme-scale (`512³–1024³`) single-GPU lightcones via zero-D2H residency, parallel Philox ICs, native GPU lightcone slicing, and `DeviceLZF` HDF5 output.
+
+---
+
+## Archived CuPy v4 Adapter & Legacy v3 Reference (`archive-cupy-v4`)
+
+The previous CuPy v4.3.2 adapter (`v4/`) and v3 CUDA implementation (`lightcone/`, `gpu/`) remain preserved in the repository and tagged at `archive-cupy-v4`:
 
 CUDA acceleration for 21cmFAST v3 (based on commit [aefc273](https://github.com/21cmfast/21cmFAST/commit/aefc273), standard LCDM `POWER_SPECTRUM=0`). Lightcone outputs across all 6 fields match CPU runs within `1e-8 + 1e-4 * |CPU|`. Upstream license: [LICENSE.upstream](LICENSE.upstream).
 

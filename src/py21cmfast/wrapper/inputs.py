@@ -1,0 +1,3208 @@
+"""
+Input parameter classes.
+
+There are four input parameter/option classes, not all of which are required for any
+given function. They are :class:`SimulationOptions`, :class:`CosmoParams`, :class:`AstroParams`
+and :class:`AstroOptions`. Each of them defines a number of variables, and all of these
+have default values, to minimize the burden on the user. These defaults are accessed via
+the ``_defaults_`` class attribute of each class. The available parameters for each are
+listed in the documentation for each class below.
+"""
+
+# we use a few nested if statments in the validators here
+
+import logging
+import warnings
+from collections import OrderedDict
+from collections.abc import Sequence
+from functools import cached_property
+from pathlib import Path
+from typing import Annotated, Any, ClassVar, Literal, Self, get_args
+
+import attrs
+import deprecation
+import numpy as np
+from astropy import constants
+from astropy import units as un
+from astropy.cosmology import FLRW, Planck15
+from attrs import asdict, evolve, validators
+from attrs import field as _field
+from cyclopts import Parameter
+
+from .._cfg import config
+from ..c_21cmfast import ffi
+from ._utils import snake_to_camel
+from .classy_interface import (
+    compute_rms,
+    find_redshift_kinematic_decoupling,
+    get_transfer_function,
+    k_transfer,
+    run_classy,
+)
+from .structs import StructWrapper
+
+logger = logging.getLogger(__name__)
+
+# Astropy cosmologies shared between CosmoParams instances, keyed on the identity of the
+# base cosmology and the parameters that override it (astropy cosmologies are immutable,
+# but not hashable). See _shared_cosmology.
+_SHARED_COSMOLOGIES: OrderedDict[tuple, tuple[FLRW, FLRW]] = OrderedDict()
+_SHARED_COSMOLOGIES_MAXSIZE = 64
+
+
+def _shared_cosmology(base: FLRW, *, hlittle: float, OMm: float, OMb: float) -> FLRW:
+    """Return ``base`` cloned with the given parameters, re-using an earlier clone.
+
+    Every new :class:`CosmoParams` (and every set of inputs read from a cache file has
+    new ones) used to build its own astropy cosmology. Building one does unit
+    conversions that leave behind a reference cycle in astropy, which keeps every
+    calling frame -- and the boxes held in their locals -- alive until the garbage
+    collector runs. The high-level drivers disable the collector, so a run resumed from
+    cache accumulated that garbage at every redshift (see issue #796). Sharing one
+    (immutable) cosmology per parameter set avoids building it more than once.
+    """
+    key = (id(base), hlittle, OMm, OMb)
+    # The entry holds a reference to `base`, so its id can't be re-used while cached.
+    if (cached := _SHARED_COSMOLOGIES.get(key)) is not None:
+        _SHARED_COSMOLOGIES.move_to_end(key)
+        return cached[1]
+
+    cosmo = base.clone(name=base.name, H0=hlittle * 100, Om0=OMm, Ob0=OMb)
+    _SHARED_COSMOLOGIES[key] = (base, cosmo)
+    if len(_SHARED_COSMOLOGIES) > _SHARED_COSMOLOGIES_MAXSIZE:
+        _SHARED_COSMOLOGIES.popitem(last=False)
+    return cosmo
+
+
+def field(*, transformer=None, deprecated: bool = False, **kw):
+    """Define an attrs field with a 'transformer' property.
+
+    The transformer, if given, should be a function of a single variable, which will
+    be the attribute's value. It will be used to transform the value before usage in
+    C-code (e.g. by transformin from log to linear space).
+
+    If ``deprecated`` is True, the field is a deprecated alias of another field (which
+    takes its value from this one). Such fields are excluded from equality checks,
+    the repr and :meth:`InputStruct.asdict`.
+    """
+    if deprecated:
+        # Deprecated aliases only exist to pass their value on to the field that
+        # replaces them, so they must not make otherwise-identical inputs compare
+        # unequal (or hash differently in the cache), and are not serialized.
+        kw.setdefault("eq", False)
+        kw.setdefault("repr", False)
+    return _field(metadata={"transformer": transformer, "deprecated": deprecated}, **kw)
+
+
+def _is_not_deprecated(att: attrs.Attribute, value: Any) -> bool:
+    """Filter for attrs.asdict that removes deprecated alias fields."""
+    return not att.metadata.get("deprecated", False)
+
+
+def choice_field(*, validator=None, **kwargs):
+    """Create an attrs.field that is a choice."""
+    vld = (choice_validator,)
+    if validator is not None:
+        vld = (choice_validator, validator)
+    return field(validator=vld, transformer=choice_transformer, converter=str, **kwargs)
+
+
+def logtransformer(x: float | None, att: attrs.Attribute):
+    """Convert from log to linear space."""
+    if x is None:
+        return None
+    else:
+        return 10**x
+
+
+def dex2exp_transformer(x, att: attrs.Attribute):
+    """
+    Convert from dex to exponential space.
+
+    Notes
+    -----
+    The reason why we convert our sigma parameters (the width of the lognormal distributions)
+    from base-10 to base-e is because the C code works with lognormal distributions in base-e, for the
+    following reasons:
+    1. If HALO_SCALING_RELATIONS_MEDIAN = False, the mu parameter of the distribution has to be adjusted
+    by a factor of the form  exp(-sigma^2 /2), if the distribution and sigma are in base-e, or by
+    a factor of the form 10^{-ln(10)*sigma^2 /2} if the distribution and sigma are in base-10. Using
+    base-e in the C code saves us from multiplying by ln(10).
+    2. In the case of stellar mass (stellar fraction), there is a multiplicative term of the form
+    exp(-M_turn/M). Numerically, it is more efficient to combine the arguments of this exponent
+    with the normally distributed random variable (to make the distribution log-normal), which is
+    what the C code does. Working with base-10 in the C could would require having an expression like
+    10^[-M_turn/M /ln(10)], if we wish to combine the arguments in the power-law. Since the C code
+    works with base-e, it saves the need to divide by ln(10).
+
+    While the multiplication/division by ln(10) is not a major overhead for one halo, when the box
+    contains billions of halos that are evolved through various redshift snapshots, the work with
+    base-e in the C code saves us from executing billions of unnecessary multiplications/divisions.
+    """
+    return np.log(10) * x
+
+
+def choice_transformer(choice: str, att: attrs.Attribute) -> int:
+    """Produce a transformer that converts a string to int.
+
+    The function must be passed a list of string choices. The resulting int is the
+    index of the choice made.
+    """
+    choices = get_args(att.type)
+    return choices.index(choice)
+
+
+def choice_validator(inst, att: attrs.Attribute, val):
+    """Validate that a value is one of the choices."""
+    choices = get_args(att.type)
+    if val not in choices:
+        raise ValueError(f"{att.name} must be one of {choices}, got {val} instead.")
+
+
+def between(mn, mx):
+    """Validate that a value is between two values."""
+
+    def vld(inst, att, val):
+        if val < mn or val > mx:
+            raise ValueError(f"{att.name} must be between {mn} and {mx}")
+
+    return vld
+
+
+FilterOptions = Literal["spherical-tophat", "sharp-k", "gaussian"]
+IntegralMethods = Literal["GSL-QAG", "GAUSS-LEGENDRE", "GAMMA-APPROX"]
+
+# Cosmology is from https://arxiv.org/pdf/1807.06209.pdf
+# Table 2, last column. [TT,TE,EE+lowE+lensing+BAO]
+Planck18 = Planck15.clone(
+    Om0=(0.02242 + 0.11933) / 0.6766**2,
+    Ob0=0.02242 / 0.6766**2,
+    H0=67.66,
+    Neff=3.044,
+    name="Planck18",
+)
+
+# The mean value of the amplitude of the relative velocity between baryons and cold dark matter at kinematic decoupling, in km/s,
+# for LCDM Planck 2018 cosmology
+V_CB_AVG_DEFAULT = 27.0
+
+
+@attrs.define(frozen=True, kw_only=True)
+class InputStruct:
+    """
+    A convenient interface to create a C structure with defaults specified.
+
+    It is provided for the purpose of *creating* C structures in Python to be passed to
+    C functions, where sensible defaults are available. Structures which are created
+    within C and passed back do not need to be wrapped.
+
+    This provides a *fully initialised* structure, and will fail if not all fields are
+    specified with defaults.
+
+    .. note:: The actual C structure is gotten by calling an instance. This is
+              auto-generated when called, based on the parameters in the class.
+
+    .. warning:: This class will *not* deal well with parameters of the struct which are
+                 pointers. All parameters should be primitive types, except for strings,
+                 which are dealt with specially.
+
+    Parameters
+    ----------
+    ffi : cffi object
+        The ffi object from any cffi-wrapped library.
+    """
+
+    _subclasses: ClassVar = {}
+    _write_exclude_fields = ()
+
+    @classmethod
+    def new(cls, x: dict | Self | None = None, **kwargs):
+        """
+        Create a new instance of the struct.
+
+        Parameters
+        ----------
+        x : dict | InputStruct | None
+            Initial values for the struct. If `x` is a dictionary, it should map field
+            names to their corresponding values. If `x` is an instance of this class,
+            its attributes will be used as initial values. If `x` is None, the
+            struct will be initialised with default values.
+
+        Other Parameters
+        ----------------
+        All other parameters should be passed as if directly to the class constructor
+        (i.e. as parameter names).
+
+        Examples
+        --------
+        >>> params = SimulationOptions.new({'HII_DIM': 250})
+        >>> params.HII_DIM
+        250
+        >>> params = SimulationOptions.new(params)
+        >>> params.HII_DIM
+        250
+        >>> params = SimulationOptions.new()
+        >>> params.HII_DIM
+        200
+        >>> params = SimulationOptions.new(HII_DIM=256)
+        >>> params.HII_DIM
+        256
+        """
+        if isinstance(x, dict):
+            return cls(**x, **kwargs)
+        elif isinstance(x, InputStruct):
+            return x.clone(**kwargs)
+        elif x is None:
+            return cls(**kwargs)
+        else:
+            raise ValueError(
+                f"Cannot instantiate {cls.__name__} with type {x.__class__}"
+            )
+
+    def __init_subclass__(cls) -> None:
+        """Store each subclass for easy access."""
+        InputStruct._subclasses[cls.__name__] = cls
+
+    @cached_property
+    def _struct(self) -> StructWrapper:
+        """The python-wrapped struct associated with this input object."""
+        return StructWrapper(self.__class__.__name__)
+
+    @cached_property
+    def _cstruct(self) -> StructWrapper:
+        """The object pointing to the memory accessed by C-code for this struct."""
+        cdict = self.cdict
+        for k in self._struct.fieldnames:
+            val = cdict[k]
+
+            # TODO: is this really required here? (I don't think the wrapper can satisfy this condition)
+            if isinstance(val, str):
+                # If it is a string, need to convert it to C string ourselves.
+                val = self.ffi.new("char[]", val.encode())
+
+            setattr(self._struct.cstruct, k, val)
+
+        return self._struct.cstruct
+
+    def clone(self, **kwargs):
+        """Make a fresh copy of the instance with arbitrary parameters updated."""
+        return evolve(self, **kwargs)
+
+    def asdict(self) -> dict:
+        """Return a dict representation of the instance.
+
+        Examples
+        --------
+        This dict should be such that doing the following should work, i.e. it can be
+        used exactly to construct a new instance of the same object::
+
+        >>> inp = InputStruct(**params)
+        >>> newinp =InputStruct(**inp.asdict())
+        >>> inp == newinp
+        """
+        return asdict(self, filter=_is_not_deprecated)
+
+    @cached_property
+    def cdict(self) -> dict:
+        """A python dictionary containing the properties of the wrapped C-struct.
+
+        The memory pointed to by this dictionary is *not* owned by the wrapped C-struct,
+        but is rather just a python dict. However, in contrast to :meth:`asdict`, this
+        method transforms the properties to what they should be in C (e.g. linear space
+        vs. log-space) before putting them into the dict.
+
+        This dict also contains *only* the properties of the wrapped C-struct, rather
+        than all properties of the :class:`InputStruct` instance (some attributes of the
+        python instance are there only to guide setting of defaults, and don't appear
+        in the C-struct at all).
+        """
+        fields = attrs.fields(self.__class__)
+        transformers = {
+            field.name: field.metadata.get("transformer", None) for field in fields
+        }
+
+        out = {}
+        for k in self._struct.fieldnames:
+            val = getattr(self, k)
+            att = attrs.fields_dict(self.__class__).get(k, None)
+            # we assume properties (as opposed to attributes) are already converted
+            trns = transformers.get(k)
+            out[k] = val if trns is None else trns(val, att)
+        return out
+
+    def __str__(self) -> str:
+        """Human-readable string representation of the object."""
+        d = self.asdict()
+        biggest_k = max(len(k) for k in d)
+        params = "\n    ".join(sorted(f"{k:<{biggest_k}}: {v}" for k, v in d.items()))
+        return f"""{self.__class__.__name__}:{params} """
+
+    @classmethod
+    def from_subdict(cls, dct: dict[str, Any], safe: bool = True) -> Self:
+        """Construct an instance of this class from a dictionary."""
+        fieldnames = [
+            field.name
+            for field in attrs.fields(cls)
+            if field.eq  # and field.default is not None
+        ]
+        if set(fieldnames) != set(dct.keys()):
+            missing_items = [
+                (field.name, field.default)
+                for field in attrs.fields(cls)
+                if field.name not in dct and field.name in fieldnames
+            ]
+            extra_items = [(k, v) for k, v in dct.items() if k not in fieldnames]
+            message = (
+                f"There are extra or missing {cls.__name__} in the file to be read.\n"
+                f"EXTRAS: {extra_items}\n"
+                f"MISSING: {missing_items}\n"
+            )
+            if safe:
+                raise ValueError(
+                    message
+                    + "set `safe=False` to load structures from previous versions"
+                )
+            else:
+                warnings.warn(
+                    message
+                    + "\nExtras are ignored and missing are set to default (shown) values."
+                    + "\nUsing these parameter structures in further computation will give inconsistent results.",
+                    stacklevel=2,
+                )
+            dct = {k: v for k, v in dct.items() if k in fieldnames}
+
+        # Strip leading underscores from items, because attrs accepts non-underscore
+        # versions of attributes.
+        dct = {k.strip("_"): v for k, v in dct.items()}
+        return cls.new(dct)
+
+
+@attrs.define(frozen=True, kw_only=True)
+class Table1D:
+    """Class for setting 1D interpolation table."""
+
+    size: int = field(converter=int, validator=validators.gt(0))
+    x_values: np.ndarray = field(
+        converter=lambda v: np.asarray(v, dtype=np.float64),
+        validator=validators.instance_of(np.ndarray),
+        eq=attrs.cmp_using(eq=np.array_equal),
+    )
+    y_values: np.ndarray = field(
+        converter=lambda v: np.asarray(v, dtype=np.float64),
+        validator=validators.instance_of(np.ndarray),
+        eq=attrs.cmp_using(eq=np.array_equal),
+    )
+
+    @cached_property
+    def _cstruct(self):
+        """Cached pointer to the memory of the object in C."""
+        ctab = ffi.new("Table1D *")
+        ctab.size = self.size
+        ctab.x_values = ffi.cast("double *", ffi.from_buffer(self.x_values))
+        ctab.y_values = ffi.cast("double *", ffi.from_buffer(self.y_values))
+        return ctab
+
+
+@attrs.define(frozen=True, kw_only=True)
+class CosmoTables:
+    """Class for storing interpolation tables of cosmological functions (e.g. transfer functions, growth factor).
+
+    Attributes
+    ----------
+    transfer_density : Table1D | None
+        Interpolation table for the density transfer function.
+        In InputParameters, becomes non-trivial only if MatterOptions.POWER_SPECTRUM is set to "CLASS".
+    transfer_vcb : Table1D | None
+        Interpolation table for the velocity transfer function.
+        In InputParameters, becomes non-trivial only if MatterOptions.POWER_SPECTRUM is set to "CLASS" and MatterOptions.V_CB_MODEL = "FLUCTS".
+    USE_SIGMA_8 : bool | None
+        Flag to indicate whether to use CosmoParams.SIGMA_8 or CosmoParams.A_s for the normalization of the power spectrum.
+    ps_norm : float | None
+        Normalization factor for the power spectrum. If USE_SIGMA_8 is True, this is set to CosmoParams.SIGMA_8, otherwise it is set to CosmoParams.A_s.
+    V_CB_AVG : float | None
+        Mean value of the amplitude of the relative velocity between baryons and cold dark matter at kinematic decoupling, in km/s.
+        In InputParameters, becomes non-trivial only if MatterOptions.V_CB_MODEL is set to "AVG-AUTO".
+    """
+
+    transfer_density: Table1D | None = field(default=None)
+    transfer_vcb: Table1D | None = field(default=None)
+    ps_norm: float | None = field(default=None)
+    USE_SIGMA_8: bool | None = field(default=None)
+    V_CB_AVG: float | None = field(default=None)
+
+    @classmethod
+    def new(cls, x: dict | Self | None = None, **kwargs):
+        """
+        Create a new instance of the struct.
+
+        Parameters
+        ----------
+        x : dict | CosmoTables | None
+            Initial values for the struct. If `x` is a dictionary, it should map field
+            names to their corresponding values. If `x` is an instance of this class,
+            its attributes will be used as initial values. If `x` is None, the
+            struct will be initialised with default values.
+
+        Other Parameters
+        ----------------
+        All other parameters should be passed as if directly to the class constructor
+        (i.e. as parameter names).
+        """
+        if isinstance(x, dict):
+            return cls(**x, **kwargs)
+        elif isinstance(x, CosmoTables):
+            return x.clone(**kwargs)
+        elif x is None:
+            return cls(**kwargs)
+        else:
+            raise ValueError(
+                f"Cannot instantiate {cls.__name__} with type {x.__class__}"
+            )
+
+    @cached_property
+    def _struct(self):
+        """The python-wrapped struct associated with this input object."""
+        return StructWrapper("CosmoTables")
+
+    @cached_property
+    def _cstruct(self) -> StructWrapper:
+        """The object pointing to the memory accessed by C-code for this struct."""
+        for k in self._struct.fieldnames:
+            val = getattr(self, k)
+            if isinstance(val, Table1D):
+                setattr(self._struct.cstruct, k, val._cstruct)
+            elif isinstance(val, (float, bool)) or val is not None:
+                setattr(self._struct.cstruct, k, val)
+
+        return self._struct.cstruct
+
+    def clone(self, **kwargs):
+        """Make a fresh copy of the instance with arbitrary parameters updated."""
+        return evolve(self, **kwargs)
+
+
+@attrs.define(frozen=True, kw_only=True)
+class CosmoParams(InputStruct):
+    r"""
+    Cosmological parameters.
+
+    Default parameters are based on `Plank18 <https://arxiv.org/pdf/1807.06209.pdf>`_,
+    Table 2, last column [TT,TE,EE+lowE+lensing+BAO].
+
+    Attributes
+    ----------
+    hlittle : float
+        The hubble parameter, :math:`H_0/100`.
+    OMm : float
+        The fractional matter density, :math:`\Omega_m`. This is the sum of the baryon
+        and CDM densities.
+    OMb : float
+        The fraction baryon density, :math:`\Omega_b`.
+    POWER_INDEX : float
+        Spectral index of the power spectrum, :math:`n_s`
+    SIGMA_8 : float
+        RMS mass variance of the matter field in spheres of 8 Mpc/h (power spectrum
+        normalisation). If not given explicitly but A_s is given, it is auto-calculated
+        via A_s and the other cosmological parameters. Only one of SIGMA_8 and A_s can
+        be given, otherwise an error is raised. If neither is given, it is set to the
+        default value of 0.8102.
+    A_s : float
+        Amplitude of primordial curvature power spectrum, at
+        :math:`k_{pivot} = 0.05 {\rm Mpc}^{-1}`.
+        If not given explicitly and SIGMA_8 is given, it is auto-calculated via SIGMA_8
+        and the other cosmological parameters, using CLASS. Only one of SIGMA_8 and A_s
+        can be given, otherwise an error is raised. If neither is given, it is set to
+        the default value of 2.105e-9.
+    base_cosmo : :class:`astropy.cosmology.FLRW`, optional
+        The base astropy cosmology object to use for this cosmology.
+        You can set this to something other than LambdaCDM if you want to use a
+        different cosmology. Note that the cosmological parameters in ``base_cosmo``
+        are not used at all---only the cosmography. You almost certainly should not
+        set this to anything other than the default, unless you know what you are doing.
+    OMn : float
+        Omega neutrino, the neutrino component. Note that this is not used in any of the
+        calculations in the code, but is just provided for completeness.
+    OMk : float
+        Omega curvature, the curvature component. Note that this is not used in any of
+        the calculations in the code, but is just provided for completeness.
+    OMr : float
+        Omega radiation, the radiation component. Note that this is not used in any of
+        the calculations in the code, but is just provided for completeness.
+    OMtot : float
+        Omega total, the total density. Note that this is not used in any of the
+        calculations and is assumed to be unity (i.e. a flat universe), but is just
+        provided for completeness.
+    Y_He : float
+        Helium mass fraction.
+    wl : float
+        Dark energy equation of state parameter.
+    """
+
+    _DEFAULT_SIGMA_8: ClassVar[float] = 0.8102
+    _DEFAULT_A_s: ClassVar[float] = 2.105e-9
+
+    _base_cosmo: Annotated[FLRW, Parameter(show=False, parse=False)] = field(
+        default=Planck18, validator=validators.instance_of(FLRW), eq=False, repr=False
+    )
+
+    _SIGMA_8: float = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=validators.optional(validators.gt(0)),
+    )
+
+    hlittle: float = field(
+        default=Planck18.h, converter=float, validator=validators.gt(0)
+    )
+    OMm: float = field(
+        default=Planck18.Om0, converter=float, validator=validators.gt(0)
+    )
+
+    OMb: float = field(
+        default=Planck18.Ob0, converter=float, validator=validators.gt(0)
+    )
+
+    POWER_INDEX: float = field(
+        default=0.9665, converter=float, validator=validators.gt(0)
+    )
+
+    _A_s: float = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=validators.optional(validators.gt(0)),
+    )
+
+    OMn: float = field(default=0.0, converter=float, validator=validators.ge(0))
+
+    OMk: float = field(default=0.0, converter=float, validator=validators.ge(0))
+
+    OMr: float = field(default=8.6e-5, converter=float, validator=validators.ge(0))
+
+    OMtot: float = field(
+        default=1.0, converter=float, validator=validators.ge(0)
+    )  # TODO: force this to be the sum of the others
+
+    Y_He: float = field(default=0.24, converter=float, validator=validators.ge(0))
+
+    wl: float = field(default=-1.0, converter=float)
+
+    # TODO: Combined validation via Astropy?
+
+    @_SIGMA_8.validator
+    def _sigma_8_vld(self, att, val):
+        if self._A_s is not None and val is not None:
+            raise ValueError(
+                "Cannot set both SIGMA_8 and A_s! "
+                "If this error arose when loading from template/file or evolving an "
+                "existing object, then explicitly set either SIGMA_8 or A_s "
+                "to None while setting the other to the desired value."
+            )
+
+    @cached_property
+    def SIGMA_8(self) -> float:
+        """RMS mass variance (power spectrum normalisation).
+
+        If not given explicitly, it is auto-calculated via A_s
+        and the other cosmological parameters.
+        """
+        if self._SIGMA_8 is not None:
+            return self._SIGMA_8
+        elif self._A_s is not None:
+            classy_output = run_classy(
+                h=self.hlittle,
+                Omega_cdm=self.OMm - self.OMb,
+                Omega_b=self.OMb,
+                A_s=self._A_s,
+                n_s=self.POWER_INDEX,
+                output="mPk",
+                level="fourier",
+            )
+            return classy_output.sigma8()
+        else:
+            return self._DEFAULT_SIGMA_8
+
+    @cached_property
+    def A_s(self) -> float:
+        """Amplitude of primordial curvature power spectrum, at k_pivot = 0.05 Mpc^-1.
+
+        If not given explicitly, it is auto-calculated via sigma_8
+        and the other cosmological parameters.
+        """
+        if self._A_s is not None:
+            return self._A_s
+        elif self._SIGMA_8 is not None:
+            classy_output = run_classy(
+                h=self.hlittle,
+                Omega_cdm=self.OMm - self.OMb,
+                Omega_b=self.OMb,
+                sigma8=self.SIGMA_8,
+                n_s=self.POWER_INDEX,
+                output="mTk",
+                level="thermodynamics",
+            )
+            return classy_output.get_current_derived_parameters(["A_s"])["A_s"]
+        else:
+            return self._DEFAULT_A_s
+
+    @property
+    def OMl(self):
+        """Omega lambda, dark energy density."""
+        return 1 - self.OMm
+
+    @cached_property
+    def cosmo(self):
+        """An astropy cosmology object for this cosmology.
+
+        Instances with the same base cosmology and parameters share the same object.
+        """
+        return _shared_cosmology(
+            self._base_cosmo, hlittle=self.hlittle, OMm=self.OMm, OMb=self.OMb
+        )
+
+    @classmethod
+    def from_astropy(cls, cosmo: FLRW, **kwargs):
+        """Create a CosmoParams object from an astropy cosmology object.
+
+        Pass SIGMA_8 and POWER_INDEX as kwargs if you want to override the default
+        values.
+        """
+        return cls(
+            hlittle=cosmo.h, OMm=cosmo.Om0, OMb=cosmo.Ob0, base_cosmo=cosmo, **kwargs
+        )
+
+    def asdict(self) -> dict:
+        """Return a dict representation of the instance.
+
+        Examples
+        --------
+        This dict is such that doing the following should work, i.e. it can be
+        used exactly to construct a new instance of the same object::
+
+        >>> inp = InputStruct(**params)
+        >>> newinp =InputStruct(**inp.asdict())
+        >>> inp == newinp
+        """
+        d = super().asdict()
+        del d["_base_cosmo"]
+        return d
+
+
+@attrs.define(frozen=True, kw_only=True)
+class MatterOptions(InputStruct):
+    r"""
+    Structure containing options which affect the matter field (ICs, perturbedfield, halos).
+
+    Attributes
+    ----------
+    HMF
+        Determines which halo mass function to be used for the normalisation of the
+        collapsed fraction (default Sheth-Tormen). Should be one of the
+        following codes:
+        PS (Press-Schechter)
+        ST (Sheth-Tormen)
+        Watson (Watson FOF)
+        Watson-z (Watson FOF-z)
+        Delos (Delos+23)
+        Reed07 (Reed+07; arXiv:0607150)
+        Yung24 (Yung+24; arXiv:2304.04348)
+    USE_RELATIVE_VELOCITIES: bool or None, optional
+        Flag to decide whether to use relative velocities.
+        This parameter is deprecated and will be removed in a future version, see V_CB_MODEL for the new method
+        to control the relative velocity.
+    POWER_SPECTRUM
+        Determines which power spectrum to use, default EH (unless `V_CB_MODEL`
+        is "FLUCTS"). Use the following codes:
+
+        * EH : Eisenstein & Hu 1999
+        * BBKS: Bardeen et al. 1986
+        * EFSTATHIOU: Efstathiou et al. 1992
+        * PEEBLES: Peebles 1980
+        * WHITE: White 1985
+        * CLASS: Runs the CLASS code to compute the power spectrum. This is the most precise, but also the slowest (can take ~30 seconds
+          at most and can be reduced if USE_MCGS=False or K_MAX_FOR_CLASS is set to a low value).
+    PERTURB_ON_HIGH_RES
+        Whether to perform the Zel'Dovich or 2LPT perturbation on the low or high
+        resolution grid.
+    USE_FFTW_WISDOM
+        Whether or not to use stored FFTW_WISDOMs for improving performance of FFTs
+    USE_INTERPOLATION_TABLES
+        Defines the interpolation tables used in the code. Default is 'hmf-interpolation'.
+        There are three levels available:
+
+        * 'no-interpolation': No interpolation tables are used.
+        * 'sigma-interpolation': Interpolation tables are used for sigma(M) only.
+        * 'hmf-interpolation': Interpolation tables are used for sigma(M) the halo mass
+        function.
+    PERTURB_ALGORITHM
+        Whether to use second-order Lagrangian perturbation theory (2LPT), Zel'dovich
+        (ZELDOVICH), or linear evolution (LINEAR).
+        Set this to 2LPT if the density field or the halo positions are extrapolated to
+        low redshifts. The current implementation is very naive and adds a factor ~6 to
+        the memory requirements. Reference: Scoccimarro R., 1998, MNRAS, 299, 1097-1118
+        Appendix D.
+    MINIMIZE_MEMORY
+        If set, the code will run in a mode that minimizes memory usage, at the expense
+        of some CPU/disk-IO. Good for large boxes / small computers.
+    SAMPLE_METHOD
+        The sampling method to use in the halo sampler when calculating progenitor populations:
+
+        * MASS-LIMITED : Mass-limited CMF sampling, where samples are drawn until the
+          expected mass is reached
+        * NUMBER-LIMITED : Number-limited CMF sampling, where we select a number of
+          halos from the Poisson distribution and then sample the CMF that many times
+        * PARTITION : Sheth et al 1999 Partition sampling, where the EPS collapsed
+          fraction is sampled (gaussian tail) and then the condition is updated using
+          the conservation of mass.
+        * BINARY-SPLIT : Parkinson et al 2008 Binary split model as in DarkForest
+          (Qiu et al 2021) where the EPS merger rate is sampled on small internal
+          timesteps such that only binary splits can occur.
+
+        .. note:: The initial sampling from the density grid will ALWAYS use NUMBER-LIMITED
+          sampling (method 1)
+    FILTER
+        Filter to use for sigma (matter field variance) and radius to mass conversions.
+        available options are: `spherical-tophat` and `gaussian`
+    HALO_FILTER
+        Filter to use for the DexM halo finder.
+        available options are: `spherical-tophat`, `sharp-k` and `gaussian`
+    SMOOTH_EVOLVED_DENSITY_FIELD
+        Smooth the evolved density field after perturbation.
+    DEXM_OPTMIZE
+        Use a faster version of the DexM halo finder which excludes halos from forming
+        within a certain distance of larger halos.
+    KEEP_3D_VELOCITIES
+        Whether to keep the 3D velocities in the ICs.
+        If False, only the z velocity is kept.
+    V_CB_MODEL
+        The model to use for the relative velocity field between the (cold) dark matter and the baryons,
+        at the moment of kinematic decoupling. Options are:
+
+        * ``NONE``: Zero relative velocity is assumed.
+        * ``AVG-AUTO``: The mean of the amplitude of the relative velocity is used in every cell in the box. It is computed from linear theory,
+          given the cosmological parameters.
+        * ``FLUCTS``: The relative velocity field is computed on the Lagrangian grid using linear theory. The relative velocity field
+          is assumed to be curl-free and completely correlated with the density field (in Fourier space). In this option, POWER_SPECTRUM
+          is automatically set to ``CLASS``.
+        * ``AVG-DEBUG``: A single value for the amplitude of the relative velocity is used in every cell in the box. It is set by the ``V_CB_AVG_DEBUG``
+        parameter in AstroParams. This is only for debugging purposes and should not be used in production.
+    SOURCE_MODEL
+        The source model to use in the simulation. Options are:
+
+        * ``E-INTEGRAL``: The traditional excursion-set formalism, where source properties
+          are defined on the Eulerian grid after 2LPT in regions of filter scale R
+          (see the X_FILTER options for filter shapes). This integrates over the CHMF
+          using the smoothed density grids, then multiplies the result by (1 + delta)
+          to get the source properties in each cell.
+        * ``CONST-ION-EFF``: Similar to E-INTEGRAL, but ionizing efficiency is constant and
+          does not depend on the halo mass (see Mesinger+ 2010).
+        * ``L-INTEGRAL``: Analagous to the 'ESF-L' model described in Trac+22, where source
+          properties are defined on the Lagrangian (IC) grid by integrating the CHMF
+          prior to the IGM physics and then mapping properties to the Eulerian grid
+          using 2LPT.
+        * ``DEXM-ESF``: The DexM excursion-set formalism, where discrete halo catalogues
+          are generated on the Lagrangian (IC) grid using an excursion-set halo
+          finder. Source properties are defined on the Lagrangian grid and then mapped
+          to the Eulerian grid using 2LPT. This model utilised the 'L-INTEGRAL' method
+          for halos below the DexM mass resolution, which is the mass of the
+          high-resolution (DIM^3) cells.
+        * ``CHMF-SAMPLER``: The CHMF sampler, where discrete halo catalogues are generated
+          by sampling the CHMF on the IC grid, between the low-resolution (HII_DIM^3)
+          cell mass and a minimum mass defined by the user (SAMPLER_MIN_MASS). This
+          model uses the 'L-INTEGRAL' method for halos below the SAMPLER_MIN_MASS, and
+          the 'DEXM-ESF' method for halos above the HII_DIM cell mass.
+    """
+
+    HMF: Literal["PS", "ST", "WATSON", "WATSON-Z", "DELOS", "REED07", "YUNG24"] = (
+        choice_field(default="ST")
+    )
+    _USE_RELATIVE_VELOCITIES: bool | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(bool)
+    )
+    V_CB_MODEL: Literal["NONE", "AVG-AUTO", "FLUCTS", "AVG-DEBUG"] = choice_field()
+    POWER_SPECTRUM: Literal["EH", "BBKS", "EFSTATHIOU", "PEEBLES", "WHITE", "CLASS"] = (
+        choice_field()
+    )
+    PERTURB_ON_HIGH_RES: bool = field(default=False, converter=bool)
+    USE_INTERPOLATION_TABLES: Literal[
+        "no-interpolation", "sigma-interpolation", "hmf-interpolation"
+    ] = choice_field(default="hmf-interpolation")
+    MINIMIZE_MEMORY: bool = field(default=False, converter=bool)
+    KEEP_3D_VELOCITIES: bool = field(default=False, converter=bool)
+    SAMPLE_METHOD: Literal[
+        "MASS-LIMITED", "NUMBER-LIMITED", "PARTITION", "BINARY-SPLIT"
+    ] = choice_field(
+        default="MASS-LIMITED",
+    )
+    FILTER: FilterOptions = choice_field(
+        default="spherical-tophat",
+        validator=validators.not_(validators.in_(["sharp-k"])),
+    )
+    HALO_FILTER: FilterOptions = choice_field(default="spherical-tophat")
+    SMOOTH_EVOLVED_DENSITY_FIELD: bool = field(default=False, converter=bool)
+    DEXM_OPTIMIZE: bool = field(default=False, converter=bool)
+    PERTURB_ALGORITHM: Literal["LINEAR", "ZELDOVICH", "2LPT"] = choice_field(
+        default="2LPT",
+    )
+    USE_FFTW_WISDOM: bool = field(default=False, converter=bool)
+
+    SOURCE_MODEL: Literal[
+        "CONST-ION-EFF", "E-INTEGRAL", "L-INTEGRAL", "DEXM-ESF", "CHMF-SAMPLER"
+    ] = choice_field(default="CHMF-SAMPLER")
+
+    @POWER_SPECTRUM.default
+    def _ps_default(self):
+        return "CLASS" if self.V_CB_MODEL == "FLUCTS" else "EH"
+
+    @POWER_SPECTRUM.validator
+    def _POWER_SPECTRUM_vld(self, att, val):
+        if self.V_CB_MODEL == "FLUCTS" and val != "CLASS":
+            raise ValueError(
+                "When using V_CB_MODEL='FLUCTS', you must use POWER_SPECTRUM = 'CLASS'! "
+                "Please set POWER_SPECTRUM to 'CLASS' or change V_CB_MODEL to something else."
+            )
+
+    @cached_property
+    def USE_RELATIVE_VELOCITIES(self) -> bool:
+        """Whether to use the fluctuating field of the relative velocity between (cold) dark matter and baryons.
+
+        This is a deprecated property, and will be removed in v5. Please use V_CB_MODEL instead.
+        """
+        if self._USE_RELATIVE_VELOCITIES is None:
+            # User didn't explicitly set USE_RELATIVE_VELOCITIES, infer from V_CB_MODEL
+            return self.V_CB_MODEL == "FLUCTS"
+        else:
+            return self._USE_RELATIVE_VELOCITIES
+
+    @V_CB_MODEL.default
+    def _default_v_cb_model(self):
+        if self._USE_RELATIVE_VELOCITIES is None:
+            return "NONE"
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "USE_RELATIVE_VELOCITIES",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "USE_RELATIVE_VELOCITIES is deprecated and will be removed in a future version. "
+                    "Please use V_CB_MODEL directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return "FLUCTS" if self._USE_RELATIVE_VELOCITIES else "NONE"
+
+    @V_CB_MODEL.validator
+    def _v_cb_model_vld(self, att, val):
+        if self._USE_RELATIVE_VELOCITIES is True and val == "NONE":
+            raise ValueError(
+                "V_CB_MODEL is set to 'NONE' but USE_RELATIVE_VELOCITIES is True! "
+                "Either set USE_RELATIVE_VELOCITIES to False or change V_CB_MODEL to 'FLUCTS'."
+            )
+        if self._USE_RELATIVE_VELOCITIES is False and val != "NONE":
+            raise ValueError(
+                f"V_CB_MODEL is set to '{val}' but USE_RELATIVE_VELOCITIES is False! "
+                "Either set USE_RELATIVE_VELOCITIES to True or change V_CB_MODEL to 'FLUCTS'."
+            )
+
+    @SOURCE_MODEL.validator
+    def _SOURCE_MODEL_vld(self, att, val):
+        """Validate SOURCE_MODEL dependencies."""
+        if val in ["DEXM-ESF", "CHMF-SAMPLER"] and self.HMF not in ["ST", "PS"]:
+            msg = (
+                "The conditional mass functions requied for the discrete halo field are only currently"
+                "available for the Sheth-Tormen and Press-Schechter mass functions., use HMF='ST' or 'PS'"
+            )
+            raise NotImplementedError(msg)
+        if (
+            val in ["DEXM-ESF", "CHMF-SAMPLER"]
+            and self.USE_INTERPOLATION_TABLES != "hmf-interpolation"
+        ):
+            msg = (
+                "SOURCE_MODEL settings using the halo sampler require the use of HMF interpolation tables."
+                "Switch USE_INTERPOLATION_TABLES to 'hmf-interpolation'"
+            )
+            raise ValueError(msg)
+
+    @property
+    def has_discrete_halos(self) -> bool:
+        """Whether the current options will produce discrete halo catalogues."""
+        return self.SOURCE_MODEL in ["DEXM-ESF", "CHMF-SAMPLER"]
+
+    @property
+    def lagrangian_source_grid(self) -> bool:
+        """Whether the current source model is Lagrangian."""
+        return self.SOURCE_MODEL in ["L-INTEGRAL", "DEXM-ESF", "CHMF-SAMPLER"]
+
+    @property
+    def mass_dependent_zeta(self) -> bool:
+        """Whether the current source model uses mass-dependent zeta."""
+        return self.SOURCE_MODEL in [
+            "E-INTEGRAL",
+            "L-INTEGRAL",
+            "DEXM-ESF",
+            "CHMF-SAMPLER",
+        ]
+
+
+@attrs.define(frozen=True, kw_only=True)
+class SimulationOptions(InputStruct):
+    """
+    Structure containing broad simulation options.
+
+    Attributes
+    ----------
+    HII_DIM : int, optional
+        Number of cells for the low-res box (after smoothing the high-resolution matter
+        field). Default 256.
+    HIRES_TO_LOWRES_FACTOR : float, optional
+        The ratio of the high-resolution box dimensionality to the low-resolution
+        box dimensionality (i.e. DIM/HII_DIM). Use this parameter to define the size
+        as a fixed ratio, instead of specifying DIM explicitly. This is useful if
+        the parameters will be later evolved, so that specifying a new HII_DIM keeps
+        the fixed resolution. By default, this is None, and a default of DIM=3*HII_DIM
+        is used. This should be at least 3, and generally an integer (though this is not
+        enforced).
+    DIM : int, optional
+        Number of cells for the high-res box (sampling ICs) along a principal axis.
+        In general, prefer setting HIRES_TO_LOWRES_FACTOR instead of DIM directly.
+        Setting both will raise an error.
+    LOWRES_CELL_SIZE_MPC : float, optional
+        The cell size of the low-resolution boxes (i.e. after smoothing the high-resolution
+        matter field). Use either this parameter or BOX_LEN, setting both will raise
+        an error. This parameter is generally preferrable, as it allows you to evolve
+        the HII_DIM later, and keep the same resolution (automatically scaling up
+        BOX_LEN). Default is None, falling back on a cell size of 1.5 Mpc.
+    BOX_LEN : float, optional
+        Length of the box, in Mpc. Prefer setting LOWRES_CELL_SIZE_MPC, which automatically
+        defines this setting. Specifying both will result in an error. By default,
+        the BOX_LEN will be calculated as 1.5 * HII_DIM.
+    NON_CUBIC_FACTOR : float, optional
+        Factor which allows the creation of non-cubic boxes. It will shorten/lengthen
+        the line of sight dimension of all boxes. ``NON_CUBIC_FACTOR * DIM/HII_DIM``
+        must  result in an integer.
+    N_THREADS : int, optional
+        Sets the number of processors (threads) to be used for performing 21cmFAST.
+        Default 1.
+    SAMPLER_MIN_MASS: float, optional
+        The minimum mass to sample in the halo sampler when ``SOURCE_MODEL`` is
+        "CHMF-SAMPLER", decreasing this can drastically increase both compute time and
+        memory usage.
+    SAMPLER_BUFFER_FACTOR: float, optional
+        The arrays for the halo sampler will have size of SAMPLER_BUFFER_FACTOR
+        multiplied by the expected number of halos in the box. Ideally this should be
+        close to unity but one may wish to increase it to test alternative scenarios.
+    N_COND_INTERP: int, optional
+        The number of condition bins in the inverse CMF tables.
+    N_PROB_INTERP: int, optional
+        The number of probability bins in the inverse CMF tables.
+    MIN_LOGPROB: float, optional
+        The minimum log-probability of the inverse CMF tables.
+    HALOMASS_CORRECTION: float, optional
+        This provides a corrective factor to the mass-limited (SAMPLE_METHOD==0) sampling, which multiplies the
+        expected mass from a condition by this number. The default value of 0.9 is
+        calibrated to the mass-limited sampling on a timestep of ZPRIME_STEP_FACTOR=1.02.
+        If ZPRIME_STEP_FACTOR is increased, this value should be set closer to 1.
+        This factor is also used in the partition (SAMPLE_METHOD==2) sampler, dividing
+        nu(M) of each sample drawn.
+    PARKINSON_G0: float, optional
+        Only used when SAMPLE_METHOD==3, sets the normalisation of the correction to the
+        extended press-schecter used in Parkinson et al. 2008.
+    PARKINSON_y1: float, optional
+        Only used when SAMPLE_METHOD==3, sets the index of the sigma power-law term of the correction to the
+        extended Press-Schechter mass function used in Parkinson et al. 2008.
+    PARKINSON_y2: float, optional
+        Only used when SAMPLE_METHOD==3, sets the index of the delta power-law term of the correction to the
+        extended Press-Schechter mass function used in Parkinson et al. 2008.
+    Z_HEAT_MAX : float, optional
+        Maximum redshift used in the Tk and x_e evolution equations.
+        Temperature and x_e are assumed to be homogeneous at higher redshifts.
+        Lower values will increase performance.
+    ZPRIME_STEP_FACTOR : float, optional
+        Logarithmic redshift step-size used in the z' integral.  Logarithmic dz.
+        Decreasing (closer to unity) increases total simulation time for lightcones,
+        and for Ts calculations.
+    INITIAL_REDSHIFT : float, optional
+        Initial redshift used to perturb field from
+    DELTA_R_FACTOR: float, optional
+        The factor by which to decrease the size of the filter in DexM when creating
+        halo catalogues.
+    DENSITY_SMOOTH_RADIUS: float, optional
+        The radius of the smoothing kernel in Mpc.
+    DEXM_OPTIMIZE_MINMASS: float, optional
+        The minimum mass of a halo for which to use the DexM optimization if
+        DEXM_OPTIMIZE is True.
+    DEXM_R_OVERLAP: float, optional
+        The factor by which to multiply the halo radius to determine the distance within
+        which smaller halos are excluded.
+    CORR_STAR : float, optional
+        Self-correlation length used for updating halo properties. To model the
+        correlation in the SHMR between timesteps, we sample from a conditional
+        bivariate gaussian with correlation factor given by exp(-dz/CORR_STAR). This
+        value is placed in SimulationOptions since it is used in the halo sampler, and
+        not in the ionization routines.
+    CORR_SFR : float, optional
+        Self-correlation length used for updating star formation rate, see "CORR_STAR"
+        for details.
+    CORR_LX : float, optional
+        Self-correlation length used for updating xray luminosity, see "CORR_STAR" for
+        details.
+    K_MAX_FOR_CLASS: float, optional
+        Maximum wavenumber to run CLASS, in 1/Mpc. Becomes relevant only if
+        ``matter_options.POWER_SPECTRUM = "CLASS"``.
+    MIN_XE_FOR_NION_IN_TAUX: float, optional
+        Minimum global x_e value for which n_ion is evaluated
+        in the tau_X integral (X-ray optical depth). When x_e is above this threshold
+        value, it is assumed that n_ion=0, in order to speed up the calculations.
+        For now, this parameter becomes relevant only when run_global_evolution is
+        called, as it controls the runtime of this function (higher values reduce the
+        runtime, in expense of degraded precision).
+    MIN_XE_FOR_FCOLL_IN_TAUX: float, optional
+        This is a deprecated parameter, please use MIN_XE_FOR_NION_IN_TAUX instead.
+    """
+
+    _DEFAULT_HIRES_TO_LOWRES_FACTOR: ClassVar[float] = 3
+    _DEFAULT_LOWRES_CELL_SIZE_MPC: ClassVar[float] = 1.5
+
+    HII_DIM: int = field(default=256, converter=int, validator=validators.gt(0))
+
+    _BOX_LEN: float = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=validators.optional(validators.gt(0)),
+    )
+    _DIM: int | None = field(default=None, converter=attrs.converters.optional(int))
+
+    _HIRES_TO_LOWRES_FACTOR: float = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=attrs.validators.optional(validators.gt(1)),
+    )
+    _LOWRES_CELL_SIZE_MPC: float = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=attrs.validators.optional(validators.gt(0)),
+    )
+
+    NON_CUBIC_FACTOR: float = field(
+        default=1.0, converter=float, validator=validators.gt(0)
+    )
+    N_THREADS: int = field(default=1, converter=int, validator=validators.gt(0))
+    SAMPLER_MIN_MASS: float = field(
+        default=1e8, converter=float, validator=validators.gt(0)
+    )
+    SAMPLER_BUFFER_FACTOR: float = field(default=2.0, converter=float)
+    N_COND_INTERP: int = field(default=200, converter=int)
+    N_PROB_INTERP: int = field(default=400, converter=int)
+    MIN_LOGPROB: float = field(default=-12, converter=float)
+    HALOMASS_CORRECTION: float = field(
+        default=0.89, converter=float, validator=validators.gt(0)
+    )
+    PARKINSON_G0: float = field(
+        default=1.0, converter=float, validator=validators.gt(0)
+    )
+    PARKINSON_y1: float = field(default=0.0, converter=float)
+    PARKINSON_y2: float = field(default=0.0, converter=float)
+    Z_HEAT_MAX: float = field(default=35.0, converter=float)
+    ZPRIME_STEP_FACTOR: float = field(default=1.02, converter=float)
+    _MIN_XE_FOR_FCOLL_IN_TAUX: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+    )
+    MIN_XE_FOR_NION_IN_TAUX: float = field(converter=float)
+
+    INITIAL_REDSHIFT: float = field(default=300.0, converter=float)
+    DELTA_R_FACTOR: float = field(
+        default=1.1, converter=float, validator=validators.gt(1.0)
+    )
+
+    DENSITY_SMOOTH_RADIUS: float = field(
+        default=0.2, converter=float, validator=validators.gt(0)
+    )
+    DEXM_OPTIMIZE_MINMASS: float = field(
+        default=1e11, converter=float, validator=validators.gt(0)
+    )
+    DEXM_R_OVERLAP: float = field(
+        default=2, converter=float, validator=validators.gt(0)
+    )
+
+    # NOTE: Thematically these should be in AstroParams, However they affect the HaloCatalog
+    #   Objects and so need to be in the matter_cosmo hash, they seem a little strange here
+    #   but will remain until someone comes up with a better organisation down the line
+    CORR_STAR: float = field(default=0.5, converter=float)
+    CORR_SFR: float = field(default=0.2, converter=float)
+    # NOTE (Jdavies): I do not currently have great priors for this value
+    CORR_LX: float = field(default=0.2, converter=float)
+    K_MAX_FOR_CLASS: float | None = field(
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=attrs.validators.optional(validators.gt(0)),
+    )
+
+    @property
+    def DIM(self) -> int:
+        """The number of cells on a side of the hi-res box used for ICs.
+
+        If not given explicitly, it is auto-calculated via
+        ``HII_DIM * HIRES_TO_LOWRES_FACTOR``.
+        """
+        if self._DIM is not None:
+            return self._DIM
+        else:
+            return int(self.HII_DIM * self.HIRES_TO_LOWRES_FACTOR)
+
+    @property
+    def BOX_LEN(self) -> float:
+        """The size of the box along a side, in Mpc.
+
+        If not given explicitly, it is auto-calculated via
+        ``HII_DIM * LOWRES_CELL_SIZE_MPC``.
+        """
+        if self._BOX_LEN is not None:
+            return self._BOX_LEN
+        else:
+            return np.round(self.HII_DIM * self.LOWRES_CELL_SIZE_MPC, 3)
+
+    @_HIRES_TO_LOWRES_FACTOR.validator
+    def _hires_to_lowres_vld(self, att, val):
+        if self._DIM is not None and val is not None:
+            raise ValueError(
+                "Cannot set both DIM and HIRES_TO_LOWRES_FACTOR! "
+                "If this error arose when loading from template/file or evolving an "
+                "existing object, then explicitly set either DIM or HIRES_TO_LOWRES_FACTOR "
+                "to None while setting the other to the desired value."
+            )
+
+    @_LOWRES_CELL_SIZE_MPC.validator
+    def _lowres_cellsize_vld(self, att, val):
+        if self._BOX_LEN is not None and val is not None:
+            raise ValueError(
+                "Cannot set both BOX_LEN and LOWRES_CELL_SIZE_MPC! "
+                "If this error arose when loading from template/file or evolving an "
+                "existing object, then explicitly set either BOX_LEN or "
+                "LOWRES_CELL_SIZE_MPC to None while setting the other to the desired "
+                "value."
+            )
+
+    @property
+    def HIRES_TO_LOWRES_FACTOR(self) -> float:
+        """The downsampling factor from high to low-res."""
+        if self._DIM is not None:
+            return self._DIM / self.HII_DIM
+        elif self._HIRES_TO_LOWRES_FACTOR is not None:
+            return self._HIRES_TO_LOWRES_FACTOR
+        else:
+            return self._DEFAULT_HIRES_TO_LOWRES_FACTOR
+
+    @property
+    def LOWRES_CELL_SIZE_MPC(self) -> float:
+        """The cell size (in Mpc) of the low-res grids."""
+        if self._BOX_LEN is not None:
+            return self._BOX_LEN / self.HII_DIM
+        elif self._LOWRES_CELL_SIZE_MPC is not None:
+            return self._LOWRES_CELL_SIZE_MPC
+        else:
+            return self._DEFAULT_LOWRES_CELL_SIZE_MPC
+
+    @cached_property
+    def MIN_XE_FOR_FCOLL_IN_TAUX(self) -> float:
+        """Minimum global x_e value for which n_ion is evaluated in the tau_X integral.
+
+        This is a deprecated property, and will be removed in v5. Please use
+        MIN_XE_FOR_NION_IN_TAUX instead.
+        """
+        return self.MIN_XE_FOR_NION_IN_TAUX
+
+    @MIN_XE_FOR_NION_IN_TAUX.default
+    def _min_xe_for_nion_in_taux_default(self):
+        if self._MIN_XE_FOR_FCOLL_IN_TAUX is None:
+            return 1e-3
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "MIN_XE_FOR_FCOLL_IN_TAUX",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "MIN_XE_FOR_FCOLL_IN_TAUX is deprecated and will be removed in a "
+                    "future version. Please use MIN_XE_FOR_NION_IN_TAUX directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+        return self._MIN_XE_FOR_FCOLL_IN_TAUX
+
+    @MIN_XE_FOR_NION_IN_TAUX.validator
+    def _min_xe_for_nion_in_taux_vld(self, att, val):
+        if (
+            self._MIN_XE_FOR_FCOLL_IN_TAUX is not None
+            and val != self._MIN_XE_FOR_FCOLL_IN_TAUX
+        ):
+            raise ValueError(
+                f"MIN_XE_FOR_NION_IN_TAUX is set to {val} but MIN_XE_FOR_FCOLL_IN_TAUX "
+                f"is {self._MIN_XE_FOR_FCOLL_IN_TAUX}! Only set one of them."
+            )
+
+    @NON_CUBIC_FACTOR.validator
+    def _NON_CUBIC_FACTOR_validator(self, att, val):
+        dcf = self.DIM * val
+        hdcf = self.HII_DIM * val
+        if dcf % int(dcf) or hdcf % int(hdcf):
+            raise ValueError(
+                "NON_CUBIC_FACTOR * DIM and NON_CUBIC_FACTOR * HII_DIM must be integers"
+            )
+
+    @property
+    def tot_fft_num_pixels(self):
+        """Total number of pixels in the high-res box."""
+        return int(self.NON_CUBIC_FACTOR * self.DIM**3)
+
+    @property
+    def HII_tot_num_pixels(self):
+        """Total number of pixels in the low-res box."""
+        return int(self.NON_CUBIC_FACTOR * self.HII_DIM**3)
+
+    @property
+    def cell_size(self) -> un.Quantity[un.Mpc]:
+        """The resolution of a low-res cell."""
+        return (self.BOX_LEN / self.HII_DIM) * un.Mpc
+
+    @property
+    def cell_size_hires(self) -> un.Quantity[un.Mpc]:
+        """The resolution of a hi-res cell."""
+        return (self.BOX_LEN / self.DIM) * un.Mpc
+
+
+@attrs.define(frozen=True, kw_only=True)
+class AstroOptions(InputStruct):
+    """
+    Options for the ionization routines which enable/disable certain modules.
+
+    Parameters
+    ----------
+    USE_MINI_HALOS: bool, optional
+        Set to True if including molecular cooling galaxies in the simulation
+        (which reside in mini-halos). This is a deprecated flag, see USE_MCGS.
+    USE_MCGS : bool, optional
+        Set to True if including molecular cooling galaxies in the simulation.
+        If True, USE_TS_FLUCT must be True and RECOMB_MODEL must be not "none".
+    USE_X_RAY_HEATING : bool, optional
+        Whether to include X-ray heating (useful for debugging).
+    USE_CMB_HEATING : bool, optional
+        Whether to include CMB heating. (cf Eq.4 of Meiksin 2021,
+        https://arxiv.org/abs/2105.14516)
+    USE_LYA_HEATING : bool, optional
+        Whether to use Lyman-alpha heating. (cf Sec. 3 of Reis+2021,
+        https://doi.org/10.1093/mnras/stab2089)
+    INHOMO_RECO : bool or None, optional
+        Whether to perform inhomogeneous recombinations. Increases the computation
+        time. This parameter is deprecated and will be removed in a future version, see RECOMB_MODEL
+        for the new method to control the recombination algorithm.
+    RECOMB_MODEL : str, optional
+        The recombination algorithm used in the code. Options are:
+
+        none: Ignoring recombination completely. This is not physical but allows to run the code much faster that way.
+        homogeneous: Assuming a homogeneous recombination rate. This is not physical but could be useful for debugging
+        or testing purposes, and is slightly faster than the inhomogeneous case.
+        inhomogeneous: The most physical option, where the recombination rate is calculated locally at every cell,
+        as described in Sobacchi & Mesinger 2014.
+    USE_TS_FLUCT : bool, optional
+        Whether to perform IGM spin temperature fluctuations (i.e. X-ray heating).
+        Dramatically increases the computation time.
+    M_MIN_in_Mass : bool, optional
+        Whether the minimum halo mass (for ionization) is defined by
+        mass or virial temperature. Only has an effect when
+        ``SOURCE_MODEL == 'CONST-ION-EFF'``
+    PHOTON_CONS_TYPE : str, optional
+        Whether to perform a small correction to account for the inherent
+        photon non-conservation. This can be one of three types of correction:
+
+        * no-photoncons: No photon cosnervation correction,
+        * z-photoncons: Photon conservation correction by adjusting the redshift of the
+          N_ion source field (Park+22)
+        * alpha-photoncons: Adjustment to the escape fraction power-law slope, based on
+          fiducial results in Park+22, This runs a series of global xH evolutions and
+          one calibration simulation to find the adjustment as a function of xH
+        * f-photoncons: Adjustment to the escape fraction normalisation, runs one
+          calibration simulation to find the adjustment as a function of xH where
+          ``f'/f = xH_global/xH_calibration``
+    USE_REIONIZATION_PHOTOHEATING_FEEDBACK: bool, optional
+        Whether to apply the reionization photoheating feedback on the turnover mass, see Sobacchi and Mesinger 2013 (https://arxiv.org/pdf/1301.6776).
+    FIX_VCB_AVG: bool or None, optional
+        Whether to fix the amplitude of the relative velocity between (cold) dark matter and
+        baryons on a constant mean value from linear perturbation theory. This parameter is
+        deprecated and will be removed in a future version, see V_CB_MODEL for the new method
+        to control the relative velocity.
+    USE_EXP_FILTER: bool, optional
+        Use the exponential filter (MFP-epsilon(r) from Davies & Furlanetto 2021) when
+        calculating ionising emissivity fields.
+
+        .. warning: this does not affect other field filters, and should probably be
+          used with HII_FILTER==0 (real-space top-hat).
+
+    CELL_RECOMB : bool, optional
+        An alternate way of counting recombinations based on the local cell rather than
+        the filter region. This is part of the perspective shift (see Davies &
+        Furlanetto 2021) from counting photons/atoms in a sphere and flagging a central
+        pixel to counting photons which we expect to reach the central pixel, and taking
+        the ratio of atoms in the pixel. This flag simply turns off the filtering of
+        N_rec grids, and takes the recombinations in the central cell.
+    LYA_MULTIPLE_SCATTERING: bool, optional
+        If True, multiple scattering window function is used for the computation of
+        Lyman alpha photons. If False, the straight-line window function is used (see
+        more info in `2601.14360 <https://arxiv.org/abs/2601.14360>`_).
+        This feature can be turned on only when the source model is defined on the
+        Lagrangian grid, otherwise an error is raised.
+    USE_ADIABATIC_FLUCTUATIONS: bool, optional
+        Whether to apply adiabatic fluctuations to the initial temperature box, see
+        Munoz 2023. If set to False, the initial temperature box is completely
+        homogeneous. Default is True.
+    USE_METALLICITY: bool, optional
+        Whether to use metallicity for determining the X-ray luminosity/emissivity. If set to True,
+        the X-ray luminosity depends on the metallicity via Eq. (13) in Davies, Mesinger and Murray 2025
+        (https://arxiv.org/pdf/2504.17254), otherwise the X-ray emissivity is proportional to the star
+        formation rate density.
+    USE_UPPER_STELLAR_TURNOVER: bool, optional
+        Whether to use an additional powerlaw in stellar mass fraction at high halo
+        mass. The pivot mass scale and power-law index are controlled by two parameters,
+        UPPER_STELLAR_TURNOVER_MASS and UPPER_STELLAR_TURNOVER_INDEX respectively.
+        This is currently only implemented using the discrete halo model, and has no effect otherwise.
+    HALO_SCALING_RELATIONS_MEDIAN: bool, optional
+        If True, halo scaling relation parameters (F_STAR10_ACG,t_STAR etc...) define the
+        median of their conditional distributions. If False, they describe the mean.
+        This becomes important when using non-symmetric dristributions such as the log-normal.
+    HII_FILTER : str
+        Filter for the halo or density field used to generate ionization field
+        Available options are: 'spherical-tophat', 'sharp-k', and 'gaussian'
+    HEAT_FILTER : str
+        Filter for the halo or density field used to generate the spin-temperature field
+        Available options are: 'spherical-tophat', 'sharp-k', and 'gaussian'
+    IONISE_ENTIRE_SPHERE: bool, optional
+        If True, ionises the entire sphere on the filter scale when an ionised region is
+        found in the excursion set.
+    INTEGRATION_METHOD_ACGS: str, optional
+        The integration method to use for conditional MF integrals of atomic cooling galaxies:
+
+        * 'GSL-QAG': GSL QAG adaptive integration,
+        * 'GAUSS-LEGENDRE': Gauss-Legendre integration, previously forced in the
+          interpolation tables,
+        * 'GAMMA-APPROX': Approximate integration, assuming sharp cutoffs and a triple
+          power-law for sigma(M) based on EPS
+
+        .. note:: Global integrals will use GSL QAG adaptive integration
+    INTEGRATION_METHOD_MCGS: str, optional
+        The integration method to use for conditional MF integrals for molecular cooling galaxies:
+
+        * 'GSL-QAG': GSL QAG adaptive integration,
+        * 'GAUSS-LEGENDRE': Gauss-Legendre integration, previously forced in the
+          interpolation tables,
+        * 'GAMMA-APPROX': Approximate integration, assuming sharp cutoffs and a triple
+          power-law for sigma(M) based on EPS
+    INTEGRATION_METHOD_ATOMIC: str, optional
+        The integration method to use for conditional MF integrals for atomic cooling galaxies.
+        This is a deprecated parameter, please use INTEGRATION_METHOD_ACGS instead.
+    INTEGRATION_METHOD_MINI: str, optional
+        The integration method to use for conditional MF integrals for molecular cooling galaxies.
+        This is a deprecated parameter, please use INTEGRATION_METHOD_MCGS instead.
+    """
+
+    _USE_MINI_HALOS: bool | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(bool)
+    )
+    USE_MCGS: bool = field(converter=bool)
+    USE_X_RAY_HEATING: bool = field(default=True, converter=bool)
+    USE_CMB_HEATING: bool = field(default=True, converter=bool)
+    USE_LYA_HEATING: bool = field(default=True, converter=bool)
+    _INHOMO_RECO: bool | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(bool)
+    )
+    USE_TS_FLUCT: bool = field(default=False, converter=bool)
+    _FIX_VCB_AVG: bool | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(bool)
+    )
+    USE_EXP_FILTER: bool = field(default=True, converter=bool)
+    CELL_RECOMB: bool = field(default=True, converter=bool)
+    LYA_MULTIPLE_SCATTERING = field(default=False, converter=bool)
+    USE_ADIABATIC_FLUCTUATIONS = field(default=True, converter=bool)
+    PHOTON_CONS_TYPE: Literal[
+        "no-photoncons", "z-photoncons", "alpha-photoncons", "f-photoncons"
+    ] = choice_field(
+        default="no-photoncons",
+    )
+    USE_METALLICITY: bool = field(default=True, converter=bool)
+    USE_UPPER_STELLAR_TURNOVER: bool = field(default=True, converter=bool)
+    M_MIN_in_Mass: bool = field(default=True, converter=bool)
+    HALO_SCALING_RELATIONS_MEDIAN: bool = field(default=False, converter=bool)
+    HII_FILTER: FilterOptions = choice_field(default="spherical-tophat")
+    HEAT_FILTER: FilterOptions = choice_field(default="spherical-tophat")
+    IONISE_ENTIRE_SPHERE: bool = field(default=False, converter=bool)
+    RECOMB_MODEL: Literal["none", "homogeneous", "inhomogeneous"] = choice_field()
+    USE_REIONIZATION_PHOTOHEATING_FEEDBACK: bool = field(converter=bool)
+    _INTEGRATION_METHOD_ATOMIC: IntegralMethods | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(str)
+    )
+    _INTEGRATION_METHOD_MINI: IntegralMethods | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(str)
+    )
+    INTEGRATION_METHOD_ACGS: IntegralMethods = choice_field()
+    INTEGRATION_METHOD_MCGS: IntegralMethods = choice_field()
+
+    @cached_property
+    def USE_MINI_HALOS(self) -> bool:
+        """Whether to use molecular cooling galaxies (which reside in mini-halos) in the simulation.
+
+        This is a deprecated property, and will be removed in v5. Please use USE_MCGS instead.
+        """
+        if self._USE_MINI_HALOS is None:
+            return self.USE_MCGS
+        else:
+            return self._USE_MINI_HALOS
+
+    @cached_property
+    def FIX_VCB_AVG(self) -> bool:
+        """Whether to fix the amplitude of the relative velocity between (cold) dark matter and baryons on a constant mean value from linear perturbation theory.
+
+        This is a deprecated property, and will be removed in v5. Please use V_CB_MODEL instead.
+        """
+        return self._FIX_VCB_AVG
+
+    @cached_property
+    def INHOMO_RECO(self) -> bool:
+        """Whether to perform inhomogeneous recombinations.
+
+        This is a deprecated property, and will be removed in v5. Please use RECOMB_MODEL instead.
+        """
+        if self._INHOMO_RECO is None:
+            # User didn't explicitly set INHOMO_RECO, infer from RECOMB_MODEL
+            return self.RECOMB_MODEL != "none"
+        else:
+            return self._INHOMO_RECO
+
+    @cached_property
+    def INTEGRATION_METHOD_ATOMIC(self) -> IntegralMethods:
+        """The integration method to use for conditional MF integrals for atomic cooling galaxies.
+
+        This is a deprecated property, and will be removed in v5. Please use INTEGRATION_METHOD_ACGS instead.
+        """
+        if self._INTEGRATION_METHOD_ATOMIC is None:
+            return self.INTEGRATION_METHOD_ACGS
+        else:
+            return self._INTEGRATION_METHOD_ATOMIC
+
+    @cached_property
+    def INTEGRATION_METHOD_MINI(self) -> IntegralMethods:
+        """The integration method to use for conditional MF integrals for molecular cooling galaxies.
+
+        This is a deprecated property, and will be removed in v5. Please use INTEGRATION_METHOD_MCGS instead.
+        """
+        if self._INTEGRATION_METHOD_MINI is None:
+            return self.INTEGRATION_METHOD_MCGS
+        else:
+            return self._INTEGRATION_METHOD_MINI
+
+    @USE_REIONIZATION_PHOTOHEATING_FEEDBACK.default
+    def _default_use_reionization_photoheating_feedback(self):
+        return self.USE_MCGS
+
+    @USE_MCGS.default
+    def _default_use_mcgs(self):
+        if self._USE_MINI_HALOS is None:
+            return False
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "USE_MINI_HALOS",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "USE_MINI_HALOS is deprecated and will be removed in a future version. "
+                    "Please use USE_MCGS directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._USE_MINI_HALOS
+
+    @RECOMB_MODEL.default
+    def _default_recomb_model(self):
+        if self._INHOMO_RECO is None:
+            return "none"
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "INHOMO_RECO",
+                deprecated_in="4.2.0",
+                removed_in="5.0.0",
+                details=(
+                    "INHOMO_RECO is deprecated and will be removed in a future version. "
+                    "Please use RECOMB_MODEL directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return "inhomogeneous" if self._INHOMO_RECO else "none"
+
+    @INTEGRATION_METHOD_ACGS.default
+    def _default_integration_method_acgs(self):
+        if self._INTEGRATION_METHOD_ATOMIC is None:
+            return "GAUSS-LEGENDRE"
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "INTEGRATION_METHOD_ATOMIC",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "INTEGRATION_METHOD_ATOMIC is deprecated and will be removed in a future version. "
+                    "Please use INTEGRATION_METHOD_ACGS directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+        return self._INTEGRATION_METHOD_ATOMIC
+
+    @INTEGRATION_METHOD_MCGS.default
+    def _default_integration_method_mcgs(self):
+        if self._INTEGRATION_METHOD_MINI is None:
+            return "GAUSS-LEGENDRE"
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "INTEGRATION_METHOD_MINI",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "INTEGRATION_METHOD_MINI is deprecated and will be removed in a future version. "
+                    "Please use INTEGRATION_METHOD_MCGS directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+        return self._INTEGRATION_METHOD_MINI
+
+    @USE_MCGS.validator
+    def _use_mcgs_vld(self, att, val):
+        """
+        Raise an error USE_MCGS is True with incompatible flags.
+
+        This happens when RECOMB_MODEL='none' or USE_TS_FLUCT is False.
+        """
+        if val and self.RECOMB_MODEL == "none":
+            raise ValueError(
+                "You have set USE_MCGS to True but RECOMB_MODEL is 'none'! "
+            )
+        if val and not self.USE_TS_FLUCT:
+            raise ValueError(
+                "You have set USE_MCGS to True but USE_TS_FLUCT is False! "
+            )
+
+        if self._USE_MINI_HALOS is not None and val != self._USE_MINI_HALOS:
+            raise ValueError(
+                f"USE_MCGS is set to {val} but USE_MINI_HALOS is {self._USE_MINI_HALOS}! "
+                f"Either set USE_MINI_HALOS to {val} or change USE_MCGS to {self._USE_MINI_HALOS}."
+            )
+
+    @RECOMB_MODEL.validator
+    def _recomb_model_vld(self, att, val):
+        if self._INHOMO_RECO is True and val == "none":
+            raise ValueError(
+                "RECOMB_MODEL is set to 'none' but INHOMO_RECO is True! "
+                "Either set INHOMO_RECO to False or change RECOMB_MODEL to 'homogeneous' or 'inhomogeneous'."
+            )
+        if self._INHOMO_RECO is False and val != "none":
+            raise ValueError(
+                f"RECOMB_MODEL is set to '{val}' but INHOMO_RECO is False! "
+                "Either set INHOMO_RECO to True or change RECOMB_MODEL to 'none'."
+            )
+        if not self.CELL_RECOMB and val == "homogeneous":
+            raise ValueError(
+                "CELL_RECOMB cannot be False when RECOMB_MODEL is 'homogeneous'!"
+            )
+
+    @PHOTON_CONS_TYPE.validator
+    def _PHOTON_CONS_TYPE_vld(self, att, val):
+        """Raise an error if using PHOTON_CONS_TYPE='z_photoncons' and USE_MCGS is True."""
+        if self.USE_MCGS and val == "z-photoncons":
+            raise ValueError(
+                "USE_MCGS is not compatible with the redshift-based"
+                " photon conservation corrections (PHOTON_CONS_TYPE=='z_photoncons')! "
+            )
+
+    @USE_EXP_FILTER.validator
+    def _USE_EXP_FILTER_vld(self, att, val):
+        """Raise an error if USE_EXP_FILTER is False and HII_FILTER!=0."""
+        if val and self.HII_FILTER != "spherical-tophat":
+            raise ValueError(
+                "USE_EXP_FILTER can only be used with a real-space tophat HII_FILTER==0"
+            )
+
+        if val and not self.CELL_RECOMB:
+            raise ValueError("USE_EXP_FILTER is True but CELL_RECOMB is False")
+
+    @INTEGRATION_METHOD_ACGS.validator
+    def _integration_method_acgs_vld(self, att, val):
+        """Raise an error if INTEGRATION_METHOD_ACGS is set to a different value than INTEGRATION_METHOD_ATOMIC."""
+        if (
+            self._INTEGRATION_METHOD_ATOMIC is not None
+            and val != self._INTEGRATION_METHOD_ATOMIC
+        ):
+            raise ValueError(
+                f"INTEGRATION_METHOD_ACGS is set to {val} but INTEGRATION_METHOD_ATOMIC is {self._INTEGRATION_METHOD_ATOMIC}! "
+                f"Either set INTEGRATION_METHOD_ATOMIC to {val} or change INTEGRATION_METHOD_ACGS to {self._INTEGRATION_METHOD_ATOMIC}."
+            )
+
+    @INTEGRATION_METHOD_MCGS.validator
+    def _integration_method_mcgs_vld(self, att, val):
+        """Raise an error if INTEGRATION_METHOD_MCGS is set to a different value than INTEGRATION_METHOD_MINI."""
+        if (
+            self._INTEGRATION_METHOD_MINI is not None
+            and val != self._INTEGRATION_METHOD_MINI
+        ):
+            raise ValueError(
+                f"INTEGRATION_METHOD_MCGS is set to {val} but INTEGRATION_METHOD_MINI is {self._INTEGRATION_METHOD_MINI}! "
+                f"Either set INTEGRATION_METHOD_MINI to {val} or change INTEGRATION_METHOD_MCGS to {self._INTEGRATION_METHOD_MINI}."
+            )
+
+
+@attrs.define(frozen=True, kw_only=True)
+class AstroParams(InputStruct):
+    """
+    Astrophysical parameters.
+
+    .. attention: All Mean scaling relations are defined in log-space, such that the
+      lines they produce give ``exp(mean(log(property)))``. This means that increasing
+      the  lognormal scatter in these relations will increase the ``mean(property)`` but
+      not ``mean(log(property))``
+
+    Parameters
+    ----------
+    HII_EFF_FACTOR : float, optional
+        The ionizing efficiency of high-z galaxies (zeta, from Eq. 2 of Greig+2015).
+        Higher values tend to speed up reionization.
+    F_STAR10 : float, optional
+        The fraction of galactic gas in stars for 10^10 solar mass haloes. This is
+        a deprecated parameter, please use F_STAR10_ACG instead.
+    F_STAR10_ACG : float, optional
+        The fraction of galactic gas in stars for 10^10 solar mass haloes.
+        See Eq. 11 of Greig+2018 and Sec 2.1 of Park+2018.
+        Given in log10 units.
+    F_STAR7_MINI : float, optional
+        The fraction of galactic gas in stars for 10^7 solar mass minihaloes. This is
+        a deprecated parameter, please use F_STAR7_MCG instead.
+    F_STAR7_MCG : float, optional
+        The fraction of galactic gas in stars for 10^7 solar mass minihaloes. Only used
+        in the MCGs parameterization, i.e. when `USE_MCGS` is set to True
+        (in :class:`AstroOptions`).. See Eq. 8 of Qin+2020.
+        If the MCG scaling relations are not provided explicitly, we extend the ACG
+        ones by default. Given in log10 units.
+    ALPHA_STAR : float, optional
+        Power-law index of fraction of galactic gas in stars as a function of halo mass,
+        for ACGs. This is a deprecated parameter, please use ALPHA_STAR_ACG instead.
+    ALPHA_STAR_ACG : float, optional
+        Power-law index of fraction of galactic gas in stars as a function of halo mass,
+        for ACGs. See Sec 2.1 of Park+2018.
+    ALPHA_STAR_MINI : float, optional
+        Power-law index of fraction of galactic gas in stars as a function of halo mass,
+        for MCGs. This is a deprecated parameter, please use ALPHA_STAR_MCG instead.
+    ALPHA_STAR_MCG : float, optional
+        Power-law index of fraction of galactic gas in stars as a function of halo mass,
+        for MCGs. See Sec 2 of Muñoz+21 (2110.13919). If the MCG scaling relations are
+        not provided explicitly, we extend the ACG ones by default.
+    SIGMA_STAR : float, optional
+        Lognormal scatter (dex) of the halo mass to stellar mass relation.
+        Uniform across all masses and redshifts.
+    SIGMA_SFR_LIM : float, optional
+        Lognormal scatter (dex) of the stellar mass to SFR relation above a stellar mass
+        of 1e10 solar.
+    SIGMA_SFR_INDEX : float, optional
+        index of the power-law between SFMS scatter and stellar mass below 1e10 solar.
+    F_ESC10 : float, optional
+        The "escape fraction" for ACGS, i.e. the fraction of ionizing photons escaping into the
+        IGM, for 10^10 solar mass haloes. This is a deprecated parameter, please use F_ESC10_ACG instead.
+    F_ESC10_ACG : float, optional
+        The "escape fraction" for ACGS, i.e. the fraction of ionizing photons escaping into the
+        IGM, for 10^10 solar mass haloes. Only used if ``SOURCE_MODEL`` is not "CONST-ION-EFF"
+        in :class:`AstroOptions`. This is used along with `F_STAR10_ACG` to determine
+        ``HII_EFF_FACTOR`` (which
+        is then unused). See Eq. 11 of Greig+2018 and Sec 2.1 of Park+2018.
+    F_ESC7_MINI : float, optional
+        The "escape fraction" for minihaloes. This is a deprecated parameter, please use F_ESC7_MCG instead.
+    F_ESC7_MCG: float, optional
+        The "escape fraction" for MCGs, i.e. the fraction of ionizing photons escaping
+        into the IGM, for 10^7 solar mass minihaloes. Only used in the MCGs
+        parameterization, i.e. when `USE_MCGS` is set to True (in
+        :class:`AstroOptions`). See Eq. 17 of Qin+2020. If the MCG
+        scaling relations are not provided explicitly, we extend the ACG ones by default.
+        Given in log10 units.
+    ALPHA_ESC : float, optional
+        Power-law index of escape fraction as a function of halo mass. See Sec 2.1 of
+        Park+2018.
+    M_TURN : float or None, optional
+        Turnover mass (in log10 solar mass units) for quenching of star formation in
+        halos, due to SNe or photo-heating feedback, or inefficient gas accretion.
+        This parameter is deprecated and will be removed in a future version, see M_TURN_STELLAR_FEEDBACK for the new way to directly
+        control this parameter.
+    M_TURN_STELLAR_FEEDBACK : float, optional
+        Turnover mass (in log10 solar mass units) for quenching of star formation in
+        halos, due to SNe or photo-heating feedback, or inefficient gas accretion.
+        See Sec 2.1 of Park+2018.
+    R_BUBBLE_MAX : float, optional
+        Mean free path in Mpc of ionizing photons within ionizing regions (Sec. 2.1.2 of
+        Greig+2015). Default is 50 if `RECOMB_MODEL` is not 'none', or 15.0 if it is.
+    ION_Tvir_MIN : float, optional
+        Minimum virial temperature of star-forming haloes (Sec 2.1.3 of Greig+2015).
+        Given in log10 units.
+    L_X : float, optional
+        The specific X-ray luminosity per unit star formation escaping host galaxies,
+        for ACGs. This is a deprecated parameter, please use LX_OVER_SFR_ACG instead.
+    LX_OVER_SFR_ACG : float, optional
+        The specific X-ray luminosity per unit star formation escaping host galaxies, for ACGs.
+        Cf. Eq. 6 of Greig+2018. Given in log10 units. For the double power-law used in
+        the Halo Model. This gives the low-z limit.
+    L_X_MINI: float, optional
+        The specific X-ray luminosity per unit star formation escaping host galaxies for
+        MCGs. This is a deprecated parameter, please use LX_OVER_SFR_MCG instead.
+    LX_OVER_SFR_MCG: float, optional
+        The specific X-ray luminosity per unit star formation escaping host galaxies for
+        MCGs. Cf. Eq. 23 of Qin+2020. Given in log10 units. For the double
+        power-law used in the Halo Model. This gives the low-z limit. If the MCG
+        scaling relations are not provided explicitly, we extend the ACG ones by default.
+    NU_X_THRESH : float, optional
+        X-ray energy threshold for self-absorption by host galaxies (in eV). Also called
+        E_0 (cf. Sec 4.1 of Greig+2018). Typical range is (100, 1500).
+    X_RAY_SPEC_INDEX : float, optional
+        X-ray spectral energy index (cf. Sec 4.1 of Greig+2018). Typical range is
+        (-1, 3).
+    X_RAY_Tvir_MIN : float, optional
+        Minimum halo virial temperature in which X-rays are produced. Given in log10
+        units. Default is `ION_Tvir_MIN`.
+    F_H2_SHIELD: float, optional
+        Self-shielding factor of molecular hydrogen when experiencing LW suppression.
+        Cf. Eq. 12 of Qin+2020. Consistently included in A_LW fit from sims.
+        If used we recommend going back to Macachek+01 A_LW=22.86.
+    t_STAR : float, optional
+        Fractional characteristic time-scale (fraction of hubble time) defining the
+        star-formation rate of galaxies. See Sec 2.1, Eq. 3 of Park+2018.
+    A_LW, BETA_LW: float, optional
+        Impact of the LW feedback on Mturn for minihaloes. Default is 22.8685 and 0.47
+        following Machacek+01, respectively. Latest simulations suggest 2.0 and 0.6.
+        See Sec 2 of Muñoz+21 (2110.13919).
+    A_VCB, BETA_VCB: float, optional
+        Impact of the DM-baryon relative velocities on Mturn for minihaloes. Default is
+        1.0 and 1.8, and agrees between different sims. See Sec 2 of Muñoz+21 (2110.13919).
+    UPPER_STELLAR_TURNOVER_MASS : float
+        The pivot mass associated with the optional upper mass power-law of the
+        stellar-halo mass relation (see ``USE_UPPER_STELLAR_TURNOVER``
+        in :class:`AstroOptions`)
+    UPPER_STELLAR_TURNOVER_INDEX : float
+        The power-law index associated with the optional upper mass power-law of the
+        stellar-halo mass relation (see ``USE_UPPER_STELLAR_TURNOVER``
+        in :class:`AstroOptions`)
+    SIGMA_LX: float, optional
+        Lognormal scatter (dex) of the Xray luminosity relation (a function of stellar
+        mass, star formation rate and redshift). This scatter is uniform across all
+        halo properties and redshifts.
+    FIXED_VAVG : float or None, optional
+        A possible input that sets a fixed constant value for the amplitude of the relative velocity between (cold) dark matter and baryons,
+        in units of km/s. Becomes relevant only when AstroOptions.FIX_VCB_AVG is True.
+        This parameter is deprecated and will be removed in a future version, see V_CB_AVG_DEBUG for the new way to directly
+        control this parameter.
+    V_CB_AVG_DEBUG : float, optional
+        A possible input that sets a fixed constant value for the amplitude of the relative velocity between (cold) dark matter and baryons,
+        in units of km/s. Should be used only for debugging and testing purposes.
+        Becomes relevant only when MatterOptions.V_CB_MODEL is "AVG-DEBUG".
+    POP2_ION: float, optional
+        Number of ionizing photons per baryon produced by Pop II stars.
+    POP3_ION: float, optional
+        Number of ionizing photons per baryon produced by Pop III stars.
+    CLUMPING_FACTOR: float, optional
+        Clumping factor of the IGM used ONLY in the x-ray partial ionisations (not the
+        reionsiation model). Default is 2.0.
+    ALPHA_UVB: float, optional
+        The power-law index of the UVB spectrum. Used for Gamma12 in the recombination
+        model
+    DELTA_R_HII_FACTOR: float, optional
+        The factor by which to decrease the size of the HII filter when calculating the
+        HII regions.
+    R_BUBBLE_MIN: float, optional
+        Minimum size of ionized regions in Mpc. Default is 0.620350491.
+    MAX_DVDR: float, optional
+        Maximum value of the gradient of the velocity field used in the RSD algorithm.
+    NU_X_BAND_MAX: float, optional
+        The maximum frequency of the X-ray band used to calculate the X-ray Luminosity.
+    NU_X_MAX: float, optional
+        The maximum frequency of the integrals over nu for the x-ray heating/ionisation rates.
+    """
+
+    HII_EFF_FACTOR: float = field(
+        default=30.0, converter=float, validator=validators.gt(0)
+    )
+    _F_STAR10: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    F_STAR10_ACG: float = field(
+        converter=float, validator=between(-3.0, 0.0), transformer=logtransformer
+    )
+    _ALPHA_STAR: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+    )
+    ALPHA_STAR_ACG: float = field(converter=float)
+    _F_STAR7_MINI: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    F_STAR7_MCG: float = field(converter=float, transformer=logtransformer)
+    _ALPHA_STAR_MINI: float | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(float)
+    )
+    ALPHA_STAR_MCG: float = field(converter=float)
+    _F_ESC10: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    F_ESC10_ACG: float = field(converter=float, transformer=logtransformer)
+
+    ALPHA_ESC: float = field(
+        default=-0.5,
+        converter=float,
+    )
+    _F_ESC7_MINI: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    F_ESC7_MCG: float = field(converter=float, transformer=logtransformer)
+    _M_TURN: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        validator=validators.optional(validators.gt(0)),
+        transformer=logtransformer,
+    )
+    M_TURN_STELLAR_FEEDBACK: float = field(
+        converter=float,
+        validator=validators.gt(0),
+        transformer=logtransformer,
+    )
+    R_BUBBLE_MAX: float = field(
+        default=15.0, converter=float, validator=validators.gt(0)
+    )
+    R_BUBBLE_MIN: float = field(
+        default=0.620350491, converter=float, validator=validators.gt(0)
+    )
+    ION_Tvir_MIN: float = field(
+        default=4.69897,
+        converter=float,
+        validator=validators.gt(0),
+        transformer=logtransformer,
+    )
+
+    _L_X: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    LX_OVER_SFR_ACG: float = field(
+        converter=float,
+        validator=validators.gt(0),
+        transformer=logtransformer,
+    )
+    _L_X_MINI: float | None = field(
+        deprecated=True,
+        default=None,
+        converter=attrs.converters.optional(float),
+        transformer=logtransformer,
+    )
+    LX_OVER_SFR_MCG: float = field(
+        converter=float, validator=validators.gt(0), transformer=logtransformer
+    )
+    NU_X_THRESH: float = field(
+        default=500.0, converter=float, validator=validators.gt(0)
+    )
+    X_RAY_SPEC_INDEX: float = field(default=1.0, converter=float)
+    X_RAY_Tvir_MIN: float = field(
+        converter=float, validator=validators.gt(0), transformer=logtransformer
+    )
+    F_H2_SHIELD: float = field(default=0.0, converter=float)
+    t_STAR: float = field(default=0.5, converter=float, validator=between(0, 1))
+    A_LW: float = field(default=2.0, converter=float, validator=validators.gt(0))
+    BETA_LW: float = field(default=0.6, converter=float)
+    A_VCB: float = field(default=1.0, converter=float)
+    BETA_VCB: float = field(default=1.8, converter=float)
+    UPPER_STELLAR_TURNOVER_MASS: float = field(
+        default=11.447, converter=float, transformer=logtransformer
+    )
+    UPPER_STELLAR_TURNOVER_INDEX: float = field(default=-0.6, converter=float)
+    SIGMA_STAR: float = field(
+        default=0.25, converter=float, transformer=dex2exp_transformer
+    )
+    SIGMA_LX: float = field(
+        default=0.5, converter=float, transformer=dex2exp_transformer
+    )
+    SIGMA_SFR_LIM: float = field(
+        default=0.19, converter=float, transformer=dex2exp_transformer
+    )
+    SIGMA_SFR_INDEX: float = field(
+        default=-0.12, converter=float, transformer=dex2exp_transformer
+    )
+
+    T_RE: float = field(default=2e4, converter=float)
+    _FIXED_VAVG: float | None = field(
+        deprecated=True, default=None, converter=attrs.converters.optional(float)
+    )
+    V_CB_AVG_DEBUG: float = field(converter=float, validator=validators.gt(0))
+
+    POP2_ION: float = field(default=5000.0, converter=float)
+    POP3_ION: float = field(default=44021.0, converter=float)
+
+    PHOTONCONS_CALIBRATION_END: float = field(default=3.5, converter=float)
+    CLUMPING_FACTOR: float = field(
+        default=2.0, converter=float, validator=validators.gt(0)
+    )
+    ALPHA_UVB: float = field(default=5.0, converter=float)
+    R_MAX_TS: float = field(default=500.0, converter=float, validator=validators.gt(0))
+    N_STEP_TS: float = field(default=40, converter=int, validator=validators.gt(0))
+    MAX_DVDR: float = field(default=0.2, converter=float, validator=validators.ge(0))
+
+    DELTA_R_HII_FACTOR: float = field(
+        default=1.1, converter=float, validator=validators.gt(1.0)
+    )
+
+    NU_X_BAND_MAX: float = field(
+        default=2000.0, converter=float, validator=validators.gt(0)
+    )
+    NU_X_MAX: float = field(
+        default=10000.0, converter=float, validator=validators.gt(0)
+    )
+
+    @X_RAY_Tvir_MIN.default
+    def _X_RAY_Tvir_MIN_default(self):
+        return self.ION_Tvir_MIN
+
+    @NU_X_THRESH.validator
+    def _NU_X_THRESH_vld(self, att, val):
+        """Check if the choice of NU_X_THRESH is sensible."""
+        if val < 100.0:
+            raise ValueError(
+                "Chosen NU_X_THRESH is < 100 eV. NU_X_THRESH must be above 100 eV as it describes X-ray photons"
+            )
+        elif val >= self.NU_X_BAND_MAX:
+            raise ValueError(
+                f"""
+                Chosen NU_X_THRESH > {self.NU_X_BAND_MAX}, which is the upper limit of the adopted X-ray band
+                (fiducially the soft band 0.5 - 2.0 keV). If you know what you are doing with this
+                choice, please modify the parameter: NU_X_BAND_MAX"""
+            )
+        elif self.NU_X_BAND_MAX > self.NU_X_MAX:
+            raise ValueError(
+                f"""
+                Chosen NU_X_BAND_MAX > {self.NU_X_MAX}, which is the upper limit of X-ray integrals (fiducially 10 keV)
+                If you know what you are doing, please modify the parameter:
+                NU_X_MAX
+                """
+            )
+
+    @cached_property
+    def FIXED_VAVG(self) -> float | None:
+        """A fixed constant value for the amplitude of the relative velocity between (cold) dark matter and baryons, in units of km/s.
+
+        Becomes relevant only when AstroOptions.FIX_VCB_AVG is True.
+
+        This is a deprecated property, and will be removed in v5. Please use V_CB_AVG_DEBUG instead.
+        """
+        return self._FIXED_VAVG
+
+    @V_CB_AVG_DEBUG.default
+    def _default_v_cb_avg_debug(self):
+        if self._FIXED_VAVG is None:
+            return V_CB_AVG_DEFAULT
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "FIXED_VAVG",
+                deprecated_in="4.2.0",
+                removed_in="5.0.0",
+                details=(
+                    "FIXED_VAVG is deprecated and will be removed in a future version. "
+                    "Please use V_CB_AVG_DEBUG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._FIXED_VAVG
+
+    @cached_property
+    def M_TURN(self) -> float | None:
+        """Turnover mass (in log10 solar mass units) for quenching of star formation in halos, due to SNe or photo-heating feedback, or inefficient gas accretion.
+
+        This is a deprecated property, and will be removed in v5. Please use M_TURN_STELLAR_FEEDBACK instead.
+        """
+        return self._M_TURN
+
+    @cached_property
+    def F_STAR10(self) -> float:
+        """
+        The fraction of baryons in the form of stars at a reference mass of 10^10 solar masses.
+
+        This is a deprecated property, and will be removed in v5. Please use F_STAR10_ACG instead.
+        """
+        if self._F_STAR10 is None:
+            return self.F_STAR10_ACG
+        else:
+            return self._F_STAR10
+
+    @cached_property
+    def F_STAR7_MINI(self) -> float:
+        """
+        The fraction of baryons in the form of stars at a reference mass of 10^7 solar masses.
+
+        This is a deprecated property, and will be removed in v5. Please use F_STAR7_MCG instead.
+        """
+        if self._F_STAR7_MINI is None:
+            return self.F_STAR7_MCG
+        else:
+            return self._F_STAR7_MINI
+
+    @cached_property
+    def F_ESC10(self) -> float:
+        """
+        The fraction of ionizing photons escaping into the IGM at a reference mass of 10^10 solar masses.
+
+        This is a deprecated property, and will be removed in v5. Please use F_ESC10_ACG instead.
+        """
+        if self._F_ESC10 is None:
+            return self.F_ESC10_ACG
+        else:
+            return self._F_ESC10
+
+    @cached_property
+    def F_ESC7_MINI(self) -> float:
+        """
+        The fraction of ionizing photons escaping into the IGM at a reference mass of 10^7 solar masses.
+
+        This is a deprecated property, and will be removed in v5. Please use F_ESC7_MCG instead.
+        """
+        if self._F_ESC7_MINI is None:
+            return self.F_ESC7_MCG
+        else:
+            return self._F_ESC7_MINI
+
+    @cached_property
+    def ALPHA_STAR(self) -> float:
+        """
+        Power-law index of fraction of galactic gas in stars as a function of halo mass, for ACGs.
+
+        This is a deprecated property, and will be removed in v5. Please use ALPHA_STAR_ACG instead.
+        """
+        if self._ALPHA_STAR is None:
+            return self.ALPHA_STAR_ACG
+        else:
+            return self._ALPHA_STAR
+
+    @cached_property
+    def ALPHA_STAR_MINI(self) -> float:
+        """
+        Power-law index of fraction of galactic gas in stars as a function of halo mass, for minihaloes.
+
+        This is a deprecated property, and will be removed in v5. Please use ALPHA_STAR_MCG instead.
+        """
+        if self._ALPHA_STAR_MINI is None:
+            return self.ALPHA_STAR_MCG
+        else:
+            return self._ALPHA_STAR_MINI
+
+    @cached_property
+    def L_X(self) -> float:
+        """
+        The specific X-ray luminosity per unit star formation escaping host galaxies for ACGs.
+
+        This is a deprecated property, and will be removed in v5. Please use LX_OVER_SFR_ACG instead.
+        """
+        if self._L_X is None:
+            return self.LX_OVER_SFR_ACG
+        else:
+            return self._L_X
+
+    @cached_property
+    def L_X_MINI(self) -> float:
+        """
+        The specific X-ray luminosity per unit star formation escaping host galaxies for minihaloes.
+
+        This is a deprecated property, and will be removed in v5. Please use LX_OVER_SFR_MCG instead.
+        """
+        if self._L_X_MINI is None:
+            return self.LX_OVER_SFR_MCG
+        else:
+            return self._L_X_MINI
+
+    @M_TURN_STELLAR_FEEDBACK.default
+    def _default_m_turn_stellar_feedback(self):
+        if self._M_TURN is None:
+            return 8.7
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "M_TURN",
+                deprecated_in="4.2.0",
+                removed_in="5.0.0",
+                details=(
+                    "M_TURN is deprecated and will be removed in a future version. "
+                    "Please use M_TURN_STELLAR_FEEDBACK directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._M_TURN
+
+    @F_STAR10_ACG.default
+    def _f_star10_acg_default(self):
+        if self._F_STAR10 is None:
+            return -1.3
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "F_STAR10",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "F_STAR10 is deprecated and will be removed in a future version. "
+                    "Please use F_STAR10_ACG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._F_STAR10
+
+    @F_STAR7_MCG.default
+    def _f_star7_mcg_default(self):
+        if self._F_STAR7_MINI is None:
+            # set the default of the MCGs scalings to continue the same PL
+            return (
+                self.F_STAR10_ACG - 3 * self.ALPHA_STAR_ACG
+            )  # -3*alpha since 1e7/1e10 = 1e-3
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "F_STAR7_MINI",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "F_STAR7_MINI is deprecated and will be removed in a future version. "
+                    "Please use F_STAR7_MCG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._F_STAR7_MINI
+
+    @F_ESC10_ACG.default
+    def _f_esc10_acg_default(self):
+        if self._F_ESC10 is None:
+            return -1.0
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "F_ESC10",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "F_ESC10 is deprecated and will be removed in a future version. "
+                    "Please use F_ESC10_ACG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._F_ESC10
+
+    @F_ESC7_MCG.default
+    def _f_esc7_mcg_default(self):
+        if self._F_ESC7_MINI is None:
+            return -2.0
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "F_ESC7_MINI",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "F_ESC7_MINI is deprecated and will be removed in a future version. "
+                    "Please use F_ESC7_MCG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._F_ESC7_MINI
+
+    @ALPHA_STAR_ACG.default
+    def _alpha_star_acg_default(self):
+        if self._ALPHA_STAR is None:
+            return 0.5
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "ALPHA_STAR",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "ALPHA_STAR is deprecated and will be removed in a future version. "
+                    "Please use ALPHA_STAR_ACG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._ALPHA_STAR
+
+    @ALPHA_STAR_MCG.default
+    def _alpha_star_mcg_default(self):
+        if self._ALPHA_STAR_MINI is None:
+            return self.ALPHA_STAR_ACG
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "ALPHA_STAR_MINI",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "ALPHA_STAR_MINI is deprecated and will be removed in a future version. "
+                    "Please use ALPHA_STAR_MCG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._ALPHA_STAR_MINI
+
+    @LX_OVER_SFR_ACG.default
+    def _lx_over_sfr_acg_default(self):
+        if self._L_X is None:
+            return 40.5
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "L_X",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "L_X is deprecated and will be removed in a future version. "
+                    "Please use LX_OVER_SFR_ACG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._L_X
+
+    @LX_OVER_SFR_MCG.default
+    def _lx_over_sfr_mcg_default(self):
+        if self._L_X_MINI is None:
+            return self.LX_OVER_SFR_ACG
+
+        warnings.warn(
+            deprecation.DeprecatedWarning(
+                "L_X_MINI",
+                deprecated_in="4.3.0",
+                removed_in="5.0.0",
+                details=(
+                    "L_X_MINI is deprecated and will be removed in a future version. "
+                    "Please use LX_OVER_SFR_MCG directly instead."
+                ),
+            ),
+            stacklevel=2,
+        )
+
+        return self._L_X_MINI
+
+    @F_STAR10_ACG.validator
+    def _f_star10_acg_vld(self, att, val):
+        if self._F_STAR10 is not None and val != self._F_STAR10:
+            raise ValueError(
+                f"F_STAR10_ACG is set to {val} but F_STAR10 is {self._F_STAR10}! "
+                f"Either set F_STAR10 to {val} or change F_STAR10_ACG to {self._F_STAR10}."
+            )
+
+    @F_STAR7_MCG.validator
+    def _f_star7_mcg_vld(self, att, val):
+        if self._F_STAR7_MINI is not None and val != self._F_STAR7_MINI:
+            raise ValueError(
+                f"F_STAR7_MCG is set to {val} but F_STAR7_MINI is {self._F_STAR7_MINI}! "
+                f"Either set F_STAR7_MINI to {val} or change F_STAR7_MCG to {self._F_STAR7_MINI}."
+            )
+
+    @F_ESC10_ACG.validator
+    def _f_esc10_acg_vld(self, att, val):
+        if self._F_ESC10 is not None and val != self._F_ESC10:
+            raise ValueError(
+                f"F_ESC10_ACG is set to {val} but F_ESC10 is {self._F_ESC10}! "
+                f"Either set F_ESC10 to {val} or change F_ESC10_ACG to {self._F_ESC10}."
+            )
+
+    @F_ESC7_MCG.validator
+    def _f_esc7_mcg_vld(self, att, val):
+        if self._F_ESC7_MINI is not None and val != self._F_ESC7_MINI:
+            raise ValueError(
+                f"F_ESC7_MCG is set to {val} but F_ESC7_MINI is {self._F_ESC7_MINI}! "
+                f"Either set F_ESC7_MINI to {val} or change F_ESC7_MCG to {self._F_ESC7_MINI}."
+            )
+
+    @ALPHA_STAR_ACG.validator
+    def _alpha_star_acg_vld(self, att, val):
+        if self._ALPHA_STAR is not None and val != self._ALPHA_STAR:
+            raise ValueError(
+                f"ALPHA_STAR_ACG is set to {val} but ALPHA_STAR is {self._ALPHA_STAR}! "
+                f"Either set ALPHA_STAR to {val} or change ALPHA_STAR_ACG to {self._ALPHA_STAR}."
+            )
+
+    @ALPHA_STAR_MCG.validator
+    def _alpha_star_mcg_vld(self, att, val):
+        if self._ALPHA_STAR_MINI is not None and val != self._ALPHA_STAR_MINI:
+            raise ValueError(
+                f"ALPHA_STAR_MCG is set to {val} but ALPHA_STAR_MINI is {self._ALPHA_STAR_MINI}! "
+                f"Either set ALPHA_STAR_MINI to {val} or change ALPHA_STAR_MCG to {self._ALPHA_STAR_MINI}."
+            )
+
+    @LX_OVER_SFR_ACG.validator
+    def _lx_over_sfr_acg_vld(self, att, val):
+        if self._L_X is not None and val != self._L_X:
+            raise ValueError(
+                f"LX_OVER_SFR_ACG is set to {val} but L_X is {self._L_X}! "
+                f"Either set L_X to {val} or change LX_OVER_SFR_ACG to {self._L_X}."
+            )
+
+    @LX_OVER_SFR_MCG.validator
+    def _lx_over_sfr_mcg_vld(self, att, val):
+        if self._L_X_MINI is not None and val != self._L_X_MINI:
+            raise ValueError(
+                f"LX_OVER_SFR_MCG is set to {val} but L_X_MINI is {self._L_X_MINI}! "
+                f"Either set L_X_MINI to {val} or change LX_OVER_SFR_MCG to {self._L_X_MINI}."
+            )
+
+
+class InputCrossValidationError(ValueError):
+    """Error when two parameters from different structs aren't consistent."""
+
+
+def input_param_field(kls: InputStruct):
+    """Create an attrs field that must be an InputStruct.
+
+    Parameters
+    ----------
+    kls : InputStruct subclass
+        The parameter structure which should be returned as an attrs field
+    """
+    return _field(
+        default=kls.new(),
+        converter=kls.new,
+        validator=validators.instance_of(kls),
+    )
+
+
+def get_logspaced_redshifts(
+    min_redshift: float,
+    z_step_factor: float,
+    max_redshift: float,
+) -> tuple[float, ...]:
+    """Compute a sequence of redshifts to evolve over that are log-spaced."""
+    redshifts = (
+        10
+        ** np.arange(
+            np.log10(1 + min_redshift),
+            np.log10((1 + max_redshift) * z_step_factor),
+            np.log10(z_step_factor),
+        )
+        - 1
+    )
+    return tuple(redshifts[::-1])
+
+
+def _node_redshifts_converter(value) -> tuple[float, ...] | None:
+    if value is None or len(value) == 0:
+        return ()
+    if hasattr(value, "__len__"):
+        return tuple(sorted([float(v) for v in value], reverse=True))
+    return (float(value),)
+
+
+@attrs.define(kw_only=True, frozen=True)
+class InputParameters:
+    """A class defining a collection of InputStruct instances.
+
+    This class simplifies combining different InputStruct instances together, performing
+    validation checks between them, and being able to cross-check compatibility between
+    different sets of instances.
+
+    Parameters
+    ----------
+    random_seed : float
+        The seed that determines the realization produced by a 21cmFAST run.
+    node_redshifts : list[float]
+        The redshifts at which coeval boxes will be computed. By default,
+        empty if no evolution is required, and logarithmically spaced in (1+z)
+        between z=5.5 and SimulationOptions.Z_HEAT_MAX if evolution is required.
+    cosmo_params : :class:`~CosmoParams`
+        Cosmological parameters of a 21cmFAST run.
+    simulation_options : :class:`~SimulationOptions`
+        Parameters controlling the simulation as a whole, e.g. the box size and
+        dimensionality.
+    matter_options : :class:`~MatterOptions`
+        Parameters controlling the matter field generated by 21cmFAST.
+    astro_options : :class:`~AstroOptions`
+        Options for which physical processes to include in the simulation.
+    astro_params : :class:`~AstroParams`
+        Astrophysical parameter values.
+
+    """
+
+    random_seed: int = _field(converter=int)
+    cosmo_params: CosmoParams = input_param_field(CosmoParams)
+    matter_options: MatterOptions = input_param_field(MatterOptions)
+    simulation_options: SimulationOptions = input_param_field(SimulationOptions)
+    astro_options: AstroOptions = input_param_field(AstroOptions)
+    astro_params: AstroParams = input_param_field(AstroParams)
+    node_redshifts = _field(converter=_node_redshifts_converter)
+
+    @node_redshifts.default
+    def _node_redshifts_default(self):
+        return (
+            get_logspaced_redshifts(
+                min_redshift=5.5,
+                max_redshift=self.simulation_options.Z_HEAT_MAX,
+                z_step_factor=self.simulation_options.ZPRIME_STEP_FACTOR,
+            )
+            if self.evolution_required
+            else None
+        )
+
+    @node_redshifts.validator
+    def _node_redshifts_validator(self, att, val):
+        if (
+            self.astro_options.RECOMB_MODEL != "none" or self.astro_options.USE_TS_FLUCT
+        ) and ((max(val) if val else 0.0) < self.simulation_options.Z_HEAT_MAX):
+            if not val:
+                raise ValueError(
+                    "For runs with inhomogeneous recombinations or spin temperature fluctuations,\n"
+                    + "you passed no node_redshifts, but they are required for the simulation."
+                )
+            else:
+                raise ValueError(
+                    "For runs with inhomogeneous recombinations or spin temperature fluctuations,\n"
+                    + f"your maximum passed node_redshifts {max(val)} must be above Z_HEAT_MAX {self.simulation_options.Z_HEAT_MAX}"
+                )
+
+    @cached_property
+    def cosmo_tables(self) -> CosmoTables:
+        """Cosmological tables and constants derived from fundamental input parameters."""
+        V_CB_AVG = V_CB_AVG_DEFAULT
+
+        if self.matter_options.POWER_SPECTRUM == "CLASS":
+            if self.simulation_options.K_MAX_FOR_CLASS is not None:
+                k_max = self.simulation_options.K_MAX_FOR_CLASS / un.Mpc
+            else:
+                if self.astro_options.USE_MCGS:
+                    M_min = 1e5 * un.M_sun
+                else:
+                    M_min = 1e9 * un.M_sun
+                R_min = pow(
+                    M_min
+                    / (
+                        4
+                        * np.pi
+                        / 3.0
+                        * self.cosmo_params.cosmo.critical_density0
+                        * self.cosmo_params.OMm
+                    ),
+                    1 / 3,
+                )
+                k_max = (2 * np.pi / R_min).to(
+                    "1/Mpc"
+                ) * 1.5  # Multiply by 1.5 for better precision
+
+            classy_output = run_classy(
+                h=self.cosmo_params.hlittle,
+                Omega_cdm=self.cosmo_params.OMm - self.cosmo_params.OMb,
+                Omega_b=self.cosmo_params.OMb,
+                n_s=self.cosmo_params.POWER_INDEX,
+                sigma8=self.cosmo_params.SIGMA_8,
+                output="mTk,vTk",
+                P_k_max=k_max,
+            )
+
+            # Linear matter density transfer function at z=0
+            transfer_density = get_transfer_function(
+                classy_output=classy_output, kind="d_m", z=0.0
+            )
+            # Include a sample at k=0
+            k_transfer_with_0 = np.concatenate(([0.0], k_transfer))
+            transfer_density = np.concatenate(([0.0], transfer_density))
+            # Create a Table1D for the density transfer function
+            transfer_density = Table1D(
+                size=k_transfer_with_0.size,
+                x_values=k_transfer_with_0,
+                y_values=transfer_density,
+            )
+
+            # Find the redshift of kinematic decoupling
+            z_dec = find_redshift_kinematic_decoupling(classy_output)
+
+            # If we use the fluctuations of the v_cb field, find its transfer function at the redshift of kinematic decoupling
+            if self.matter_options.V_CB_MODEL == "FLUCTS":
+                # Linear vcb transfer function at kinematic decoupling
+                transfer_vcb = (
+                    (
+                        get_transfer_function(
+                            classy_output=classy_output, kind="v_cb", z=z_dec
+                        )
+                        / constants.c  # Need to normalize by c, because ComputeInitialConditions() expects to receive a dimensionless transfer function
+                    ).to(un.dimensionless_unscaled)
+                )
+                # Include a sample at k=0
+                transfer_vcb = np.concatenate(([0.0], transfer_vcb))
+                # Create a Table1D for the vcb transfer function
+                transfer_vcb = Table1D(
+                    size=k_transfer_with_0.size,
+                    x_values=k_transfer_with_0,
+                    y_values=transfer_vcb,
+                )
+            else:
+                transfer_vcb = None
+
+            # Compute the RMS value of the v_cb field at kinematic decoupling
+            # For LCDM cosmology with Planck 2018 parameters, the rms is 29.3 km/s
+            V_CB_RMS = (
+                compute_rms(classy_output, kind="v_cb", redshifts=z_dec)
+                .to("km/s")
+                .value[0]
+            )
+            # Assuming a Maxwell-Boltzmann distribution (consistent with the v_cb field distribution when V_CB_MODEL="FLUCTS"),
+            # the mean value is given by the rms times sqrt(8/3pi) = 0.92
+            # This gives a mean value of ~ 27 km/s for Planck 2018 cosmology
+            V_CB_AVG = np.sqrt(8 / (3 * np.pi)) * V_CB_RMS
+
+            # we use A_s to normalize the power spectrum only if it was provided
+            USE_SIGMA_8 = self.cosmo_params._A_s is None
+
+            cosmo_tables = CosmoTables(
+                transfer_density=transfer_density,
+                transfer_vcb=transfer_vcb,
+                ps_norm=self.cosmo_params.SIGMA_8
+                if USE_SIGMA_8
+                else self.cosmo_params.A_s,
+                USE_SIGMA_8=USE_SIGMA_8,
+                V_CB_AVG=V_CB_AVG,
+            )
+        else:
+            # we ALWAYS use sigma8 to normalize the power spectrum if we don't use CLASS
+            cosmo_tables = CosmoTables(
+                ps_norm=self.cosmo_params.SIGMA_8,
+                USE_SIGMA_8=True,
+                V_CB_AVG=V_CB_AVG,
+            )
+        return cosmo_tables
+
+    @astro_options.validator
+    def _astro_options_validator(self, att, val):
+        if self.matter_options is None:
+            return
+        if val.USE_MCGS:
+            if self.matter_options.V_CB_MODEL == "NONE":
+                warnings.warn(
+                    "USE_MCGS needs a non-trivial V_CB_MODEL to get the right evolution!",
+                    stacklevel=2,
+                )
+            if self.matter_options.SOURCE_MODEL == "CONST-ION-EFF":
+                raise ValueError(
+                    "SOURCE_MODEL == 'CONST-ION-EFF' is not compatible with USE_MCGS=True"
+                )
+        elif self.matter_options.V_CB_MODEL != "NONE":
+            warnings.warn(
+                "USE_MCGS is False but V_CB_MODEL != 'NONE'. Note that the relative velocity between (cold) dark matter and baryons"
+                " is only relevant when mini-halos are present.",
+                stacklevel=2,
+            )
+
+        if self.astro_options.FIX_VCB_AVG is not None:
+            # User set explicitly FIX_VCB_AVG, raise a warning that it is deprecated and will be removed in a future version
+            warnings.warn(
+                deprecation.DeprecatedWarning(
+                    "FIX_VCB_AVG",
+                    deprecated_in="4.3.0",
+                    removed_in="5.0.0",
+                    details=(
+                        "FIX_VCB_AVG is deprecated and will be removed in a future version. "
+                        "Please use V_CB_MODEL directly instead."
+                    ),
+                ),
+                stacklevel=2,
+            )
+            if (
+                not self.astro_options.FIX_VCB_AVG
+                and self.matter_options.V_CB_MODEL == "AVG-DEBUG"
+            ):
+                raise ValueError(
+                    "FIX_VCB_AVG=False is not compatible with V_CB_MODEL = 'AVG-DEBUG'! "
+                    "Either change V_CB_MODEL or set FIX_VCB_AVG to True."
+                )
+            elif (
+                self.astro_options.FIX_VCB_AVG
+                and self.matter_options.V_CB_MODEL != "AVG-DEBUG"
+            ):
+                raise ValueError(
+                    f"FIX_VCB_AVG=True is not compatible with V_CB_MODEL = {self.matter_options.V_CB_MODEL}! "
+                    "Either change V_CB_MODEL or set FIX_VCB_AVG to False."
+                )
+
+        if self.matter_options.lagrangian_source_grid:
+            if val.PHOTON_CONS_TYPE == "z-photoncons":
+                raise ValueError(
+                    f"SOURCE_MODEL={self.matter_options.SOURCE_MODEL} is not compatible with the redshift-based"
+                    " photon conservation corrections (PHOTON_CONS_TYPE=='z_photoncons')! Use a "
+                    " different PHOTON_CONS_TYPE or set SOURCE_MODEL='E-INTEGRAL' to use the old"
+                    " source model"
+                )
+        else:
+            if val.USE_EXP_FILTER:
+                raise ValueError(
+                    f"USE_EXP_FILTER is not compatible with SOURCE_MODEL == {self.matter_options.SOURCE_MODEL}"
+                )
+
+        if (
+            not self.matter_options.has_discrete_halos
+            and val.USE_UPPER_STELLAR_TURNOVER
+        ):
+            raise NotImplementedError(
+                f"USE_UPPER_STELLAR_TURNOVER is not yet implemented for SOURCE_MODEL = {self.matter_options.SOURCE_MODEL}"
+            )
+        if self.matter_options.HMF not in ["PS", "ST", "DELOS"]:
+            warnings.warn(
+                "A selection of a mass function other than Press-Schechter, Sheth-Tormen or Delos will"
+                "Result in the use of the EPS conditional mass function, normalised the unconditional"
+                "mass function provided by the user as matter_options.HMF",
+                stacklevel=2,
+            )
+        elif (
+            val.INTEGRATION_METHOD_ACGS == "GAMMA-APPROX"
+            or val.INTEGRATION_METHOD_MCGS == "GAMMA-APPROX"
+            or self.matter_options.SOURCE_MODEL == "CONST-ION-EFF"
+        ) and self.matter_options.HMF != "PS":
+            warnings.warn(
+                "Your model (either SOURCE_MODEL=='CONST-ION-EFF' or INTEGRATION_METHOD_X=='GAMMA-APPROX')"
+                "uses the EPS conditional mass function normalised to the unconditional mass"
+                "function provided by the user as matter_options.HMF",
+                stacklevel=2,
+            )
+
+        if (
+            val.USE_REIONIZATION_PHOTOHEATING_FEEDBACK
+            and self.matter_options.SOURCE_MODEL == "CONST-ION-EFF"
+        ):
+            raise NotImplementedError(
+                "USE_REIONIZATION_PHOTOHEATING_FEEDBACK is not yet compatible with SOURCE_MODEL == CONST-ION-EFF"
+            )
+
+        if val.USE_METALLICITY and self.matter_options.SOURCE_MODEL == "CONST-ION-EFF":
+            raise NotImplementedError(
+                "USE_METALLICITY is not yet compatible with SOURCE_MODEL == CONST-ION-EFF"
+            )
+
+    @astro_params.validator
+    def _astro_params_validator(self, att, val):
+        if val.R_BUBBLE_MAX > self.simulation_options.BOX_LEN:
+            raise InputCrossValidationError(
+                f"R_BUBBLE_MAX is larger than BOX_LEN ({val.R_BUBBLE_MAX} > {self.simulation_options.BOX_LEN}). This is not allowed."
+            )
+
+        if val.R_BUBBLE_MAX != 50 and self.astro_options.RECOMB_MODEL != "none":
+            warnings.warn(
+                "You are setting R_BUBBLE_MAX != 50 when RECOMB_MODEL != 'none'. "
+                "This is non-standard (but allowed), and usually occurs upon manual "
+                "update of RECOMB_MODEL or R_BUBBLE_MAX",
+                stacklevel=2,
+            )
+
+        if val.M_TURN_STELLAR_FEEDBACK > 8 and self.astro_options.USE_MCGS:
+            warnings.warn(
+                "You are setting M_TURN_STELLAR_FEEDBACK > 8 when USE_MCGS=True. "
+                "The star formation in mini-halos with a mass smaller than M_TURN_STELLAR_FEEDBACK "
+                "is highly suppressed. Make sure you know what you are doing!",
+                stacklevel=2,
+            )
+
+        if (
+            self.astro_options.HII_FILTER == "sharp-k"
+            and val.R_BUBBLE_MAX > self.simulation_options.BOX_LEN / 3
+        ):
+            msg = (
+                "Your R_BUBBLE_MAX is > BOX_LEN/3 "
+                f"({val.R_BUBBLE_MAX} > {self.simulation_options.BOX_LEN / 3})."
+                f" This can produce strange reionisation topologies"
+            )
+
+            if config["ignore_R_BUBBLE_MAX_error"]:
+                warnings.warn(msg, stacklevel=2)
+            else:
+                raise ValueError(
+                    msg
+                    + " To ignore this error, set `py21cmfast.config['ignore_R_BUBBLE_MAX_error'] = True`"
+                )
+
+    @simulation_options.validator
+    def _simulation_options_validator(self, att, val):
+        # perform a very rudimentary check to see if we are underresolved and not using the linear approx
+        if self.matter_options is not None and (
+            val.cell_size_hires > 1 * un.Mpc
+            and self.matter_options.PERTURB_ALGORITHM != "LINEAR"
+        ):
+            warnings.warn(
+                "Resolution is likely too low for accurate evolved density fields. "
+                "It is recommended that you either increase the resolution "
+                "(DIM/BOX_LEN) or set the EVOLVE_DENSITY_LINEARLY flag to True. "
+                f"Got DIM={val.DIM}, BOX_LEN={val.BOX_LEN}, resolution={val.cell_size_hires} Mpc.",
+                stacklevel=2,
+            )
+
+        if (
+            self.matter_options.POWER_SPECTRUM != "CLASS"
+            and self.cosmo_params._A_s is not None
+        ):
+            warnings.warn(
+                f"You have chosen to work with POWER_SPECTRUM={self.matter_options.POWER_SPECTRUM}, "
+                "but at the same time you work with A_s (rather than SIGMA_8). "
+                "While this is allowed, it is important to realize that it is impossible "
+                "to normalize correctly the power spectrum with A_s while using the "
+                f"{self.matter_options.POWER_SPECTRUM} transfer function. "
+                "CLASS will convert your A_s to SIGMA_8.",
+                stacklevel=2,
+            )
+
+    def __getitem__(self, key):
+        """Get an item from the instance in a dict-like manner."""
+        # Also allow using **input_parameters
+        return getattr(self, key)
+
+    def is_compatible_with(self, other: Self) -> bool:
+        """Check if this object is compatible with another parameter struct.
+
+        Compatibility is slightly different from strict equality. Compatibility requires
+        that if a parameter struct *exists* on the other object, then it must be equal
+        to this one. That is, if astro_params is None on the other InputParameter object,
+        then this one can have astro_params as NOT None, and it will still be
+        compatible. However the inverse is not true -- if this one has astro_params as
+        None, then all others must have it as None as well.
+        """
+        if not isinstance(other, InputParameters):
+            return False
+
+        return not any(
+            other[key] is not None and self[key] is not None and self[key] != other[key]
+            for key in self.merge_keys()
+        )
+
+    def evolve_input_structs(self, **kwargs) -> Self:
+        """Return an altered clone of the `InputParameters` structs.
+
+        Unlike clone(), this function takes fields from the constituent `InputStruct` classes
+        and only overwrites those sub-fields instead of the entire field
+        """
+        struct_args = {}
+        kwargs_copy = kwargs.copy()
+        for inp_type in (
+            "cosmo_params",
+            "simulation_options",
+            "matter_options",
+            "astro_params",
+            "astro_options",
+        ):
+            obj = getattr(self, inp_type)
+            struct_args[inp_type] = obj.clone(
+                **{k: kwargs_copy.pop(k) for k in kwargs if hasattr(obj, k)}
+            )
+
+        if len(kwargs_copy):
+            wrong_key = next(iter(kwargs_copy.keys()))
+            raise TypeError(f"{wrong_key} is not a valid keyword input.")
+
+        return self.clone(**struct_args)
+
+    @classmethod
+    def from_template(
+        cls,
+        name: str | Path | Sequence[str | Path],
+        random_seed: int | None = None,
+        node_redshifts: tuple[float] | None = None,
+        **kwargs,
+    ) -> Self:
+        """Construct full InputParameters instance from native or TOML file template.
+
+        Parameters
+        ----------
+        name
+            Either a name of a built-in template, or a path to a parameter TOML,
+            or a list of such names/paths. If a list, the final parameters will be
+            built from left-to-right so that the parameters at the end of the list
+            will have precedence.
+        random_seed
+            A random seed to use for the run.
+        node_redshifts
+            The redshifts at which to evolve the simulation (if applicable). Default
+            detects whether evolution is required and sets the node redshifts according
+            to the simulation parameters.
+
+        Other Parameters
+        ----------------
+        All other parameters are interpreted as elements of :class:`InputStruct`
+        subclasses (e.g. :class:`SimulationOptions`) and will over-ride what is in
+        the template.
+        """
+        from .._templates import create_params_from_template
+
+        dct = create_params_from_template(name, **kwargs)
+        dct.pop("cosmo_tables", None)
+
+        if random_seed is not None:
+            dct["random_seed"] = random_seed
+        if node_redshifts is not None:
+            dct["node_redshifts"] = node_redshifts
+
+        return cls(**dct)
+
+    def clone(self, **kwargs) -> Self:
+        """Generate a copy of the InputParameter structure with specified changes."""
+        return evolve(self, **kwargs)
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the structure.
+
+        Created by combining repr methods from the InputStructs
+        which make up this object
+        """
+        return (
+            f"cosmo_params: {self.cosmo_params!r}\n"
+            + f"simulation_options: {self.simulation_options!r}\n"
+            + f"matter_options: {self.matter_options!r}\n"
+            + f"astro_params: {self.astro_params!r}\n"
+            + f"astro_options: {self.astro_options!r}\n"
+        )
+
+    # NOTE: These hashes are used to compare structs within a run, and so don't need to stay
+    #   constant between sessions
+    @cached_property
+    def _user_cosmo_hash(self):
+        """A hash generated from the user and cosmo params as well random seed."""
+        return hash(
+            (
+                self.random_seed,
+                self.simulation_options,
+                self.matter_options,
+                self.cosmo_params,
+            )
+        )
+
+    @cached_property
+    def _zgrid_hash(self):
+        return hash((self._user_cosmo_hash, self.node_redshifts))
+
+    @cached_property
+    def _full_hash(self):
+        return hash(
+            (
+                self.random_seed,
+                self.cosmo_params,
+                self.matter_options,
+                self.simulation_options,
+                self.astro_options,
+                self.astro_params,
+                self.node_redshifts,
+            )
+        )
+
+    @property
+    def evolution_required(self) -> bool:
+        """Whether evolution is required for these parameters."""
+        return (
+            self.astro_options.USE_TS_FLUCT
+            or self.astro_options.RECOMB_MODEL != "none"
+            or self.astro_options.USE_MCGS
+        )
+
+    def with_logspaced_redshifts(
+        self,
+        zmin: float = 5.5,
+        zmax: float | None = None,
+        step: float | None = None,
+        zstep_factor: float | None = None,
+        nz: int | None = None,
+    ) -> Self:
+        """Create a new InputParameters instance with logspaced redshifts.
+
+        Parameters
+        ----------
+        zmin
+            Minimum redshift of the node grid.
+        zmax
+            Maximum redshift of the node grid. Defaults to ``Z_HEAT_MAX`` from
+            :class:`SimulationOptions`.
+        step
+            Multiplicative step factor between consecutive ``(1 + z)`` values.
+            Defaults to ``ZPRIME_STEP_FACTOR`` from :class:`SimulationOptions`.
+            Ignored when ``nz`` is provided.
+        nz
+            If given, produce exactly ``nz`` redshifts equally spaced in
+            ``log(1 + z)`` between ``zmin`` and ``zmax``, overriding
+            ``step``.
+        """
+        if zmax is None:
+            zmax = self.simulation_options.Z_HEAT_MAX
+
+        if nz is not None:
+            node_redshifts = tuple((np.geomspace(1 + zmin, 1 + zmax, nz) - 1).tolist())
+        else:
+            if step is None and zstep_factor is None:
+                step = self.simulation_options.ZPRIME_STEP_FACTOR
+            elif zstep_factor is not None:
+                step = zstep_factor
+                warnings.warn(
+                    "The `zstep_factor` argument is deprecated and will be removed in a future version. Please use `step` instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            node_redshifts = get_logspaced_redshifts(
+                min_redshift=zmin,
+                z_step_factor=step,
+                max_redshift=zmax,
+            )
+
+        return self.clone(node_redshifts=node_redshifts)
+
+    def with_linear_redshifts(
+        self,
+        zmin: float = 5.5,
+        zmax: float | None = None,
+        step: float | None = None,
+        nz: int | None = None,
+    ) -> Self:
+        """Create a new InputParameters instance with linearly-spaced redshifts.
+
+        Parameters
+        ----------
+        zmin
+            Minimum redshift of the node grid.
+        zmax
+            Maximum redshift of the node grid. Defaults to ``Z_HEAT_MAX`` from
+            :class:`SimulationOptions`.
+        zstep
+            Linear step size between consecutive redshifts. The grid will
+            include ``zmin`` and extend up to at least ``zmax``. Ignored when
+            ``nz`` is provided.
+        nz
+            If given, produce exactly ``nz`` redshifts linearly spaced between
+            ``zmin`` and ``zmax``, overriding ``step``.
+        """
+        if zmax is None:
+            zmax = self.simulation_options.Z_HEAT_MAX
+
+        if nz is not None:
+            node_redshifts = tuple(np.linspace(zmin, zmax, nz).tolist())
+        elif step is not None:
+            # Use half-step tolerance so that zmax is always included in the grid.
+            node_redshifts = tuple(np.arange(zmin, zmax + step * 0.5, step).tolist())
+        else:
+            raise ValueError("Either `nz` or `step` must be provided.")
+
+        return self.clone(node_redshifts=node_redshifts)
+
+    def asdict(
+        self,
+        only_structs: bool = False,
+        camel: bool = False,
+        remove_base_cosmo: bool = True,
+        only_cstruct_params: bool = True,
+        use_aliases: bool = True,
+        include_cosmo_tables: Literal["always", "if_cached", "never"] = "always",
+    ) -> dict[str, dict[str, Any]]:
+        """Convert the instance to a recursive dictionary.
+
+        Parameters
+        ----------
+        only_structs
+            If True, only include parameter-struct-like fields (including
+            ``cosmo_tables`` when included).
+        camel
+            If True, convert top-level input struct keys to CamelCase.
+        remove_base_cosmo
+            If True, remove the non-serializable ``_base_cosmo`` object from
+            ``cosmo_params``.
+        only_cstruct_params
+            If True, keep only fields that are required by each C struct.
+        use_aliases
+            If True, use constructor aliases for InputStruct fields (e.g. ``DIM``
+            instead of ``_DIM``).
+        include_cosmo_tables
+            Controls whether cached cosmology tables are emitted in the dictionary.
+
+            - ``"always"``: force materialization of :attr:`cosmo_tables` and include
+              it in the output. This is the default for in-memory conversions.
+            - ``"if_cached"``: include tables only if they were already materialized,
+              which avoids triggering CLASS work during serialization.
+            - ``"never"``: omit tables entirely, useful for portable templates.
+        """
+        dct = attrs.asdict(self, recurse=True, filter=_is_not_deprecated)
+
+        # We use a tri-state here because different writers need different behavior:
+        # full in-memory snapshots, cache writes that should not trigger CLASS, and
+        # portable template files that should never store derived tables.
+        if include_cosmo_tables == "always":
+            dct["cosmo_tables"] = attrs.asdict(self.cosmo_tables, recurse=True)
+        elif include_cosmo_tables == "if_cached":
+            # On attrs slot classes, the cached value is absent until materialized,
+            # and object.__getattribute__ raises AttributeError in that case.
+            try:
+                cosmo_tables = object.__getattribute__(self, "cosmo_tables")
+            except AttributeError:
+                cosmo_tables = None
+
+            if cosmo_tables is not None:
+                dct["cosmo_tables"] = attrs.asdict(cosmo_tables, recurse=True)
+
+        if remove_base_cosmo:
+            del dct["cosmo_params"]["_base_cosmo"]
+
+        inpstructs = [
+            k for k in dct if isinstance(getattr(self, k), (InputStruct | CosmoTables))
+        ]
+        if only_structs:
+            dct = {k: v for k, v in dct.items() if k in inpstructs}
+
+        if use_aliases:
+            # Change keys to aliases instead of attribute names if desired.
+            # i.e. change _DIM to DIM, which is actually what is needed to
+            # instantiate a class.
+            for k, v in dct.items():
+                attribute = getattr(self, k)
+                if isinstance(attribute, InputStruct):
+                    fields = attrs.fields_dict(attribute.__class__)
+                    dct[k] = {fields[kk].alias: vv for kk, vv in v.items()}
+
+        if only_cstruct_params:
+            for k, v in dct.items():
+                attribute = getattr(self, k)
+                if isinstance(attribute, InputStruct):
+                    dct[k] = {
+                        kk: vv for kk, vv in v.items() if kk in attribute.cdict
+                    } | {
+                        kk: getattr(attribute, kk)
+                        for kk in attribute.cdict
+                        if kk not in dct[k]
+                    }
+
+        if camel:
+            dct = {
+                (snake_to_camel(k) if k in inpstructs else k): v for k, v in dct.items()
+            }
+
+        return dct
+
+    def __attrs_post_init__(self) -> None:
+        """Run a check after initialization.
+
+        Currently just checks that the halo mass ranges are sensible.
+        """
+        check_halomass_range(self)
+
+
+def check_halomass_range(inputs: InputParameters) -> None:
+    """Check that the halo mass range is sensible given the parameters, when there are discrete halos in the simulation.
+
+    We raise an error if there is a gap in the simulated halo mass range,
+    and a warning if the largest halo mass is below the maximum integral mass (without discrete halos).
+    """
+    # There are no problems if we are not using halos
+    if not inputs.matter_options.has_discrete_halos:
+        return
+
+    # Decide if we have sampled halos (not just dexm)
+    has_sampled_halos = inputs.matter_options.SOURCE_MODEL == "CHMF-SAMPLER"
+    min_sampler = inputs.simulation_options.SAMPLER_MIN_MASS * un.M_sun
+
+    # Simplified behaviour of lib.minimum_source_mass() for source models with discrete halos
+    if inputs.astro_options.USE_MCGS:
+        min_integral_mass = 1e5 * un.M_sun
+    else:
+        min_integral_mass = (
+            max(inputs.astro_params.cdict["M_TURN_STELLAR_FEEDBACK"] / 50, 1e5)
+            * un.M_sun
+        )
+    # Set maximum integral mass
+    MAX_INTEGRAL_MASS = 1e16 * un.M_sun  # define macro in hmf.h
+
+    # Get lowres and hires cell mass: the former (latter) is only used with (without) the sampler
+    # Also set maximum integral mass, according to the C code in ComputeEmissivityFields
+    massdens = inputs.cosmo_params.cosmo.critical_density(0) * inputs.cosmo_params.OMm
+    if has_sampled_halos:
+        lowres_cell_mass = (massdens * inputs.simulation_options.cell_size**3).to(
+            un.M_sun
+        )
+        max_integral_mass = min_sampler
+
+    else:
+        hires_cell_mass = (massdens * inputs.simulation_options.cell_size_hires**3).to(
+            un.M_sun
+        )
+        max_integral_mass = hires_cell_mass
+
+    # Decide if we have integrals (not just dexm)
+    has_integrals = min_integral_mass < max_integral_mass
+
+    # Set dexm mass range
+    min_dexm = lowres_cell_mass if has_sampled_halos else hires_cell_mass
+    max_dexm = (massdens * (inputs.simulation_options.BOX_LEN * un.Mpc) ** 3).to(
+        un.M_sun
+    )
+    mass_limits = ((min_dexm, max_dexm),)
+    names = ("dexm",)
+
+    # Now add the other mass ranges, if relevant
+    if has_sampled_halos:
+        # if the cell is smaller, the sampler won't draw any halos
+        max_sampler = max(lowres_cell_mass, min_sampler)
+        mass_limits += ((min_sampler, max_sampler),)
+        names += ("sampler",)
+    if has_integrals:
+        mass_limits += ((min_integral_mass, max_integral_mass),)
+        names += ("integrals",)
+
+    for i in range(len(mass_limits) - 1):
+        if mass_limits[i][0] != mass_limits[i + 1][1]:
+            # NOTE: this should be triggered only if the sampler min mass is greater than lowres_cell_mass
+            raise ValueError(
+                f"There is a gap/overlap in the halo mass ranges of {dict(zip(names, mass_limits, strict=False))}. "
+                "This will lead to unphysical results. Please adjust your parameters to remove this gap."
+            )
+
+    if max_dexm < MAX_INTEGRAL_MASS:
+        warnings.warn(
+            f"The maximum halo mass {max_dexm:.2e} is below the maximum integral mass {MAX_INTEGRAL_MASS:.2e} (without halos). "
+            f"Halos above {max_dexm:.2e} will not be accounted for in the simulation.",
+            stacklevel=2,
+        )

@@ -1,23 +1,40 @@
 [build-system]
-requires = ["setuptools>=78.1.0"]
+requires = ["setuptools>=78.1.0", "cffi>=1.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "21cmfast-gpu"
-version = "0.1.0"
-description = "CUDA adapter dependencies for 21cmFAST 4.3.2"
-readme = "v4/README.md"
+name = "21cmCU"
+version = "0.2.0"
+description = "21cmCU: Native C/CUDA + cuFFT 21cm cosmological simulation engine"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "21cmfast>=4.3.2",
-    "numpy>=2",
-    "astropy>=7",
+    "click",
+    "numpy>=2.0",
+    "pyyaml",
+    "cffi>=1.0",
     "scipy",
-    "h5py",
+    "astropy>=2.0",
+    "h5py>=2.8.0",
+    "matplotlib",
+    "bidict",
+    "cosmotile>=0.2.5",
+    "attrs",
+    "tqdm",
+    "classy>=3.3.4,<3.4",
+    "cyclopts",
+    "tomlkit",
+    "hmf>=3.6.2",
+    "deprecation",
+    "packaging",
 ]
 
 [project.optional-dependencies]
-cuda12 = ["cupy-cuda12x"]
+legacy-cupy = ["cupy-cuda12x"]
+
+[project.scripts]
+21cmcu = "py21cmcu.cli:app"
+21cmfast = "py21cmfast.cli:app"
 
 [project.urls]
 Repository = "https://github.com/HainaHuang729/21cmFAST-GPU"
@@ -26,14 +43,16 @@ Upstream = "https://github.com/21cmfast/21cmFAST"
 [dependency-groups]
 test = ["pytest>=8"]
 
-# Install dependencies for the source-checkout adapter and its shared CUDA assets.
 [tool.setuptools]
-packages = []
-py-modules = []
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["v4"]
+pythonpath = ["src", "v4"]
 markers = ["gpu: requires a usable CUDA device and CuPy"]
 
 [tool.ruff]

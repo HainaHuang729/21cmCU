@@ -1,0 +1,542 @@
+// Functions in this file map units of mass from Lagrangian (IC)
+//  coordinates to their real (Eulerian) Locations, these can sum
+//  masses or galaxy properties from gridded integrals or from halo catalogues
+
+#include "map_mass.h"
+
+#include <math.h>
+#include <omp.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "Constants.h"
+#include "EmissivityFields.h"
+#include "InputParameters.h"
+#include "cosmology.h"
+#include "exceptions.h"
+#include "indexing.h"
+#include "logger.h"
+
+#define do_cic_interpolation(arr, ...)                                                           \
+    _Generic((arr), float *: do_cic_interpolation_float, double *: do_cic_interpolation_double)( \
+        arr, __VA_ARGS__)
+
+static inline void do_cic_interpolation_double(double *resampled_box, double pos[3], int box_dim[3],
+                                               double curr_dens) {
+    // get the CIC indices and distances
+    int ipos[3], iposp1[3];
+    double dist[3];
+    // NOTE: assumes the cell at idx == 0 is *centred* at (0,0,0)
+    for (int axis = 0; axis < 3; axis++) {
+        ipos[axis] = (int)floor(pos[axis]);
+        iposp1[axis] = ipos[axis] + 1;
+        dist[axis] = pos[axis] - ipos[axis];
+    }
+
+    wrap_coord(ipos, box_dim);
+    wrap_coord(iposp1, box_dim);
+
+    index_huge cic_indices[8] = {grid_index_general(ipos[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], iposp1[2], box_dim)};
+
+    double cic_weights[8] = {(1. - dist[0]) * (1. - dist[1]) * (1. - dist[2]),
+                             dist[0] * (1. - dist[1]) * (1. - dist[2]),
+                             (1. - dist[0]) * dist[1] * (1. - dist[2]),
+                             dist[0] * dist[1] * (1. - dist[2]),
+                             (1. - dist[0]) * (1. - dist[1]) * dist[2],
+                             dist[0] * (1. - dist[1]) * dist[2],
+                             (1. - dist[0]) * dist[1] * dist[2],
+                             dist[0] * dist[1] * dist[2]};
+
+    for (int i = 0; i < 8; i++) {
+#pragma omp atomic update
+        resampled_box[cic_indices[i]] += curr_dens * cic_weights[i];
+    }
+}
+
+// Identical code as above, using a single precision output
+static inline void do_cic_interpolation_float(float *resampled_box, double pos[3], int box_dim[3],
+                                              double curr_dens) {
+    // get the CIC indices and distances
+    int ipos[3], iposp1[3];
+    double dist[3];
+    // NOTE: assumes the cell at idx == 0 is *centred* at (0,0,0)
+    for (int axis = 0; axis < 3; axis++) {
+        ipos[axis] = (int)floor(pos[axis]);
+        iposp1[axis] = ipos[axis] + 1;
+        dist[axis] = pos[axis] - ipos[axis];
+    }
+
+    wrap_coord(ipos, box_dim);
+    wrap_coord(iposp1, box_dim);
+
+    index_huge cic_indices[8] = {grid_index_general(ipos[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], iposp1[2], box_dim)};
+
+    double cic_weights[8] = {(1. - dist[0]) * (1. - dist[1]) * (1. - dist[2]),
+                             dist[0] * (1. - dist[1]) * (1. - dist[2]),
+                             (1. - dist[0]) * dist[1] * (1. - dist[2]),
+                             dist[0] * dist[1] * (1. - dist[2]),
+                             (1. - dist[0]) * (1. - dist[1]) * dist[2],
+                             dist[0] * (1. - dist[1]) * dist[2],
+                             (1. - dist[0]) * dist[1] * dist[2],
+                             dist[0] * dist[1] * dist[2]};
+
+    for (int i = 0; i < 8; i++) {
+#pragma omp atomic update
+        resampled_box[cic_indices[i]] += curr_dens * cic_weights[i];
+    }
+}
+
+static inline double cic_read_float(float *box, double pos[3], int box_dim[3]) {
+    // get the CIC indices and distances
+    int ipos[3], iposp1[3];
+    double dist[3];
+    double sum = 0;
+    // NOTE: assumes the cell at idx == 0 is *centred* at (0,0,0)
+    for (int axis = 0; axis < 3; axis++) {
+        ipos[axis] = (int)floor(pos[axis]);
+        iposp1[axis] = ipos[axis] + 1;
+        dist[axis] = pos[axis] - ipos[axis];
+    }
+
+    wrap_coord(ipos, box_dim);
+    wrap_coord(iposp1, box_dim);
+
+    index_huge cic_indices[8] = {grid_index_general(ipos[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], ipos[2], box_dim),
+                                 grid_index_general(ipos[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], ipos[1], iposp1[2], box_dim),
+                                 grid_index_general(ipos[0], iposp1[1], iposp1[2], box_dim),
+                                 grid_index_general(iposp1[0], iposp1[1], iposp1[2], box_dim)};
+
+    double cic_weights[8] = {(1. - dist[0]) * (1. - dist[1]) * (1. - dist[2]),
+                             dist[0] * (1. - dist[1]) * (1. - dist[2]),
+                             (1. - dist[0]) * dist[1] * (1. - dist[2]),
+                             dist[0] * dist[1] * (1. - dist[2]),
+                             (1. - dist[0]) * (1. - dist[1]) * dist[2],
+                             dist[0] * (1. - dist[1]) * dist[2],
+                             (1. - dist[0]) * dist[1] * dist[2],
+                             dist[0] * dist[1] * dist[2]};
+
+    for (int i = 0; i < 8; i++) {
+        sum += cic_weights[i] * box[cic_indices[i]];
+    }
+    return sum;
+}
+
+double cic_read_float_wrapper(float *box, double pos[3], int box_dim[3]) {
+    return cic_read_float(box, pos, box_dim);
+}
+
+// Function that maps a IC density grid to the perturbed density grid
+void move_grid_masses(double redshift, float *dens_pointer, int dens_dim[3], float *vel_pointers[3],
+                      float *vel_pointers_2LPT[3], int vel_dim[3], double *resampled_box,
+                      int out_dim[3]) {
+    // grid dimension constants
+    double boxlen = simulation_options_global->BOX_LEN;
+    double boxlen_z = boxlen * simulation_options_global->NON_CUBIC_FACTOR;
+    double box_size[3] = {boxlen, boxlen, boxlen_z};
+    double dim_ratio_vel = (double)vel_dim[0] / (double)dens_dim[0];
+    double dim_ratio_out = (double)out_dim[0] / (double)dens_dim[0];
+
+    // Setup IC velocity factors
+    double growth_factor = dicke(redshift);
+    double displacement_factor_2LPT = -(3.0 / 7.0) * growth_factor * growth_factor;  // 2LPT eq. D8
+
+    double init_growth_factor = dicke(simulation_options_global->INITIAL_REDSHIFT);
+    double init_displacement_factor_2LPT =
+        -(3.0 / 7.0) * init_growth_factor * init_growth_factor;  // 2LPT eq. D8
+
+    double velocity_displacement_factor[3] = {
+        (growth_factor - init_growth_factor) / box_size[0] * dens_dim[0],
+        (growth_factor - init_growth_factor) / box_size[1] * dens_dim[1],
+        (growth_factor - init_growth_factor) / box_size[2] * dens_dim[2]};
+    double velocity_displacement_factor_2LPT[3] = {
+        (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[0] * dens_dim[0],
+        (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[1] * dens_dim[1],
+        (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[2] * dens_dim[2]};
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+    {
+        int i, j, k, axis;
+        double pos[3], curr_dens;
+        int ipos[3];
+        index_huge vel_index, dens_index;
+#pragma omp for
+        for (i = 0; i < dens_dim[0]; i++) {
+            for (j = 0; j < dens_dim[1]; j++) {
+                for (k = 0; k < dens_dim[2]; k++) {
+                    // Transform position to units of box size
+                    pos[0] = i;
+                    pos[1] = j;
+                    pos[2] = k;
+                    resample_index((int[3]){i, j, k}, dim_ratio_vel, ipos);
+                    wrap_coord(ipos, vel_dim);
+                    vel_index = grid_index_general(ipos[0], ipos[1], ipos[2], vel_dim);
+                    for (axis = 0; axis < 3; axis++) {
+                        pos[axis] +=
+                            vel_pointers[axis][vel_index] * velocity_displacement_factor[axis];
+                        // add 2LPT second order corrections
+                        if (matter_options_global->PERTURB_ALGORITHM == PERTURB_ALGORITHM_2LPT) {
+                            pos[axis] -= vel_pointers_2LPT[axis][vel_index] *
+                                         velocity_displacement_factor_2LPT[axis];
+                        }
+                        pos[axis] *= dim_ratio_out;
+                    }
+
+                    // CIC interpolation
+                    dens_index = grid_index_general(i, j, k, dens_dim);
+                    curr_dens = 1.0 + dens_pointer[dens_index] * init_growth_factor;
+                    do_cic_interpolation(resampled_box, pos, out_dim, curr_dens);
+                }
+            }
+        }
+    }
+}
+
+// Function that maps a IC density grid to the perturbed density grid, for the lagrangian source
+// models. For the Eulerian source models, no advection is applied.
+// TODO: This shares a lot of code with move_grid_masses and (future) move_cat_galprops.
+//  I should look into combining elements, however since the differences
+//  are on the innermost loops, any generalisation is likely to slow things down.
+void move_integral_emissivities(double redshift, float *dens_pointer, int dens_dim[3],
+                                float *vel_pointers[3], float *vel_pointers_2LPT[3], int vel_dim[3],
+                                EmissivityFields *emissivity_fields, int out_dim[3], double M_min,
+                                double M_max, float *log10_mturn_acg_grid,
+                                float *log10_mturn_mcg_grid, ScalingConstants *consts) {
+    double growth_factor, init_growth_factor, displacement_factor_2LPT,
+        init_displacement_factor_2LPT;
+    double dim_ratio_vel, dim_ratio_out;
+    double velocity_displacement_factor[3], velocity_displacement_factor_2LPT[3];
+
+    // The following factor must be unity for Eulerian source models
+    double vol_ratio_out = ((double)out_dim[0] * (double)out_dim[1] * (double)out_dim[2]) /
+                           ((double)dens_dim[0] * (double)dens_dim[1] * (double)dens_dim[2]);
+    if (source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL) &&
+        vol_ratio_out != 1.0) {
+        LOG_ERROR(
+            "Volume ratio between output emissivity grid and input density grids is not unity for "
+            "Eulerian source models.");
+        Throw(ValueError);
+    }
+
+    // We need the following only for the Lagrangian source models
+    if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL)) {
+        // grid dimension constants
+        double boxlen = simulation_options_global->BOX_LEN;
+        double boxlen_z = boxlen * simulation_options_global->NON_CUBIC_FACTOR;
+        double box_size[3] = {boxlen, boxlen, boxlen_z};
+
+        dim_ratio_vel = (double)vel_dim[0] / (double)dens_dim[0];
+        dim_ratio_out = (double)out_dim[0] / (double)dens_dim[0];
+
+        // Setup IC velocity factors
+        growth_factor = consts->growth_factor;
+        displacement_factor_2LPT = -(3.0 / 7.0) * growth_factor * growth_factor;  // 2LPT eq. D8
+
+        init_growth_factor = dicke(simulation_options_global->INITIAL_REDSHIFT);
+        init_displacement_factor_2LPT =
+            -(3.0 / 7.0) * init_growth_factor * init_growth_factor;  // 2LPT eq. D8
+
+        velocity_displacement_factor[0] =
+            (growth_factor - init_growth_factor) / box_size[0] * dens_dim[0];
+        velocity_displacement_factor[1] =
+            (growth_factor - init_growth_factor) / box_size[1] * dens_dim[1];
+        velocity_displacement_factor[2] =
+            (growth_factor - init_growth_factor) / box_size[2] * dens_dim[2];
+        velocity_displacement_factor_2LPT[0] =
+            (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[0] * dens_dim[0];
+        velocity_displacement_factor_2LPT[1] =
+            (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[1] * dens_dim[1];
+        velocity_displacement_factor_2LPT[2] =
+            (displacement_factor_2LPT - init_displacement_factor_2LPT) / box_size[2] * dens_dim[2];
+    }
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+    {
+        int i, j, k, axis;
+        double pos[3], curr_dens;
+        int ipos[3];
+        index_huge vel_index, dens_index;
+        double l10_mturn_acg =
+            log10(consts->mturn_acg_homogeneous);  // used if we don't apply inhomogeneous
+                                                   // reionization feedback on ACGS
+        double l10_mturn_mcg = 0.;                 // dummy value for the USE_MCGS = false branch
+        IntegralProperties properties;
+#pragma omp for
+        for (i = 0; i < dens_dim[0]; i++) {
+            for (j = 0; j < dens_dim[1]; j++) {
+                for (k = 0; k < dens_dim[2]; k++) {
+                    pos[0] = i;
+                    pos[1] = j;
+                    pos[2] = k;
+                    dens_index = grid_index_general(i, j, k, dens_dim);
+                    curr_dens = dens_pointer[dens_index];
+                    if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL)) {
+                        curr_dens *= growth_factor;
+                        // Transform position to units of box size
+                        resample_index((int[3]){i, j, k}, dim_ratio_vel, ipos);
+                        wrap_coord(ipos, vel_dim);
+                        vel_index = grid_index_general(ipos[0], ipos[1], ipos[2], vel_dim);
+                        for (axis = 0; axis < 3; axis++) {
+                            pos[axis] +=
+                                vel_pointers[axis][vel_index] * velocity_displacement_factor[axis];
+                            // add 2LPT second order corrections
+                            if (matter_options_global->PERTURB_ALGORITHM ==
+                                PERTURB_ALGORITHM_2LPT) {
+                                pos[axis] -= vel_pointers_2LPT[axis][vel_index] *
+                                             velocity_displacement_factor_2LPT[axis];
+                            }
+                            pos[axis] *= dim_ratio_out;
+                        }
+                    }
+
+                    if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
+                        l10_mturn_acg = log10_mturn_acg_grid[dens_index];
+                    }
+                    if (astro_options_global->USE_MCGS) {
+                        l10_mturn_mcg = log10_mturn_mcg_grid[dens_index];
+                    }
+
+                    get_cell_integrals(curr_dens, M_min, M_max, l10_mturn_acg, l10_mturn_mcg,
+                                       consts, &properties);
+
+                    // Compute n_ion
+                    do_cic_interpolation(emissivity_fields->n_ion, pos, out_dim,
+                                         properties.n_ion * vol_ratio_out);
+
+                    // Compute SFRD (only required for spin temperature calculations)
+                    if (astro_options_global->USE_TS_FLUCT) {
+                        do_cic_interpolation(emissivity_fields->sfrd_acg, pos, out_dim,
+                                             properties.sfrd_acg * vol_ratio_out);
+                        if (astro_options_global->USE_MCGS) {
+                            do_cic_interpolation(emissivity_fields->sfrd_mcg, pos, out_dim,
+                                                 properties.sfrd_mcg * vol_ratio_out);
+                        }
+                    }
+
+                    // Compute X-ray emissivity (only required for spin temperature calculations)
+                    // For the non-metallicity case, the X-ray emissivity is proportional to the
+                    // SFRD, so we we compute it at the end of this function to avoid doing the CIC
+                    // interpolation.
+                    if (astro_options_global->USE_TS_FLUCT &&
+                        astro_options_global->USE_METALLICITY) {
+                        do_cic_interpolation(emissivity_fields->xray_emissivity, pos, out_dim,
+                                             properties.xray_emissivity * vol_ratio_out);
+                    }
+
+                    // If the user is interested in extra fields, we also compute them
+                    if (config_settings.EXTRA_EMISSIVITY_FIELDS) {
+                        do_cic_interpolation(emissivity_fields->halo_number, pos, out_dim,
+                                             properties.halo_number);
+                        do_cic_interpolation(emissivity_fields->halo_mass_density, pos, out_dim,
+                                             properties.halo_mass_density * vol_ratio_out);
+                        do_cic_interpolation(emissivity_fields->stellar_mass_density_acg, pos,
+                                             out_dim,
+                                             properties.stellar_mass_density_acg * vol_ratio_out);
+                        if (astro_options_global->USE_MCGS) {
+                            do_cic_interpolation(
+                                emissivity_fields->stellar_mass_density_mcg, pos, out_dim,
+                                properties.stellar_mass_density_mcg * vol_ratio_out);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+#pragma omp parallel for num_threads(simulation_options_global->N_THREADS)
+    for (index_huge i = 0; i < HII_TOT_NUM_PIXELS; i++) {
+        // If metallicity is not used, the X-ray emissivity is proportional to the SFRD, so we
+        // take advantage of it
+        if (astro_options_global->USE_TS_FLUCT && !astro_options_global->USE_METALLICITY) {
+            emissivity_fields->xray_emissivity[i] =
+                consts->lx_over_sfr_acg * emissivity_fields->sfrd_acg[i];
+            if (astro_options_global->USE_MCGS) {
+                emissivity_fields->xray_emissivity[i] +=
+                    consts->lx_over_sfr_mcg * emissivity_fields->sfrd_mcg[i];
+            }
+        }
+        // Only Lagrangian source models require having fesc_weighted_sfrd in IonisationBox.c
+        // TODO: I think this should be changed in the future
+        if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL) &&
+            uses_recombination(astro_options_global->RECOMB_MODEL)) {
+            if (source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL)) {
+                // For the mass-dependent source model, without stochasticity, the weighted SFRD is
+                // n_ion times the constants that give it units of SFRD
+                double prefactor_wsfr = RHOcrit * cosmo_params_global->OMb / consts->sfr_timescale;
+                emissivity_fields->fesc_weighted_sfrd[i] =
+                    emissivity_fields->n_ion[i] * prefactor_wsfr;
+            } else {
+                // For the mass-independent source model, the weighted SFRD is proportional to the
+                // SFRD
+                // TODO: This is a dead code at the moment, but it's useful to keep it here since in
+                // the future we might want to use
+                //       the weighted SFRD for Eulerian source models as well.
+                //       Note that sfrd_acg might not be evaluated in some scenarios.
+                //       Also note that currently in IonisationBox.c, t_STAR is used for the
+                //       weighted SFRD, which I think is a mistake
+                emissivity_fields->fesc_weighted_sfrd[i] = emissivity_fields->sfrd_acg[i] /
+                                                           consts->fstar_10_acg *
+                                                           astro_params_global->HII_EFF_FACTOR;
+            }
+        }
+    }
+}
+
+void move_halo_emissivities(double redshift, HaloCatalog *halos, float *vel_pointers[3],
+                            float *vel_pointers_2LPT[3], int vel_dim[3],
+                            float *log10_mturn_acg_grid, float *log10_mturn_mcg_grid,
+                            EmissivityFields *emissivity_fields, int out_dim[3],
+                            ScalingConstants *consts) {
+    // grid dimension constants
+    double boxlen = simulation_options_global->BOX_LEN;
+    double boxlen_z = boxlen * simulation_options_global->NON_CUBIC_FACTOR;
+    double box_size[3] = {boxlen, boxlen, boxlen_z};
+    double cell_size_inv_v = vel_dim[0] / simulation_options_global->BOX_LEN;
+    double cell_size_inv_o = out_dim[0] / simulation_options_global->BOX_LEN;
+    double cell_vol_inv = cell_size_inv_o * cell_size_inv_o * cell_size_inv_o;
+
+    // Setup IC velocity factors
+    double growth_factor = consts->growth_factor;
+    double displacement_factor_2LPT = -(3.0 / 7.0) * growth_factor * growth_factor;  // 2LPT eq. D8
+
+    double init_growth_factor = dicke(simulation_options_global->INITIAL_REDSHIFT);
+    double init_displacement_factor_2LPT =
+        -(3.0 / 7.0) * init_growth_factor * init_growth_factor;  // 2LPT eq. D8
+
+    // Since the halo coords are already in Mpc units, we don't need the box factors
+    double velocity_displacement_factor = growth_factor - init_growth_factor;
+    double velocity_displacement_factor_2LPT =
+        displacement_factor_2LPT - init_displacement_factor_2LPT;
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+    {
+        int axis;
+        double pos[3];
+        int ipos[3];
+        index_huge i, vel_index;
+        HaloProperties properties;
+        double M_turn_acg = consts->mturn_acg_homogeneous;  // used if we don't apply inhomogeneous
+                                                            // reionization feedback on ACGS
+        double M_turn_mcg = 0.;  // dummy value for the USE_MCGS = false branch
+        double halo_rng[3];
+        double hmass;
+#pragma omp for
+        for (i = 0; i < halos->n_halos; i++) {
+            hmass = halos->halo_masses[i];
+            // It is sometimes useful to make cuts to the halo catalogues before gridding.
+            //   We implement this in a simple way, if the halo's mass is set to zero we skip it
+            if (hmass == 0.) {
+                continue;
+            }
+            // Transform position to units of box size
+            pos[0] = halos->halo_coords[3 * i + 0];
+            pos[1] = halos->halo_coords[3 * i + 1];
+            pos[2] = halos->halo_coords[3 * i + 2];
+            pos_to_index(pos, cell_size_inv_v, ipos);
+            wrap_coord(ipos, vel_dim);
+            vel_index = grid_index_general(ipos[0], ipos[1], ipos[2], vel_dim);
+            for (axis = 0; axis < 3; axis++) {
+                pos[axis] += vel_pointers[axis][vel_index] * velocity_displacement_factor;
+                // add 2LPT second order corrections
+                if (matter_options_global->PERTURB_ALGORITHM == PERTURB_ALGORITHM_2LPT) {
+                    pos[axis] -=
+                        vel_pointers_2LPT[axis][vel_index] * velocity_displacement_factor_2LPT;
+                }
+            }
+
+            // convert to cell size for the cic
+            pos[0] = pos[0] * out_dim[0] / box_size[0];
+            pos[1] = pos[1] * out_dim[1] / box_size[1];
+            pos[2] = pos[2] * out_dim[2] / box_size[2];
+            if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
+                M_turn_acg = pow(10, cic_read_float(log10_mturn_acg_grid, pos, out_dim));
+            }
+            if (astro_options_global->USE_MCGS) {
+                M_turn_mcg = pow(10, cic_read_float(log10_mturn_mcg_grid, pos, out_dim));
+            }
+            halo_rng[0] = halos->star_rng[i];
+            halo_rng[1] = halos->sfr_rng[i];
+            halo_rng[2] = halos->xray_rng[i];
+
+            // CIC interpolation
+            set_halo_properties(hmass, M_turn_acg, M_turn_mcg, consts, halo_rng, &properties);
+            do_cic_interpolation(emissivity_fields->n_ion, pos, out_dim, properties.n_ion);
+            if (astro_options_global->USE_TS_FLUCT) {
+                do_cic_interpolation(emissivity_fields->sfrd_acg, pos, out_dim, properties.sfr_acg);
+                do_cic_interpolation(emissivity_fields->xray_emissivity, pos, out_dim,
+                                     properties.xray_luminosity);
+                if (astro_options_global->USE_MCGS) {
+                    do_cic_interpolation(emissivity_fields->sfrd_mcg, pos, out_dim,
+                                         properties.sfr_mcg);
+                }
+            }
+            if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL) &&
+                uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                do_cic_interpolation(emissivity_fields->fesc_weighted_sfrd, pos, out_dim,
+                                     properties.fesc_weighted_sfr);
+            }
+            if (config_settings.EXTRA_EMISSIVITY_FIELDS) {
+                do_cic_interpolation(emissivity_fields->halo_number, pos, out_dim, 1.0);
+                do_cic_interpolation(emissivity_fields->halo_mass_density, pos, out_dim,
+                                     properties.halo_mass);
+                do_cic_interpolation(emissivity_fields->stellar_mass_density_acg, pos, out_dim,
+                                     properties.stellar_mass_acg);
+                if (astro_options_global->USE_MCGS) {
+                    do_cic_interpolation(emissivity_fields->stellar_mass_density_mcg, pos, out_dim,
+                                         properties.stellar_mass_mcg);
+                }
+            }
+
+#if LOG_LEVEL >= ULTRA_DEBUG_LEVEL
+            if (i < 10) {
+                LOG_ULTRA_DEBUG(
+                    "First 10 Halos: HM: %.2e SM: %.2e (%.2e) SF: %.2e (%.2e) X: %.2e NI: %.2e WS: "
+                    "%.2e Z : %.2e ct : %llu",
+                    hmass, properties.stellar_mass_acg, properties.stellar_mass_mcg,
+                    properties.sfr_acg, properties.sfr_mcg, properties.xray_luminosity,
+                    properties.n_ion, properties.fesc_weighted_sfr, properties.metallicity_acg, i);
+                LOG_ULTRA_DEBUG("Mturn_acg %.2e Mturn_mcg %.2e RNG %.3f %.3f %.3f", M_turn_acg,
+                                M_turn_mcg, halo_rng[0], halo_rng[1], halo_rng[2]);
+            }
+#endif
+        }
+        // We need to normalize by the cell volume, since the output emissivity fields are
+        // density-like
+#pragma omp for
+        for (index_huge i_cell = 0; i_cell < HII_TOT_NUM_PIXELS; i_cell++) {
+            emissivity_fields->n_ion[i_cell] *= cell_vol_inv;
+            if (astro_options_global->USE_TS_FLUCT) {
+                emissivity_fields->sfrd_acg[i_cell] *= cell_vol_inv;
+                emissivity_fields->xray_emissivity[i_cell] *= cell_vol_inv;
+                if (astro_options_global->USE_MCGS) {
+                    emissivity_fields->sfrd_mcg[i_cell] *= cell_vol_inv;
+                }
+            }
+            if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL) &&
+                uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                emissivity_fields->fesc_weighted_sfrd[i_cell] *= cell_vol_inv;
+            }
+            if (config_settings.EXTRA_EMISSIVITY_FIELDS) {
+                emissivity_fields->halo_mass_density[i_cell] *= cell_vol_inv;
+                emissivity_fields->stellar_mass_density_acg[i_cell] *= cell_vol_inv;
+                if (astro_options_global->USE_MCGS) {
+                    emissivity_fields->stellar_mass_density_mcg[i_cell] *= cell_vol_inv;
+                }
+            }
+        }
+    }
+}

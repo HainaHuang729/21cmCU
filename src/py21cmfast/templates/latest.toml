@@ -1,0 +1,22 @@
+# Run template for latest fiducial grid-based 21cmfast runs
+
+[CosmoParams]
+
+[SimulationOptions]
+
+[MatterOptions]
+SOURCE_MODEL = 'E-INTEGRAL'
+
+[AstroParams]
+R_BUBBLE_MAX = 50.0
+
+[AstroOptions]
+USE_EXP_FILTER = false
+CELL_RECOMB = false
+USE_UPPER_STELLAR_TURNOVER = false
+USE_METALLICITY = false
+USE_MCGS = false
+USE_TS_FLUCT = true
+RECOMB_MODEL = 'inhomogeneous'
+HII_FILTER = 'sharp-k'
+USE_REIONIZATION_PHOTOHEATING_FEEDBACK = false

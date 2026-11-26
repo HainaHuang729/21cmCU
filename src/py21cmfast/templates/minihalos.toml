@@ -1,0 +1,24 @@
+# Run template for latest fiducial grid-based 21cmfast runs with molecularly cooled halos / PopIII stars
+
+[CosmoParams]
+
+[SimulationOptions]
+
+[MatterOptions]
+SOURCE_MODEL = 'E-INTEGRAL'
+V_CB_MODEL = 'FLUCTS'
+
+[AstroParams]
+R_BUBBLE_MAX = 50.0
+M_TURN_STELLAR_FEEDBACK = 5.0
+
+[AstroOptions]
+USE_EXP_FILTER = false
+CELL_RECOMB = false
+USE_UPPER_STELLAR_TURNOVER = false
+USE_METALLICITY = false
+USE_MCGS = true
+USE_TS_FLUCT = true
+RECOMB_MODEL = 'inhomogeneous'
+HII_FILTER = 'sharp-k'
+USE_REIONIZATION_PHOTOHEATING_FEEDBACK = true

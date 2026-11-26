@@ -1,0 +1,212 @@
+/*We need to explicitly define the types used by the warpper using ffi.cdef()
+    However, that function does not take directives, so we separate the types here
+*/
+// WARNING: DO NOT #include THIS FILE IN THE C CODE EXCEPT FOR IN InputParameters.h
+
+// MatterOptions enums
+typedef int hmf_model_t;
+typedef int source_model_t;
+typedef int v_cb_model_t;
+typedef int filter_t;
+typedef int sample_method_t;
+typedef int perturb_algorithm_t;
+typedef int power_spectrum_t;
+typedef int use_interpolation_tables_t;
+// AstroOptions enums
+typedef int photon_cons_type_t;
+typedef int recombination_model_t;
+typedef int integration_method_t;
+
+typedef struct CosmoParams {
+    // NOTE: power spectrum normalization (A_s or sigma_8) is given by ps_norm in cosmo_tables
+    float hlittle;
+    float OMm;
+    float OMl;
+    float OMb;
+    float POWER_INDEX;
+
+    float OMn;
+    float OMk;
+    float OMr;
+    float OMtot;
+    float Y_He;
+    float wl;
+
+} CosmoParams;
+
+typedef struct SimulationOptions {
+    // Parameters taken from INIT_PARAMS.H
+    int HII_DIM;
+    int DIM;
+    float BOX_LEN;
+    float NON_CUBIC_FACTOR;
+    int N_THREADS;
+    double Z_HEAT_MAX;
+    double ZPRIME_STEP_FACTOR;
+
+    // Halo Sampler Options
+    float SAMPLER_MIN_MASS;
+    double SAMPLER_BUFFER_FACTOR;
+    int N_COND_INTERP;
+    int N_PROB_INTERP;
+    double MIN_LOGPROB;
+    double HALOMASS_CORRECTION;
+    double PARKINSON_G0;
+    double PARKINSON_y1;
+    double PARKINSON_y2;
+
+    float INITIAL_REDSHIFT;
+    double DELTA_R_FACTOR;
+    double DENSITY_SMOOTH_RADIUS;
+
+    double DEXM_OPTIMIZE_MINMASS;
+    double DEXM_R_OVERLAP;
+
+    double CORR_STAR;
+    double CORR_SFR;
+    double CORR_LX;
+    double MIN_XE_FOR_NION_IN_TAUX;
+} SimulationOptions;
+
+typedef struct MatterOptions {
+    bool USE_FFTW_WISDOM;
+    bool PERTURB_ON_HIGH_RES;
+    bool MINIMIZE_MEMORY;
+    bool KEEP_3D_VELOCITIES;
+    bool DEXM_OPTIMIZE;
+    bool SMOOTH_EVOLVED_DENSITY_FIELD;
+    hmf_model_t HMF;
+    v_cb_model_t V_CB_MODEL;
+    power_spectrum_t POWER_SPECTRUM;
+    use_interpolation_tables_t USE_INTERPOLATION_TABLES;
+    perturb_algorithm_t PERTURB_ALGORITHM;
+    filter_t FILTER;
+    filter_t HALO_FILTER;
+    source_model_t SOURCE_MODEL;
+    sample_method_t SAMPLE_METHOD;
+} MatterOptions;
+
+typedef struct AstroParams {
+    float HII_EFF_FACTOR;
+
+    // SHMR
+    float F_STAR10_ACG;
+    float ALPHA_STAR_ACG;
+    float ALPHA_STAR_MCG;
+    float SIGMA_STAR;
+    double UPPER_STELLAR_TURNOVER_MASS;
+    double UPPER_STELLAR_TURNOVER_INDEX;
+    float F_STAR7_MCG;
+
+    // SFMS
+    float t_STAR;
+    double SIGMA_SFR_INDEX;
+    double SIGMA_SFR_LIM;
+
+    // L_X/SFR
+    double LX_OVER_SFR_ACG;
+    double LX_OVER_SFR_MCG;
+    double SIGMA_LX;
+
+    // Escape Fraction
+    float F_ESC10_ACG;
+    float ALPHA_ESC;
+    float F_ESC7_MCG;
+
+    float T_RE;
+
+    float M_TURN_STELLAR_FEEDBACK;
+    float R_BUBBLE_MAX;
+    float ION_Tvir_MIN;
+    double F_H2_SHIELD;
+    float NU_X_THRESH;
+    float X_RAY_SPEC_INDEX;
+    float X_RAY_Tvir_MIN;
+
+    double A_LW;
+    double BETA_LW;
+    double A_VCB;
+    double BETA_VCB;
+
+    double V_CB_AVG_DEBUG;
+    double POP2_ION;
+    double POP3_ION;
+
+    double PHOTONCONS_CALIBRATION_END;
+    double CLUMPING_FACTOR;
+    double ALPHA_UVB;
+
+    float R_MAX_TS;
+    int N_STEP_TS;
+    double DELTA_R_HII_FACTOR;
+    float R_BUBBLE_MIN;
+    double MAX_DVDR;
+    double NU_X_MAX;
+    double NU_X_BAND_MAX;
+} AstroParams;
+
+typedef struct AstroOptions {
+    bool USE_MCGS;
+    bool USE_X_RAY_HEATING;
+    bool USE_CMB_HEATING;  // CMB Heating Flag
+    bool USE_LYA_HEATING;  // Lya Heating Flag
+    bool USE_TS_FLUCT;
+    bool M_MIN_in_Mass;
+    bool USE_EXP_FILTER;
+    bool CELL_RECOMB;
+    bool LYA_MULTIPLE_SCATTERING;
+    bool USE_ADIABATIC_FLUCTUATIONS;
+    bool USE_UPPER_STELLAR_TURNOVER;
+    bool USE_METALLICITY;
+    bool HALO_SCALING_RELATIONS_MEDIAN;
+    bool IONISE_ENTIRE_SPHERE;
+    bool USE_REIONIZATION_PHOTOHEATING_FEEDBACK;
+    photon_cons_type_t PHOTON_CONS_TYPE;
+    filter_t HII_FILTER;
+    filter_t HEAT_FILTER;
+    recombination_model_t RECOMB_MODEL;
+    integration_method_t INTEGRATION_METHOD_ACGS;
+    integration_method_t INTEGRATION_METHOD_MCGS;
+} AstroOptions;
+
+typedef struct Table1D {
+    int size;
+    double *x_values;
+    double *y_values;
+} Table1D;
+
+typedef struct CosmoTables {
+    Table1D *transfer_density;
+    Table1D *transfer_vcb;
+    double ps_norm;
+    bool USE_SIGMA_8;
+    double V_CB_AVG;
+} CosmoTables;
+
+typedef struct ConfigSettings {
+    double HALO_CATALOG_MEM_FACTOR;
+    bool EXTRA_EMISSIVITY_FIELDS;
+
+    char *external_table_path;
+    char *wisdoms_path;
+} ConfigSettings;
+
+/* Previously, we had a few structures spread throughout the code e.g simulation_options_ufunc which
+   were all globally defined and separately broadcast at different times. Several of these were used
+   across different files and some inside #defines (e.g indexing.h), so for now I've combined
+   the parameter structures to avoid confusion (we shouldn't have the possibility of two files using
+   different parameters).
+
+   In future we should have a parameter structure in each .c file containing ONLY parameters
+   relevant to it (look at EmissivityFields.c), and force the broadcast at each _compute() step (or
+   even decorate any library call) However this would require us to be very careful about
+   initialising the globals when ANY function from that file is called */
+// The structs declared here defined in InputParameters.c
+extern SimulationOptions *simulation_options_global;
+extern MatterOptions *matter_options_global;
+extern CosmoParams *cosmo_params_global;
+extern AstroParams *astro_params_global;
+extern AstroOptions *astro_options_global;
+extern CosmoTables *cosmo_tables_global;
+
+extern ConfigSettings config_settings;

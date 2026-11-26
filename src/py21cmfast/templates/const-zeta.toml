@@ -1,0 +1,21 @@
+# Run template for simple 21cmfast runs
+
+[CosmoParams]
+
+[SimulationOptions]
+
+[MatterOptions]
+SOURCE_MODEL = 'CONST-ION-EFF'
+
+[AstroParams]
+
+[AstroOptions]
+USE_EXP_FILTER = false
+CELL_RECOMB = false
+USE_UPPER_STELLAR_TURNOVER = false
+USE_METALLICITY = false
+USE_MCGS = false
+USE_TS_FLUCT = false
+RECOMB_MODEL = 'none'
+HII_FILTER = 'sharp-k'
+USE_REIONIZATION_PHOTOHEATING_FEEDBACK = false
