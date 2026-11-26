@@ -11,7 +11,7 @@ from py21cmfast.c_21cmfast import ffi, lib
 from py21cmfast.wrapper.outputs import IonizedBox
 
 from evolution_backend import CB, ROOT, SHARED, SRC, insert, module, view
-from fft_plan_cuda import transform
+from fft_general import transform_3d
 from mhr import build as build_mhr
 
 
@@ -96,18 +96,15 @@ int (*halo_ion_dispatch)(int,int,double*,void**);
 int halo_use_mhr;
 #define HALO_ION(ID,P,A) do { if (halo_ion_dispatch(ID,HII_TOT_NUM_PIXELS,P,A)) Throw(ValueError); } while(0)
 """
-    active = """consts->lagrangian_source_grids && !consts->need_mcgs_nion
-        && astro_options_global->RECOMB_MODEL != RECOMB_MODEL_HOMOGENEOUS
-        && !astro_options_global->IONISE_ENTIRE_SPHERE
-        && simulation_options_global->NON_CUBIC_FACTOR == 1.0"""
+    active = """consts->lagrangian_source_grids && !consts->need_mcgs_nion"""
     src = insert(
         src,
         "void prepare_box_for_filtering(",
         "    int i, j, k;",
         """
-    if (simulation_options_global->NON_CUBIC_FACTOR == 1.0 && !matter_options_global->USE_FFTW_WISDOM) {
+    {
         double p[]={simulation_options_global->HII_DIM, const_factor, limit_min, limit_max,
-                    simulation_options_global->N_THREADS};
+                    simulation_options_global->N_THREADS, HII_D_PARA, matter_options_global->USE_FFTW_WISDOM};
         void *a[]={input_box,output_c_box};
         HALO_ION(0,p,a); return;
     }
@@ -118,13 +115,14 @@ int halo_use_mhr;
         "void copy_filter_transform(",
         "    memcpy(",
         """
-    if (ACTIVE && !matter_options_global->USE_FFTW_WISDOM && consts->hii_filter >= 0 && consts->hii_filter <= 2) {
+    if (ACTIVE && consts->hii_filter >= 0 && consts->hii_filter <= 2) {
         const float radius = (float)rspec.R, mfp = (float)consts->mfp_meandens;
         const int kind = astro_options_global->USE_EXP_FILTER ? FILTER_EXP_MFP : consts->hii_filter;
         double p[]={box_dim[0],rspec.R_index,2.*M_PI/simulation_options_global->BOX_LEN,
                     radius,mfp,kind == FILTER_EXP_MFP && rspec.R_index > 0 ? exp(-radius/mfp) : 0.,
                     consts->hii_filter,kind,simulation_options_global->N_THREADS,astro_options_global->USE_TS_FLUCT,
-                    uses_recombination(astro_options_global->RECOMB_MODEL),consts->filter_recombinations};
+                    uses_recombination(astro_options_global->RECOMB_MODEL),consts->filter_recombinations,
+                    box_dim[2],2.*M_PI/BOXLEN_PARA,matter_options_global->USE_FFTW_WISDOM};
         void *a[]={fg_struct->deltax_unfiltered,fg_struct->deltax_filtered,
                    fg_struct->stars_unfiltered,fg_struct->stars_filtered,
                    p[9] ? fg_struct->xe_unfiltered : NULL,p[9] ? fg_struct->xe_filtered : NULL,
@@ -141,7 +139,8 @@ int halo_use_mhr;
         """
     if (ACTIVE) {
         double p[]={simulation_options_global->HII_DIM,-1.+FRACT_FLOAT_ERR,astro_options_global->USE_TS_FLUCT,
-                    uses_recombination(astro_options_global->RECOMB_MODEL),consts->filter_recombinations};
+                    uses_recombination(astro_options_global->RECOMB_MODEL),consts->filter_recombinations,
+                    HII_D_PARA};
         void *a[]={fg_struct->deltax_filtered,fg_struct->stars_filtered,&rspec->nion_conditional_ave_acg,
                    p[2] ? fg_struct->xe_filtered : NULL,p[3] ? fg_struct->sfr_filtered : NULL,
                    p[4] ? fg_struct->N_rec_filtered : NULL};
@@ -155,13 +154,16 @@ int halo_use_mhr;
         "#pragma omp parallel",
         """
     if (ACTIVE) {
-        double p[]={box_dim[0],rspec.R_index,consts->redshift,consts->photoncons_adjustment_factor,
+        double p[]={box_dim[2],rspec.R_index,consts->redshift,consts->photoncons_adjustment_factor,
                     mean_fix_term_acg,nion_limit_acg,consts->mass_dep_zeta,
                     astro_options_global->USE_TS_FLUCT ? 0. : consts->TK_nofluct,
                     astro_options_global->USE_TS_FLUCT ? 0. : consts->adia_TK_term,consts->T_re,astro_options_global->USE_TS_FLUCT,
                     uses_recombination(astro_options_global->RECOMB_MODEL),consts->filter_recombinations,
                     rspec.R,consts->gamma_prefactor,
-                    astro_options_global->USE_MCGS && consts->mass_dep_zeta ? fmax(0.,nion_limit_mcg) : 0.};
+                    astro_options_global->USE_MCGS && consts->mass_dep_zeta ? fmax(0.,nion_limit_mcg) : 0.,
+                    astro_options_global->RECOMB_MODEL == RECOMB_MODEL_HOMOGENEOUS,
+                    astro_options_global->IONISE_ENTIRE_SPHERE,box_dim[0],box_dim[1],
+                    simulation_options_global->BOX_LEN};
         void *a[]={perturbed_field->density,fg_struct->deltax_filtered,fg_struct->stars_filtered,
                    previous_ionize_box->z_reion,box->neutral_fraction,box->z_reion,
                    matter_options_global->MINIMIZE_MEMORY?NULL:box->kinetic_temperature,
@@ -189,6 +191,20 @@ int halo_use_mhr;
     )
     src = insert(
         src,
+        "// Homogeneous recombination rate",
+        "        double dNrec_global",
+        """
+        if (halo_use_mhr) {
+            double p[]={consts->stored_redshift,consts->fabs_dtdz,consts->dz};
+            void *a[]={NULL,&global_photionization_rate,&global_xHI,
+                       previous_ionize_box->cumulative_recombinations,box->cumulative_recombinations};
+            if (halo_ion_dispatch(9,1,p,a)) Throw(ValueError);
+            return;
+        }
+""",
+    )
+    src = insert(
+        src,
         "// Inhomogeneous recombination rate",
         "        bool finite_error",
         """
@@ -208,9 +224,13 @@ int halo_use_mhr;
     src = (
         src[:begin]
         + """if (ACTIVE) {
-        void *a[]={box->neutral_fraction,&global_xH}; HALO_ION(8,NULL,a);
-    } else {
+        if (astro_options_global->RECOMB_MODEL != RECOMB_MODEL_HOMOGENEOUS) {
+            void *a[]={box->neutral_fraction,&global_xH}; HALO_ION(8,NULL,a);
+        } else {
+            if (halo_ion_dispatch(10,0,NULL,NULL)) Throw(ValueError);
 """.replace("ACTIVE", active.replace("consts->", "ionbox_constants."))
+        + src[begin:stop]
+        + "    }\n    } else {\n"
         + src[begin:stop]
         + "}\n"
         + src[stop:]
@@ -262,12 +282,14 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
         "thermochem.c", "float ComputePartiallyIonizedTemperature("
     )
     kernels = module(
-        [SHARED / "glibc_math.cuh", SHARED / "ion.cu"],
+        [SHARED / "glibc_math.cuh", SHARED / "ion.cu", ROOT / "ion_sphere.cuh"],
         partial + "\n" + (ROOT / "halo_ionization.cu").read_text(),
         options=("-DRECOMB_V432",),
     )
     window = halo_window()
     barrier = kernels.get_function("halo_barrier")
+    sphere_mark = kernels.get_function("halo_barrier_sphere_mark")
+    sphere_partial = kernels.get_function("halo_barrier_sphere_partial")
     temperature = kernels.get_function("ion_temperature")
     rec_tables = None
     max_log = None
@@ -281,6 +303,8 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
         "ionization_cumulative_recombinations",
         "ionization_global_nion",
         "ionization_global_neutral_fraction",
+        "ionization_homogeneous_recombinations",
+        "ionization_flush_state",
     )
     errors = []
     spectra = {}
@@ -322,19 +346,23 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                     ion_state_meta[ptr] = (n, "f")
                 return buf
 
-            def padded(i):
-                return view(a[i], side * side * (side // 2 + 1) * 2, "f").reshape(
-                    side, side, -1
-                )
+            def padded(i, nx, ny, nz):
+                width = 2 * (nz // 2 + 1)
+                return view(a[i], nx * ny * width, "f").reshape(nx, ny, width)
 
             def launch(kernel, size, *args):
                 kernel(((size + 255) // 256,), (256,), args)
 
             if stage == 0:
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[5])
+                wisdom = bool(p[6])
+                shape = (nx, ny, nz)
                 clipped = cp.clip(grid(0).astype("d") * p[1], p[2], p[3]).astype("f")
                 spectrum = cp.ascontiguousarray(
-                    transform(clipped.reshape((side,) * 3), side, False, int(p[4]))
+                    transform_3d(
+                        clipped.reshape(shape), shape, False, int(p[4]), wisdom=wisdom
+                    )
                 )
                 # The native -Ofast loop multiplies real and imaginary components by
                 # the same rounded reciprocal, including on non-power-of-two grids.
@@ -342,9 +370,13 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                 if residency:
                     spectra[int(a[1])] = spectrum
                 else:
-                    spectrum.get(out=padded(1).view("complex64"))
+                    spectrum.get(out=padded(1, nx, ny, nz).view("complex64"))
             elif stage == 1:
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[12])
+                dk_z = p[13]
+                wisdom = bool(p[14])
+                shape = (nx, ny, nz)
                 pairs = [(0, int(p[6])), (2, int(p[7]))]
                 if p[9]:
                     pairs.append((4, int(p[6])))
@@ -356,7 +388,7 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                     ptr_in = int(a[field])
                     spectrum = spectra.get(ptr_in)
                     if spectrum is None:
-                        spectrum = cp.asarray(padded(field).view("complex64"))
+                        spectrum = cp.asarray(padded(field, nx, ny, nz).view("complex64"))
                     elif p[1] > 0:
                         spectrum = spectrum.copy()
                     if p[1] > 0:
@@ -364,29 +396,34 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                             window,
                             spectrum.size,
                             spectrum,
-                            np.int32(side),
+                            np.int32(nx),
+                            np.int32(ny),
+                            np.int32(nz),
                             np.float64(p[2]),
+                            np.float64(dk_z),
                             np.float32(p[3]),
                             np.float32(p[4]),
                             np.float64(p[5]),
                             np.int32(kind),
                         )
                     real = cp.ascontiguousarray(
-                        transform(spectrum, side, True, int(p[8]))
+                        transform_3d(spectrum, shape, True, int(p[8]), wisdom=wisdom)
                     )
                     if residency:
                         filtered_cache[int(a[field + 1])] = real.reshape(-1)
                     else:
-                        padded(field + 1)[:, :, :side] = real.get()
+                        padded(field + 1, nx, ny, nz)[:, :, :nz] = real.get()
             elif stage == 2:
-                side = int(p[0])
+                nz = int(p[0])
+                nx = int(p[18])
+                ny = int(p[19])
 
                 def filtered(idx):
                     ptr = int(a[idx])
                     cached = filtered_cache.get(ptr)
                     if cached is not None:
                         return cached
-                    return cp.asarray(padded(idx)[:, :, :side], order="C")
+                    return cp.asarray(padded(idx, nx, ny, nz)[:, :, :nz], order="C")
 
                 unused = cp.empty(1, dtype="f")
                 has_temp = bool(a[6])
@@ -418,23 +455,80 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                         if has_mfp
                         else np.uint64(0)
                     )
-                    arrays.extend(
-                        (
-                            filtered(9) if p[12] else grid(9),
-                            filtered(10),
-                            buf_11,
-                            buf_12,
-                        )
+                    rec_arr = (
+                        filtered(9)
+                        if p[12]
+                        else (cp.asarray(view(a[9], 1, "f")) if p[16] else grid(9))
                     )
+                    arrays.extend((rec_arr, filtered(10), buf_11, buf_12))
                 else:
                     arrays.extend((unused,) * 4)
-                launch(
-                    barrier,
-                    n,
-                    *arrays,
-                    cp.asarray(np.array(p[:16], dtype="d")),
-                    np.int32(n),
-                )
+                pars = cp.asarray(np.array(p[:17], dtype="d"))
+                if p[17]:
+                    from ion_sphere import paint_ion_spheres
+
+                    triggered = cp.empty(n, dtype="B")
+                    eligible = cp.empty(n, dtype="B") if p[11] else None
+                    gamma_cand = cp.empty(n, dtype="f") if p[11] else None
+                    launch(
+                        sphere_mark,
+                        n,
+                        arrays[0],
+                        arrays[1],
+                        arrays[2],
+                        arrays[3],
+                        arrays[4],
+                        arrays[5],
+                        arrays[7],
+                        arrays[9],
+                        arrays[10],
+                        pars,
+                        np.int32(n),
+                        triggered,
+                        eligible if eligible is not None else np.uint64(0),
+                        gamma_cand if gamma_cand is not None else np.uint64(0),
+                    )
+                    is_last = p[1] == 0.0
+                    min_painter = paint_ion_spheres(
+                        kernels,
+                        shape=(int(p[18]), int(p[19]), int(p[0])),
+                        radius=p[13],
+                        box_len=p[20],
+                        xh=arrays[4],
+                        triggered=triggered,
+                        eligible=eligible,
+                        gamma_cand=gamma_cand,
+                        gamma12=arrays[11] if p[11] else None,
+                        mfp=arrays[12] if (p[11] and has_mfp) else None,
+                        track_painter=is_last,
+                        write_xh=(not is_last),
+                    )
+                    if is_last:
+                        launch(
+                            sphere_partial,
+                            n,
+                            arrays[0],
+                            arrays[1],
+                            arrays[2],
+                            arrays[4],
+                            arrays[6],
+                            arrays[7],
+                            arrays[8],
+                            triggered,
+                            min_painter
+                            if min_painter is not None
+                            else np.uint64(0),
+                            pars,
+                            np.int32(n),
+                        )
+                else:
+                    launch(
+                        barrier,
+                        n,
+                        *arrays,
+                        pars,
+                        np.int32(n),
+                    )
                 if not residency:
                     for i in mutable:
                         arrays[i].get(out=view(a[i], n, "f"))
@@ -478,7 +572,8 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                     ):
                         engine._pending_outputs[int(a[3])] = result
             elif stage == 4:
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[5])
                 bounds = [(0, p[1]), (1, 0.0)]
                 bounds.extend(
                     (idx, 0.0)
@@ -494,7 +589,7 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                             clipped = cp.fmin(clipped, np.float32(0.999))
                         filtered_cache[ptr] = clipped
                     else:
-                        field = padded(idx)[:, :, :side]
+                        field = padded(idx, nx, ny, nz)[:, :, :nz]
                         clipped = cp.fmax(cp.asarray(field), np.float32(lower))
                         if idx == 3:
                             clipped = cp.fmin(clipped, np.float32(0.999))
@@ -507,7 +602,7 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                     module([SHARED / "table_qag.cuh", SHARED / "mhr.cu"]), rule, *p[:3]
                 )
                 max_log = np.float64(rec_tables[0][-1].item() - 1.0e-7)
-            elif stage == 6:
+            elif stage in (6, 9):
                 if rec_tables is None:
                     raise RuntimeError(
                         "MHR table unavailable for cumulative recombinations"
@@ -517,7 +612,11 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                 launch(
                     kernels.get_function("recombine"),
                     n,
-                    *map(grid, range(4)),
+                    grid(0) if a[0] else np.uint64(0),
+                    *(
+                        cp.asarray(view(a[idx], 1, "f")) if stage == 9 else grid(idx)
+                        for idx in (1, 2, 3)
+                    ),
                     result,
                     *rec_tables,
                     np.int32(n),
@@ -548,6 +647,18 @@ def install_ionization(stack, adapter, counters, *, use_mhr=False, engine=None):
                     )
             elif stage == 8:
                 view(a[1], 1, "d")[0] = grid(0).mean(dtype="d").item()
+            elif stage == 10:
+                for ptr, arr_dev in ion_state.items():
+                    size, dtype = ion_state_meta[ptr]
+                    arr_dev.get(out=view(ptr, size, dtype).reshape(arr_dev.shape))
+                    if (
+                        engine is not None
+                        and engine._record_pending
+                        and engine._pending_outputs is not None
+                    ):
+                        engine._pending_outputs[ptr] = arr_dev
+                ion_state.clear()
+                ion_state_meta.clear()
             else:
                 raise ValueError(f"Unexpected ionization stage {stage}")
             name = stage_names[stage]

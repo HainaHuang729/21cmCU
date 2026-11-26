@@ -218,12 +218,13 @@ extern "C" __global__ void taus2_stream(unsigned *state, unsigned *out, int coun
     state[2] = s3;
 }
 
-extern "C" __global__ void hessian_modes(const float2 *modes, float2 *out, int n, double dk,
-                                         double dk_y, int a, int b) {
-    int h = n / 2 + 1, j = blockDim.x * blockIdx.x + threadIdx.x;
-    if (j >= n * n * h) return;
-    int x = j / (n * h), y = j / h % n, z = j % h;
-    double k[3] = {(x > n / 2 ? x - n : x) * dk, (y > n / 2 ? y - n : y) * dk_y, z * dk};
+extern "C" __global__ void hessian_modes(const float2 *modes, float2 *out, int nx, int ny, int nz,
+                                         double dk_x, double dk_y, double dk_z, int a, int b) {
+    int hz = nz / 2 + 1;
+    long long j = (long long)blockDim.x * blockIdx.x + threadIdx.x;
+    if (j >= (long long)nx * ny * hz) return;
+    int x = (int)(j / ((long long)ny * hz)), y = (int)((j / hz) % ny), z = (int)(j % hz);
+    double k[3] = {(x > nx / 2 ? x - nx : x) * dk_x, (y > ny / 2 ? y - ny : y) * dk_y, z * dk_z};
     double kk =
         __dadd_rn(__dadd_rn(__dmul_rn(k[0], k[0]), __dmul_rn(k[1], k[1])), __dmul_rn(k[2], k[2]));
     double weight = __dmul_rn(-k[a], k[b]);

@@ -1,4 +1,4 @@
-"""GPU perturbation adapter for cubic v4.3.2 InitialConditions."""
+"""GPU perturbation adapter for v4.3.2 InitialConditions."""
 
 from contextlib import ExitStack
 import ctypes
@@ -50,10 +50,20 @@ extern "C" __global__ void deposit(const float *rho, const float *vel,
 )
 
 
-def modes(n, length):
-    i = cp.arange(n)
-    k = (cp.where(i <= n // 2, i, i - n) * (2 * np.pi / length)).astype(cp.float32)
-    return k[:, None, None], k[None, :, None], k[None, None, : n // 2 + 1]
+def modes(shape, box_len_xy, box_len_z):
+    nx, ny, nz = (int(d) for d in shape)
+
+    def axis(n, length):
+        i = cp.arange(n)
+        return (cp.where(i <= n // 2, i, i - n) * (2 * np.pi / length)).astype(
+            cp.float32
+        )
+
+    return (
+        axis(nx, box_len_xy)[:, None, None],
+        axis(ny, box_len_xy)[None, :, None],
+        axis(nz, box_len_z)[: nz // 2 + 1][None, None, :],
+    )
 
 
 def gaussian_weights(k2, radius):
@@ -74,13 +84,27 @@ def _get_native_lib():
 
 
 def _geometry_cache(
-    n, m, low, length, high, smooth, smooth_radius, n_threads, wisdom, strict_fft
+    n_shape,
+    m_shape,
+    low_shape,
+    box_len_xy,
+    box_len_z,
+    high,
+    smooth,
+    smooth_radius,
+    n_threads,
+    wisdom,
+    strict_fft,
 ):
+    n_shape = tuple(int(d) for d in n_shape)
+    m_shape = tuple(int(d) for d in m_shape)
+    low_shape = tuple(int(d) for d in low_shape)
     key = (
-        int(n),
-        int(m),
-        int(low),
-        float(length),
+        n_shape,
+        m_shape,
+        low_shape,
+        float(box_len_xy),
+        float(box_len_z),
         bool(high),
         bool(smooth),
         float(smooth_radius) if smooth else None,
@@ -93,29 +117,30 @@ def _geometry_cache(
     if cached is not None:
         return cached
 
-    def supported(size):
-        if wisdom:
+    def supported(shape):
+        nx, ny, nz = shape
+        if wisdom or not (nx == ny == nz) or nx % 2 != 0:
             if strict_fft:
-                raise UnsupportedPlan("External FFTW wisdom is enabled")
+                raise UnsupportedPlan("External wisdom, odd or non-cubic grid enabled")
             return False
         try:
             for inverse_direction in (False, True):
-                executable(size, inverse_direction, n_threads)
+                executable(nx, inverse_direction, n_threads)
         except UnsupportedPlan:
             if strict_fft:
                 raise
             return False
         return True
 
-    ordered = {size for size in {m, low} if supported(size)}
-    axes = modes(m, length)
+    ordered = {shape for shape in {m_shape, low_shape} if supported(shape)}
+    axes = modes(m_shape, box_len_xy, box_len_z)
     k2 = sum(k * k for k in axes)
     denom = cp.where(k2 == 0, 1, k2)
     axes_f64 = tuple(k.astype(cp.float64) for k in axes)
     window = None
     sample = None
     if high:
-        radius = np.float32(0.620350491 * length / low)
+        radius = np.float32(0.620350491 * box_len_xy / low_shape[0])
         kr = (
             (cp.sqrt(k2.astype(cp.float64)) * radius)
             .astype(cp.float32)
@@ -127,12 +152,14 @@ def _geometry_cache(
             1 - 0.1 * (kr * kr),
             (3 / ((safe * safe) * safe)) * (cp.sin(kr) - kr * cp.cos(kr)),
         )
-        idx = cp.floor(cp.arange(low) * (n / low) + 0.5).astype(cp.int32)
-        sample = cp.ix_(idx, idx, idx)
+        ratio = n_shape[0] / low_shape[0]
+        idx_xy = cp.floor(cp.arange(low_shape[0]) * ratio + 0.5).astype(cp.int32)
+        idx_z = cp.floor(cp.arange(low_shape[2]) * ratio + 0.5).astype(cp.int32)
+        sample = cp.ix_(idx_xy, idx_xy, idx_z)
     smooth_weights = None
     if smooth:
-        low_k2 = sum(k * k for k in modes(low, length))
-        radius = np.float32(smooth_radius * length / low)
+        low_k2 = sum(k * k for k in modes(low_shape, box_len_xy, box_len_z))
+        radius = np.float32(smooth_radius * box_len_xy / low_shape[0])
         smooth_weights = gaussian_weights(low_k2, radius)
     cached = (ordered, axes_f64, denom, window, sample, smooth_weights)
     _PERTURB_GEOM_CACHE[key] = cached
@@ -150,30 +177,32 @@ def reference_density(lib, inputs, grid):
     lib.fftwf_free.argtypes = [ptr]
     with ExitStack() as cleanup, c_state(inputs, broadcast_inputs=True):
 
-        def buffer(n):
-            shape = (n, n, 2 * (n // 2 + 1))
-            address = lib.fftwf_malloc(4 * int(np.prod(shape)))
+        def buffer(shape):
+            nx, ny, nz = shape
+            padded = (nx, ny, 2 * (nz // 2 + 1))
+            address = lib.fftwf_malloc(4 * int(np.prod(padded)))
             if not address:
                 raise MemoryError("FFTW allocation failed")
             cleanup.callback(lib.fftwf_free, address)
             array = np.ctypeslib.as_array(
-                ctypes.cast(address, ctypes.POINTER(ctypes.c_float)), shape
+                ctypes.cast(address, ctypes.POINTER(ctypes.c_float)), padded
             )
             return ptr(address), array
 
-        low = sim.HII_DIM
-        source, _ = buffer(grid.shape[0])
-        coarse, box = buffer(low)
+        n_shape = (sim.DIM, sim.DIM, int(sim.NON_CUBIC_FACTOR * sim.DIM))
+        low_shape = (sim.HII_DIM, sim.HII_DIM, int(sim.NON_CUBIC_FACTOR * sim.HII_DIM))
+        source, _ = buffer(grid.shape)
+        coarse, box = buffer(low_shape)
         if opt.PERTURB_ON_HIGH_RES:
-            fine, fine_box = buffer(sim.DIM)
-            fine_box[:, :, : sim.DIM] = grid.get()
+            fine, fine_box = buffer(n_shape)
+            fine_box[:, :, : n_shape[2]] = grid.get()
             lib.assign_to_lowres_grid(fine, coarse, source)
         else:
-            box[:, :, :low] = grid.get()
+            box[:, :, : low_shape[2]] = grid.get()
         if opt.PERTURB_ALGORITHM != "LINEAR":
             lib.normalise_delta_grid(coarse)
         lib.smooth_and_clip_density(coarse, source)
-        return box[:, :, :low].copy()
+        return box[:, :, : low_shape[2]].copy()
 
 
 def perturb_field_gpu(
@@ -189,13 +218,14 @@ def perturb_field_gpu(
     ic = initial_conditions
     inputs = ic.inputs if inputs is None else inputs
     sim, opt = inputs.simulation_options, inputs.matter_options
-    if sim.NON_CUBIC_FACTOR != 1:
-        raise ValueError("This adapter supports cubic boxes")
-    # SimulationOptions stores BOX_LEN as a C float before calculating the
-    # displacement, mode spacing and filter radius in double precision.
-    n, low, length = sim.DIM, sim.HII_DIM, float(np.float32(sim.BOX_LEN))
+    # SimulationOptions stores BOX_LEN and NON_CUBIC_FACTOR as C floats before
+    # computing displacements, mode spacing and filter radii in double precision.
+    box_len_xy = float(np.float32(sim.BOX_LEN))
+    box_len_z = box_len_xy * float(np.float32(sim.NON_CUBIC_FACTOR))
+    n_shape = (sim.DIM, sim.DIM, int(sim.NON_CUBIC_FACTOR * sim.DIM))
+    low_shape = (sim.HII_DIM, sim.HII_DIM, int(sim.NON_CUBIC_FACTOR * sim.HII_DIM))
     high = opt.PERTURB_ON_HIGH_RES
-    m = n if high else low
+    m_shape = n_shape if high else low_shape
     prefix = "hires_" if high else "lowres_"
     lib = _get_native_lib()
     from growth import perturb_coefficients
@@ -227,29 +257,36 @@ def perturb_field_gpu(
         two = opt.PERTURB_ALGORITHM == "2LPT"
         vel = vectors("")
         second = vectors("_2LPT") if two else vel
-        mass = cp.zeros((m, m, m), dtype=cp.float64)
+        mass = cp.zeros(m_shape, dtype=cp.float64)
         from cic_ordered import deposit_ordered
 
+        box_size = (box_len_xy, box_len_xy, box_len_z)
+        first_scales = tuple((growth - growth0) / L * d for L, d in zip(box_size, n_shape))
+        second_scales = tuple(
+            (-3 / 7) * (growth * growth - growth0 * growth0) / L * d
+            for L, d in zip(box_size, n_shape)
+        )
         deposit_ordered(
             cp.asarray(read("hires_density")),
             vel,
             second,
             mass,
-            n,
-            m,
+            n_shape,
+            m_shape,
             growth0,
-            (growth - growth0) / length * n,
-            (-3 / 7) * (growth * growth - growth0 * growth0) / length * n,
+            first_scales,
+            second_scales,
             two,
         )
         grid = mass.astype(cp.float32)
     native_density = reference_density(lib, inputs, grid) if reference_fft else None
 
     ordered, axes_f64, denom, window, sample, smooth_weights = _geometry_cache(
-        n,
-        m,
-        low,
-        length,
+        n_shape,
+        m_shape,
+        low_shape,
+        box_len_xy,
+        box_len_z,
         high,
         opt.SMOOTH_EVOLVED_DENSITY_FIELD,
         sim.DENSITY_SMOOTH_RADIUS,
@@ -258,31 +295,34 @@ def perturb_field_gpu(
         strict_fft,
     )
 
-    def forward(array, size):
-        if size in ordered:
+    def forward(array, shape):
+        if shape in ordered:
             return transform(
-                array.astype(cp.float32, copy=False), size, threads=sim.N_THREADS
+                array.astype(cp.float32, copy=False), shape[0], threads=sim.N_THREADS
             )
         return cp.fft.rfftn(array.astype(cp.float64))
 
-    def inverse(spectrum, size):
-        if size in ordered:
+    def inverse(spectrum, shape):
+        if shape in ordered:
             return transform(
                 spectrum.astype(cp.complex64, copy=False),
-                size,
+                shape[0],
                 True,
                 threads=sim.N_THREADS,
-            ) / np.float32(size**3)
-        return cp.fft.irfftn(spectrum, s=(size,) * 3)
+            ) / np.float32(np.prod(shape))
+        return cp.fft.irfftn(spectrum, s=shape)
 
     if high:
-        saved = forward(grid, m)
-        grid = inverse(saved * window, m)[sample].astype(cp.float32)
+        saved = forward(grid, m_shape)
+        grid = inverse(saved * window, m_shape)[sample].astype(cp.float32)
     if opt.PERTURB_ALGORITHM != "LINEAR":
-        grid = (grid.astype(cp.float64) * (1 if high else (low / n) ** 3)).astype(
-            cp.float32
-        ) - 1
-    density_k = forward(grid, low)
+        mass_factor = (
+            1.0
+            if high
+            else (int(np.prod(low_shape)) / int(np.prod(n_shape)))
+        )
+        grid = (grid.astype(cp.float64) * mass_factor).astype(cp.float32) - 1
+    density_k = forward(grid, low_shape)
     if opt.SMOOTH_EVOLVED_DENSITY_FIELD:
         density_k *= smooth_weights
     if not high:
@@ -293,8 +333,8 @@ def perturb_field_gpu(
         out.set("density", native_density)
     else:
         density = (
-            inverse(density_k, low)
-            if low in ordered or opt.SMOOTH_EVOLVED_DENSITY_FIELD
+            inverse(density_k, low_shape)
+            if low_shape in ordered or opt.SMOOTH_EVOLVED_DENSITY_FIELD
             else grid
         )
         device_density = cp.ascontiguousarray(
@@ -305,16 +345,17 @@ def perturb_field_gpu(
             resident.density_pair = (out.get("density"), device_density)
         if registry is not None:
             registry.record(out.get("density"), device_density)
+    m_total = int(np.prod(m_shape))
     for axis, k_f64 in zip("xyz", axes_f64):
         name = "velocity_" + axis
         if name in out.arrays:
-            spec = (saved * (1j * rate * k_f64 / denom / m**3)).astype(cp.complex64)
-            if high and n != low:
+            spec = (saved * (1j * rate * k_f64 / denom / m_total)).astype(cp.complex64)
+            if high and n_shape != low_shape:
                 spec = (spec * window).astype(cp.complex64)
             v = (
-                transform(spec, m, True, threads=sim.N_THREADS)
-                if m in ordered
-                else cp.fft.irfftn(spec, s=(m,) * 3, norm="forward")
+                transform(spec, m_shape[0], True, threads=sim.N_THREADS)
+                if m_shape in ordered
+                else cp.fft.irfftn(spec, s=m_shape, norm="forward")
             )
             vel_dev = cp.ascontiguousarray(v[sample] if high else v, dtype=cp.float32)
             out.set(name, vel_dev.get())

@@ -7,7 +7,7 @@ import cupy as cp
 import numpy as np
 
 from evolution_backend import CB, view
-from fft_plan_cuda import transform
+from fft_general import transform_3d
 from halo_ionization import halo_window
 
 
@@ -46,7 +46,6 @@ int (*dexm_dispatch)(int,int,double*,void**);
         marker,
         """
         bool gpu_dexm = dexm_dispatch &&
-            !matter_options_global->USE_FFTW_WISDOM && simulation_options_global->NON_CUBIC_FACTOR == 1. &&
             matter_options_global->HALO_FILTER >= FILTER_TOPHAT && matter_options_global->HALO_FILTER <= FILTER_GAUSSIAN;
 """
         + marker,
@@ -86,7 +85,7 @@ void dexm_rebuilt_radius(float mass, float trial, int *range, float *sq) {
         "#pragma omp parallel shared(boxes, density_field)",
         "        // ***************** END INITIALIZATION",
         """
-        double p[]={simulation_options_global->N_THREADS};
+        double p[]={simulation_options_global->N_THREADS, z_dim, matter_options_global->USE_FFTW_WISDOM};
         void *a[]={boxes->hires_density};
         DEXM_CALL(0,p,a);
 """,
@@ -109,7 +108,8 @@ void dexm_rebuilt_radius(float mass, float trial, int *range, float *sq) {
         exclude_r = exclude_r / simulation_options_global->BOX_LEN * grid_dim;
         double p[]={R, matter_options_global->HALO_FILTER, 2.*M_PI/simulation_options_global->BOX_LEN,
                     growth_factor, delta_crit, ceil(check_r), (float)pow(check_r,2),
-                    ceil(paint_r), (float)pow(paint_r,2), M, optimized, ceil(exclude_r), (float)pow(exclude_r,2)};
+                    ceil(paint_r), (float)pow(paint_r,2), M, optimized, ceil(exclude_r), (float)pow(exclude_r,2),
+                    2.*M_PI/BOXLEN_PARA};
         void *a[]={&r_halo_num};
         DEXM_CALL(1,p,a);
 """,
@@ -158,7 +158,7 @@ void dexm_rebuilt_radius(float mass, float trial, int *range, float *sq) {
             if (gpu_dexm) {
                 double p[]={simulation_options_global->HII_DIM,
                             (float)(physconst.l_factor*simulation_options_global->BOX_LEN/(simulation_options_global->HII_DIM+0.)),
-                            2.*M_PI/simulation_options_global->BOX_LEN};
+                            2.*M_PI/simulation_options_global->BOX_LEN, HII_D_PARA, 2.*M_PI/BOXLEN_PARA};
                 void *a[]={halo_overlap_box};
                 DEXM_CALL(3,p,a);
             } else {
@@ -194,8 +194,9 @@ class HaloFinder:
         self.spectrum = self.occupied = self.masses = None
         self.previous_groups = []
 
-    def rebuild_forbidden(self, side, trial):
-        mask = cp.zeros((side**3 + 31) // 32, dtype="uint32")
+    def rebuild_forbidden(self, shape, trial):
+        nx, ny, nz = shape
+        mask = cp.zeros((nx * ny * nz + 31) // 32, dtype="uint32")
         for mass, centres in self.previous_groups:
             width, squared = C.c_int(), C.c_float()
             self._prior_radius(mass, trial, C.byref(width), C.byref(squared))
@@ -205,7 +206,9 @@ class HaloFinder:
                 (
                     centres,
                     mask,
-                    np.int32(side),
+                    np.int32(nx),
+                    np.int32(ny),
+                    np.int32(nz),
                     np.int32(width.value),
                     np.float32(squared.value),
                 ),
@@ -216,11 +219,15 @@ class HaloFinder:
     def record(self, name, value=1):
         self.report[name] = self.report.get(name, 0) + int(value)
 
-    def select(self, side, p):
+    def select(self, p):
+        nx, ny, nz = self.shape
+        total = nx * ny * nz
         spectrum = self.spectrum.copy()
-        self.apply_window(spectrum, side, p[2], p[0], int(p[1]))
-        filtered = transform(spectrum, side, True, self.threads)
-        normalized = normalize(filtered, np.float32(p[3]), np.float32(side**3))
+        self.apply_window(spectrum, self.shape, p[2], p[13], p[0], int(p[1]))
+        filtered = transform_3d(
+            spectrum, self.shape, True, self.threads, wisdom=self.wisdom
+        )
+        normalized = normalize(filtered, np.float32(p[3]), np.float32(total))
         candidates = cp.flatnonzero(normalized > np.float32(p[4]))
         count = cp.zeros(1, dtype="uint64")
         optimized = bool(p[10])
@@ -238,11 +245,13 @@ class HaloFinder:
                 self.occupied,
                 self.masses,
                 count,
-                np.int32(side),
+                np.int32(nx),
+                np.int32(ny),
+                np.int32(nz),
             )
             paint = (np.int32(p[7]), np.float32(p[8]), np.float32(p[9]))
             if optimized:
-                mask = self.rebuild_forbidden(side, p[0])
+                mask = self.rebuild_forbidden(self.shape, p[0])
                 new_centres = cp.empty(candidates.size, "int64")
                 self._optimized(
                     (1,),
@@ -270,14 +279,18 @@ class HaloFinder:
         return accepted
 
     @staticmethod
-    def apply_window(spectrum, side, dk, radius, kind):
+    def apply_window(spectrum, shape, dk_xy, dk_z, radius, kind):
+        nx, ny, nz = shape
         halo_window()(
             ((spectrum.size + 255) // 256,),
             (256,),
             (
                 spectrum,
-                np.int32(side),
-                np.float64(dk),
+                np.int32(nx),
+                np.int32(ny),
+                np.int32(nz),
+                np.float64(dk_xy),
+                np.float64(dk_z),
                 np.float32(radius),
                 np.float32(0),
                 np.float64(0),
@@ -286,19 +299,22 @@ class HaloFinder:
         )
 
     def dispatch(self, stage, side, p, a):
-        shape = (side,) * 3
         if stage == 0:
             self.clear()
             self.threads = int(p[0])
-            density = cp.asarray(view(a[0], side**3, "f").reshape(shape))
+            nz = int(p[1])
+            self.wisdom = bool(p[2])
+            self.shape = (side, side, nz)
+            total = side * side * nz
+            density = cp.asarray(view(a[0], total, "f").reshape(self.shape))
             self.spectrum = cp.ascontiguousarray(
-                transform(density, side, False, self.threads)
+                transform_3d(density, self.shape, False, self.threads, wisdom=self.wisdom)
             )
-            self.occupied = cp.zeros(shape, dtype="B")
-            self.masses = cp.zeros(shape, dtype="f")
+            self.occupied = cp.zeros(self.shape, dtype="B")
+            self.masses = cp.zeros(self.shape, dtype="f")
             self.record("dexm_density_forward_fft")
         elif stage == 1:
-            view(a[0], 1, "uint64")[0] = self.select(side, p)
+            view(a[0], 1, "uint64")[0] = self.select(p)
         elif stage == 2:
             indices = cp.flatnonzero(self.masses)
             self.has_halos = bool(indices.size)
@@ -307,31 +323,44 @@ class HaloFinder:
             if indices.size:
                 masses = self.masses.ravel()[indices]
                 masses.get(out=view(a[0], indices.size, "f"))
-                coords = cp.stack(cp.unravel_index(indices, shape), axis=1)
+                coords = cp.stack(cp.unravel_index(indices, self.shape), axis=1)
                 coords = cp.ascontiguousarray((coords.astype("d") * p[0]).astype("f"))
                 coords.get(out=view(a[1], indices.size * 3, "f").reshape(-1, 3))
             self.spectrum = self.masses = None
             self.previous_groups.clear()
         elif stage == 3:
-            coarse = int(p[0])
+            coarse_xy, coarse_z = int(p[0]), int(p[3])
+            coarse_shape = (coarse_xy, coarse_xy, coarse_z)
+            coarse_total = coarse_xy * coarse_xy * coarse_z
             if not self.has_halos:
-                view(a[0], coarse**3, "f").fill(0.0)
+                view(a[0], coarse_total, "f").fill(0.0)
                 self.clear()
                 self.record("dexm_empty_overlap_grids")
                 return
+            nx, ny, nz = self.shape
+            total = nx * ny * nz
             spectrum = cp.ascontiguousarray(
-                transform(self.occupied.astype("f"), side, False, self.threads)
+                transform_3d(
+                    self.occupied.astype("f"),
+                    self.shape,
+                    False,
+                    self.threads,
+                    wisdom=self.wisdom,
+                )
             )
-            if coarse != side:
-                self.apply_window(spectrum, side, p[2], p[1], 0)
-            field = transform(spectrum, side, True, self.threads)
-            ratio = np.float32(side) / np.float32(coarse)
-            idx = ((cp.arange(coarse, dtype="f") * ratio).astype("d") + 0.5).astype("i")
+            if coarse_shape != self.shape:
+                self.apply_window(spectrum, self.shape, p[2], p[4], p[1], 0)
+            field = transform_3d(
+                spectrum, self.shape, True, self.threads, wisdom=self.wisdom
+            )
+            ratio = np.float32(nx) / np.float32(coarse_xy)
+            idx_xy = ((cp.arange(coarse_xy, dtype="f") * ratio).astype("d") + 0.5).astype("i")
+            idx_z = ((cp.arange(coarse_z, dtype="f") * ratio).astype("d") + 0.5).astype("i")
             field = normalize(
-                field[cp.ix_(idx, idx, idx)], np.float32(1.0), np.float32(side**3)
+                field[cp.ix_(idx_xy, idx_xy, idx_z)], np.float32(1.0), np.float32(total)
             )
             cp.ascontiguousarray(cp.clip(field, 0.0, 1.0)).get(
-                out=view(a[0], coarse**3, "f").reshape((coarse,) * 3)
+                out=view(a[0], coarse_total, "f").reshape(coarse_shape)
             )
             self.clear()
             self.record("dexm_overlap_grids")

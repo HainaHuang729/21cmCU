@@ -13,11 +13,19 @@ from py21cmfast.wrapper.exceptions import _process_exitcode
 
 
 def calibration_inputs(inputs):
-    """The upstream simplified calibration physics, keeping the Eulerian source model."""
+    """The upstream simplified calibration physics for the given source model."""
+    source_model_calibration = {
+        "E-INTEGRAL": "E-INTEGRAL",
+        "L-INTEGRAL": "L-INTEGRAL",
+        "DEXM-ESF": "L-INTEGRAL",
+        "CHMF-SAMPLER": "L-INTEGRAL",
+        "CONST-ION-EFF": "CONST-ION-EFF",
+    }
     return inputs.evolve_input_structs(
         USE_TS_FLUCT=False,
         RECOMB_MODEL="none",
         USE_MCGS=False,
+        SOURCE_MODEL=source_model_calibration[inputs.matter_options.SOURCE_MODEL],
         PHOTON_CONS_TYPE="no-photoncons",
         R_BUBBLE_MAX=15
         if inputs.astro_options.RECOMB_MODEL != "none"
@@ -71,6 +79,9 @@ class PhotonCalibration:
         allowed = {
             "E-INTEGRAL": ("z-photoncons", "f-photoncons", "alpha-photoncons"),
             "CONST-ION-EFF": ("z-photoncons",),
+            "L-INTEGRAL": ("f-photoncons", "alpha-photoncons"),
+            "CHMF-SAMPLER": ("f-photoncons", "alpha-photoncons"),
+            "DEXM-ESF": ("f-photoncons", "alpha-photoncons"),
         }
         if mode not in allowed.get(source, ()):
             raise ValueError(f"Unsupported photon correction {mode} for {source}")
@@ -186,13 +197,17 @@ int gpu_build_photon_shift(void) {
     return prefix + source
 
 
-def install(stack, adapter, calibration):
-    """Initialize isolated C splines and route upstream driver reads to this private copy."""
+def _install_library(stack, adapter):
+    """Route upstream photon-conservation C calls and globals to the private adapter image."""
 
     class Library:
         @property
         def photon_cons_allocated(self):
             return ctypes.c_bool.in_dll(adapter, "gpu_pc_allocated").value
+
+        @photon_cons_allocated.setter
+        def photon_cons_allocated(self, val):
+            ctypes.c_bool.in_dll(adapter, "gpu_pc_allocated").value = bool(val)
 
         def InitialisePhotonCons(self):
             # The upstream alpha scan ignores this C return code. Propagate
@@ -201,17 +216,29 @@ def install(stack, adapter, calibration):
             _process_exitcode(status, lib.InitialisePhotonCons, ())
             return status
 
+        def determine_deltaz_for_photoncons(self):
+            status = adapter.gpu_build_photon_shift()
+            _process_exitcode(status, lib.determine_deltaz_for_photoncons, ())
+
         def __getattr__(self, name):
             if name in (
                 "ObtainPhotonConsData",
                 "set_alphacons_params",
                 "FreePhotonConsMemory",
                 "PhotonCons_Calibration",
+                "ComputeZstart_PhotonCons",
+                "adjust_redshifts_for_photoncons",
             ):
-                return ffi.cast(
+                cfunc = ffi.cast(
                     ffi.typeof(getattr(lib, name)),
                     ctypes.cast(getattr(adapter, name), ctypes.c_void_p).value,
                 )
+
+                def wrapper(*args):
+                    return cfunc(*args)
+
+                wrapper.__name__ = name
+                return wrapper
             return getattr(lib, name)
 
     private = Library()
@@ -220,6 +247,17 @@ def install(stack, adapter, calibration):
     for module in (photoncons, coeval, lightcone):
         stack.enter_context(patch.object(module, "lib", private))
     stack.callback(adapter.FreePhotonConsMemory)
+    return private, state
+
+
+def install_auto(stack, adapter):
+    """Enable automatic native GPU calibration without overriding setup_photon_cons."""
+    _install_library(stack, adapter)
+
+
+def install(stack, adapter, calibration):
+    """Initialize isolated C splines and route upstream driver reads to this private copy."""
+    private, state = _install_library(stack, adapter)
     inputs = calibration.inputs
     with c_state(inputs, sigma=True):
         private.InitialisePhotonCons()

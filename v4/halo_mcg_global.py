@@ -46,7 +46,8 @@ def source(native):
     return native.replace(
         call,
         """if (source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL) &&
-            astro_options_global->USE_MCGS) gpu_mcg_nion_history(zpp_interp_points_SFR,
+            astro_options_global->USE_MCGS &&
+            uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)) gpu_mcg_nion_history(zpp_interp_points_SFR,
                 determine_zpp_min,determine_zpp_max,&sc);
             else """
         + call,

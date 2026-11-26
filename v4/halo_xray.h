@@ -2,6 +2,10 @@
 // luminosity-density LUT in its native logarithmic units of 10^38 erg/s/Mpc^3.
 static void gpu_init_xray(double z, double lo, double hi, double mmin, double mmax, double cell,
                           ScalingConstants *sc) {
+    if (astro_options_global->INTEGRATION_METHOD_ACGS == INTEGRATION_METHOD_GAMMA_APPROX) {
+        initialize_xray_emissivity_conditional_tables(z, lo, hi, mmin, mmax, cell, sc);
+        return;
+    }
     if (GPU_TABLE_AUDIT)
         initialize_xray_emissivity_conditional_tables(z, lo, hi, mmin, mmax, cell, sc);
     double g = dicke(z), sig = evaluate_sigma(log(cell));

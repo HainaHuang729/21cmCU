@@ -47,13 +47,7 @@ def halo_radiation_backend(inputs, counts, *, scaling=None, parent_engine=None):
     if (
         inputs.matter_options.SOURCE_MODEL
         not in ("CHMF-SAMPLER", "L-INTEGRAL", "DEXM-ESF")
-        or inputs.matter_options.USE_INTERPOLATION_TABLES != "hmf-interpolation"
-        or inputs.simulation_options.NON_CUBIC_FACTOR != 1
         or not options.USE_TS_FLUCT
-        or options.RECOMB_MODEL != "inhomogeneous"
-        or (options.USE_REIONIZATION_PHOTOHEATING_FEEDBACK and not options.USE_MCGS)
-        or not options.USE_LYA_HEATING
-        or not options.USE_X_RAY_HEATING
     ):
         raise ValueError("Unsupported Lagrangian radiation or spin-temperature model")
 

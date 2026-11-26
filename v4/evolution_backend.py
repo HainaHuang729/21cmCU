@@ -143,9 +143,9 @@ float *xe,float *tk,float *ts,double *terms,const double *lw,float *j21) {
  int i=blockDim.x*blockIdx.x+threadIdx.x;if(i>=n)return;
  local_rad_terms r={};r.delta=den[i]<=-1.f ? -1.+FRACT_FLOAT_ERR : (double)den[i];
  r.prev_xe=oldx[i];r.prev_Tk=oldt[i];r.prev_Ts=olds[i];r.xray_ionization_rate=ion[i];
- r.xray_heating_rate=heat[i];r.xray_lya_flux=xlya[i];r.lya_flux_continuum=cont[i];
+ r.xray_heating_rate=heat ? heat[i] : 0.;r.xray_lya_flux=xlya[i];r.lya_flux_continuum=cont[i];
  if(lw) r.lyw_flux=lw[i];
- r.lya_flux_continuum_injected=cont[i];r.lya_flux_injected=inj[i];
+ r.lya_flux_continuum_injected=cont[i];r.lya_flux_injected=inj ? inj[i] : 0.;
  spintemp_from_sfr_prefactors *pref=(spintemp_from_sfr_prefactors *)(params+KEYS);
  Ts_cell v=get_Ts_fast(params[KEYS+12],params[KEYS+13],pref,&r,terms ? terms+12*i : 0,params,tc,ti);
  xe[i]=v.x_e;tk[i]=v.Tk;ts[i]=v.Ts;
@@ -309,6 +309,7 @@ def native_tables(extra_names=()):
         for name in (
             "SFRD_conditional_table1D_acg",
             "Nion_conditional_table1D_acg",
+            "Xray_conditional_table1D_acg",
             "RR_table",
             "lnGamma_values",
             "Sigma_InterpTable",
@@ -326,6 +327,8 @@ def native_tables(extra_names=()):
             "x_int_nion_HeII",
             "xi_GL",
             "wi_GL",
+            "Nhalo_table",
+            "Fcoll_table",
             *extra_names,
         )
     }
@@ -339,8 +342,7 @@ def view(ptr, n, dtype):
 
 
 EULERIAN_EMISSIVITY = """source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL)
-        && !astro_options_global->USE_MCGS && !astro_options_global->USE_METALLICITY
-        && !config_settings.EXTRA_EMISSIVITY_FIELDS
+        && !astro_options_global->USE_MCGS
         && !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK
         && uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)"""
 
@@ -349,8 +351,18 @@ def emission_sources():
     src = (SRC / "map_mass.c").read_text()
     hook = """
     if (EULERIAN_MODEL) {
-        double p[]={consts->lx_over_sfr_acg,0.};
-        void *a[]={dens_pointer,emissivity_fields->n_ion,emissivity_fields->sfrd_acg,emissivity_fields->xray_emissivity};
+        bool thermal=astro_options_global->USE_TS_FLUCT, extra=config_settings.EXTRA_EMISSIVITY_FIELDS;
+        bool mass_dep=source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL);
+        double cell_vol=consts->M_cell/(RHOcrit*cosmo_params_global->OMm), rho_m=RHOcrit*cosmo_params_global->OMm;
+        double const_sm=RHOcrit*cosmo_params_global->OMb*consts->fstar_10_acg/astro_params_global->HII_EFF_FACTOR;
+        double p[]={consts->lx_over_sfr_acg,0.,0.,0.,0.,0.,thermal,extra,mass_dep,cell_vol,rho_m,
+                    consts->sfr_timescale,const_sm,0.,0.,0.,astro_options_global->USE_METALLICITY};
+        void *a[]={dens_pointer,emissivity_fields->n_ion,
+                   thermal?emissivity_fields->sfrd_acg:NULL,
+                   thermal?emissivity_fields->xray_emissivity:NULL,
+                   extra?emissivity_fields->halo_number:NULL,
+                   extra?emissivity_fields->halo_mass_density:NULL,
+                   extra?emissivity_fields->stellar_mass_density_acg:NULL};
         GPU_CALL(0,p,a); return;
     }
 """.replace("EULERIAN_MODEL", EULERIAN_EMISSIVITY)
@@ -370,10 +382,21 @@ def normalize_emissivity_source(src):
         double mturn_acg=pow(10.,emissivity_fields->log10_mturn_acg_ave);
         double mturn_mcg=pow(10.,emissivity_fields->log10_mturn_mcg_ave);
         get_uhmf_averages(M_min,M_max,mturn_acg,mturn_mcg,ev_consts,&target);
+        bool thermal=astro_options_global->USE_TS_FLUCT, extra=config_settings.EXTRA_EMISSIVITY_FIELDS;
+        bool mass_dep=source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL);
+        double cell_vol=ev_consts->M_cell/(RHOcrit*cosmo_params_global->OMm), rho_m=RHOcrit*cosmo_params_global->OMm;
+        double const_sm=RHOcrit*cosmo_params_global->OMb*ev_consts->fstar_10_acg/astro_params_global->HII_EFF_FACTOR;
         double p[]={ev_consts->lx_over_sfr_acg,1.,FRACT_FLOAT_ERR,
-                    target.n_ion,target.sfrd_acg,target.xray_emissivity};
-        void *a[]={dens_pointer,emissivity_fields->n_ion,emissivity_fields->sfrd_acg,
-                   emissivity_fields->xray_emissivity};
+                    target.n_ion,target.sfrd_acg,target.xray_emissivity,
+                    thermal,extra,mass_dep,cell_vol,rho_m,ev_consts->sfr_timescale,const_sm,
+                    target.halo_number,target.halo_mass_density,target.stellar_mass_density_acg,
+                    astro_options_global->USE_METALLICITY};
+        void *a[]={dens_pointer,emissivity_fields->n_ion,
+                   thermal?emissivity_fields->sfrd_acg:NULL,
+                   thermal?emissivity_fields->xray_emissivity:NULL,
+                   extra?emissivity_fields->halo_number:NULL,
+                   extra?emissivity_fields->halo_mass_density:NULL,
+                   extra?emissivity_fields->stellar_mass_density_acg:NULL};
         GPU_CALL(0,p,a);
         free_conditional_tables();
         return 0;
@@ -398,14 +421,16 @@ def ion_source():
     )
     hook = """
     if (!consts->lagrangian_source_grids && !astro_options_global->USE_MCGS &&
-        !astro_options_global->IONISE_ENTIRE_SPHERE) {
+        !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
         bool ts=astro_options_global->USE_TS_FLUCT;
         bool rec=uses_recombination(astro_options_global->RECOMB_MODEL);
         double p[]={box_dim[2],rspec.R_index,rspec.R,consts->redshift,
             consts->photoncons_adjustment_factor,mean_fix_term_acg,nion_limit_acg,
             consts->mass_dep_zeta,consts->gamma_prefactor,consts->T_re,ts,rec,
             consts->filter_recombinations,ts?0.:consts->TK_nofluct,ts?0.:consts->adia_TK_term,
-            astro_options_global->RECOMB_MODEL == RECOMB_MODEL_HOMOGENEOUS};
+            astro_options_global->RECOMB_MODEL == RECOMB_MODEL_HOMOGENEOUS,0.,0.,
+            astro_options_global->IONISE_ENTIRE_SPHERE,box_dim[0],box_dim[1],
+            simulation_options_global->BOX_LEN};
         void *a[]={perturbed_field->density,fg_struct->deltax_filtered,box->nion_conditional_filtered_acg,
             ts?(void*)fg_struct->xe_filtered:NULL,rec?(consts->filter_recombinations?
             (void*)fg_struct->N_rec_filtered:(void*)previous_ionize_box->cumulative_recombinations):NULL,
@@ -444,7 +469,7 @@ def ion_source():
     # copy_filter_transform, so this branch can leave Fourier coefficients on device.
     resident = """(source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL)
         && !astro_options_global->USE_MCGS && !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK
-        && simulation_options_global->NON_CUBIC_FACTOR == 1. && !matter_options_global->USE_FFTW_WISDOM
+        && uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)
         && astro_options_global->HII_FILTER >= 0 && astro_options_global->HII_FILTER <= 2)"""
     src = insert(
         src,
@@ -452,7 +477,7 @@ def ion_source():
         "    int i, j, k;",
         """
         double p[]={simulation_options_global->HII_DIM,const_factor,limit_min,limit_max,
-          simulation_options_global->N_THREADS,RESIDENT}; void *a[]={input_box,output_c_box};
+          simulation_options_global->N_THREADS,RESIDENT,HII_D_PARA,matter_options_global->USE_FFTW_WISDOM}; void *a[]={input_box,output_c_box};
         GPU_CALL(11,p,a); return;
 """.replace("RESIDENT", resident),
     )
@@ -463,7 +488,8 @@ def ion_source():
         """
         if (RESIDENT) {
             double p[]={box_dim[0],rspec.R_index,(float)rspec.R,consts->hii_filter,
-                        simulation_options_global->N_THREADS,simulation_options_global->BOX_LEN};
+                        simulation_options_global->N_THREADS,simulation_options_global->BOX_LEN,
+                        box_dim[2],BOXLEN_PARA,matter_options_global->USE_FFTW_WISDOM};
             void *a[]={fg_struct->deltax_unfiltered,fg_struct->deltax_filtered,
                        astro_options_global->USE_TS_FLUCT ? fg_struct->xe_unfiltered : NULL,
                        astro_options_global->USE_TS_FLUCT ? fg_struct->xe_filtered : NULL,
@@ -478,7 +504,7 @@ def ion_source():
         "void clip_and_get_extrema(",
         "    double min_buf",
         """
-        double p[]={simulation_options_global->HII_DIM,lower_limit,upper_limit};
+        double p[]={simulation_options_global->HII_DIM,lower_limit,upper_limit,HII_D_PARA};
         void *a[]={grid,grid_min,grid_max}; GPU_CALL(12,p,a); return;
 """,
     )
@@ -488,8 +514,9 @@ def ion_source():
         "    double nion_total_acg",
         """
         if (!consts->lagrangian_source_grids && !astro_options_global->USE_MCGS &&
-            !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
-            double p[]={simulation_options_global->HII_DIM, -1.+FRACT_FLOAT_ERR,consts->filter_recombinations};
+            !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+            uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)) {
+            double p[]={simulation_options_global->HII_DIM, -1.+FRACT_FLOAT_ERR,consts->filter_recombinations,HII_D_PARA};
             void *a[]={fg_struct->deltax_filtered,astro_options_global->USE_TS_FLUCT?fg_struct->xe_filtered:NULL,
                 consts->filter_recombinations?fg_struct->N_rec_filtered:NULL,
                 box->nion_conditional_filtered_acg,&rspec->nion_conditional_ave_acg};
@@ -516,7 +543,8 @@ def ion_source():
         "void set_unconditional_nion(",
         "    double nion_curr_acg",
         """
-        if (!astro_options_global->USE_MCGS) {
+        if (!astro_options_global->USE_MCGS &&
+            uses_interpolation_tables(matter_options_global->USE_INTERPOLATION_TABLES)) {
             double result[2], z[]={c->redshift, simulation_options_global->Z_HEAT_MAX};
             gpu_global_pair(22,2,z,false,c->lnMmin,c->lnMmax_gl,mturn_acg,&c->scale_consts,result);
             curr_box->nion_unconditional_acg=result[0]; *nion_limit_acg=result[1];
@@ -568,12 +596,11 @@ def radiation_source():
         "    int i, j, k;",
         """
     if ((filter_type==FILTER_SPHERICAL_SHELL_STRAIGHT_LINE ||
-         filter_type==FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING) &&
-        HII_D_PARA==simulation_options_global->HII_DIM) {
+         filter_type==FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING)) {
         double p[]={simulation_options_global->HII_DIM,simulation_options_global->BOX_LEN,
                     (float)R_inner,(float)R_outer,simulation_options_global->N_THREADS,
-                    filter_type==FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING,(float)R_star,
-                    astro_options_global->USE_LYA_HEATING && astro_options_global->USE_X_RAY_HEATING};
+                    filter_type==FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING,(float)R_star,1.,
+                    HII_D_PARA,BOXLEN_PARA,matter_options_global->USE_FFTW_WISDOM};
         void *a[]={input_box,output_box,u_avg,f_avg}; GPU_CALL(p[5] ? 34 : 4,p,a);return;
     }
 """,
@@ -583,20 +610,26 @@ def radiation_source():
         "void accumulate_radiation_shell(",
         "#pragma omp parallel",
         """
-    if (astro_options_global->USE_LYA_HEATING && astro_options_global->USE_X_RAY_HEATING) {
+    {
         bool mini=astro_options_global->USE_MCGS;
+        bool xheat=astro_options_global->USE_X_RAY_HEATING;
+        bool lya_heat=astro_options_global->USE_LYA_HEATING;
         bool separate_lw=mini && astro_options_global->LYA_MULTIPLE_SCATTERING;
         double p[]={z_edge_factor,xray_R_factor,R_ct,astro_params_global->N_STEP_TS,
-            rad_setup->lya_flux_continuum_prefactor_acg[R_ct],rad_setup->lya_flux_injected_prefactor_acg[R_ct],
-            lya_flux_continuum_prefactor_mcg,lya_flux_injected_prefactor_mcg,
+            lya_heat ? rad_setup->lya_flux_continuum_prefactor_acg[R_ct] : rad_setup->lya_flux_continuum_injected_prefactor_acg[R_ct],
+            lya_heat ? rad_setup->lya_flux_injected_prefactor_acg[R_ct] : 0.,
+            lya_heat ? lya_flux_continuum_prefactor_mcg : lya_flux_continuum_injected_prefactor_mcg,
+            lya_heat ? lya_flux_injected_prefactor_mcg : 0.,
             mini ? rad_setup->lyw_flux_prefactor_acg[R_ct] : 0., mini ? rad_setup->lyw_flux_prefactor_mcg[R_ct] : 0.};
         void *a[]={rad_setup->filtered_sfrd_acg_for_lya,rad_setup->filtered_xray_emissivity,
             rad_setup->m_xHII_low_box,rad_setup->inverse_val_box,
             rad_setup->freq_int_heat_tbl,rad_setup->freq_int_heat_tbl_diff,
             rad_setup->freq_int_ion_tbl,rad_setup->freq_int_ion_tbl_diff,
             rad_setup->freq_int_lya_tbl,rad_setup->freq_int_lya_tbl_diff,
-            radiation_fields->xray_heating_rate,radiation_fields->xray_ionization_rate,
-            radiation_fields->xray_lya_flux,radiation_fields->lya_flux_continuum,radiation_fields->lya_flux_injected,
+            xheat ? radiation_fields->xray_heating_rate : NULL,
+            radiation_fields->xray_ionization_rate,radiation_fields->xray_lya_flux,
+            lya_heat ? radiation_fields->lya_flux_continuum : radiation_fields->lya_flux_continuum_injected,
+            lya_heat ? radiation_fields->lya_flux_injected : NULL,
             mini ? rad_setup->filtered_sfrd_mcg_for_lya : NULL,mini ? radiation_fields->lyw_flux : NULL,
             separate_lw ? rad_setup->filtered_sfrd_acg_for_lw : NULL,
             separate_lw ? rad_setup->filtered_sfrd_mcg_for_lw : NULL};
@@ -609,14 +642,16 @@ def radiation_source():
         "void multiply_radiation_fields_by_constants(",
         "    index_huge box_ct;",
         """
-        if (astro_options_global->USE_X_RAY_HEATING && astro_options_global->USE_LYA_HEATING) {
+        {
             double p[]={xray_prefactor*volunit_inv*2./3./physconst.k_B,xray_prefactor*volunit_inv,
                   xray_prefactor*volunit_inv*Nb_zp,lya_star_prefactor*volunit_inv,
                   lya_star_prefactor*volunit_inv*physconst.h_p*physconst.nu_Ly_alpha/
                   (physconst.nu_ion_HI-physconst.nu_LW_thresh)*1e21};
-            void *a[]={radiation_fields->xray_heating_rate,radiation_fields->xray_ionization_rate,
-               radiation_fields->xray_lya_flux,radiation_fields->lya_flux_continuum,
-               radiation_fields->lya_flux_injected,previous_spin_temp->xray_ionised_fraction,perturbed_field->density,
+            void *a[]={astro_options_global->USE_X_RAY_HEATING ? radiation_fields->xray_heating_rate : NULL,
+               radiation_fields->xray_ionization_rate,radiation_fields->xray_lya_flux,
+               astro_options_global->USE_LYA_HEATING ? radiation_fields->lya_flux_continuum : radiation_fields->lya_flux_continuum_injected,
+               astro_options_global->USE_LYA_HEATING ? radiation_fields->lya_flux_injected : NULL,
+               previous_spin_temp->xray_ionised_fraction,perturbed_field->density,
                astro_options_global->USE_MCGS ? radiation_fields->lyw_flux : NULL};
             GPU_CALL(14,p,a); return;
         }
@@ -680,7 +715,7 @@ void tabulate_xhii_inverse_widths(float *widths, int threads) {
         "void fill_freqint_tables(",
         "#pragma omp parallel",
         """
-        {
+        if (uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)) {
             double p[]={zp,rad_setup->x_e_ave_zp,physconst.c_cms*N_b0,
                 cosmo_params_global->OMl/cosmo_params_global->OMm,
                 // Native dtdz adds in float precision before calling sqrt.
@@ -763,7 +798,12 @@ class InitialFieldsEngine:
         self.error = None
         self.symbols = native_tables()
         self.grid = module(
-            [SHARED / "glibc_math.cuh", SHARED / "ion.cu", ROOT / "evolution_grid.cu"],
+            [
+                SHARED / "glibc_math.cuh",
+                SHARED / "ion.cu",
+                ROOT / "ion_sphere.cuh",
+                ROOT / "evolution_grid.cu",
+            ],
             options=("-DRECOMB_V432",),
         )
 
@@ -906,25 +946,33 @@ extern "C" __global__ void eh_constants(const double *p,CosmoConstants *out){
                 value.astype("f").get(out=np.ctypeslib.as_array(t.y, shape=(size,)))
 
     def fill_initial_fields(self, p, a):
+        from fft_general import transform_3d
         from ic_random import sample, initial_fields
 
-        side = int(p[0])
-        if int(p[3]) != self.spectrum or side != int(p[6]) or side % 2:
+        nx = ny = int(p[0])
+        nz = int(p[6])
+        if int(p[3]) != self.spectrum:
             raise ValueError(
-                "CUDA IC requires even cubic grids and an initialized matter spectrum"
+                "CUDA IC requires an initialized matter spectrum"
             )
-        supplied = cp.asarray(view(a[1], side**3, "f")).reshape(side, side, side)
+        hi_shape = (nx, ny, nz)
+        lo_shape = (int(p[8]), int(p[8]), int(p[14]))
+        box_len_xy, box_len_z = p[1], p[13]
+        wisdom = bool(p[15])
+        hi_size = nx * ny * nz
+        supplied = cp.asarray(view(a[1], hi_size, "f")).reshape(hi_shape)
         external = bool(cp.any(supplied))
         if external:
-            from fft_plan_cuda import transform
-
-            weighted = supplied * np.float32(p[2]) / np.float32(side**3)
+            weighted = supplied * np.float32(p[2]) / np.float32(hi_size)
             # The CUDA Hessian kernel reads packed FFTW-order complex modes.
-            modes = cp.ascontiguousarray(transform(weighted, side, False, int(p[7])))
+            modes = cp.ascontiguousarray(
+                transform_3d(weighted, hi_shape, False, int(p[7]), wisdom=wisdom)
+            )
         else:
             modes = sample(
-                side,
-                p[1],
+                hi_shape,
+                box_len_xy,
+                box_len_z,
                 p[2],
                 C.c_ulonglong.from_address(a[0]).value,
                 int(p[7]),
@@ -950,8 +998,10 @@ extern "C" __global__ void eh_constants(const double *p,CosmoConstants *out){
             )
         for i, field in initial_fields(
             modes,
-            int(p[8]),
-            p[1],
+            hi_shape,
+            lo_shape,
+            box_len_xy,
+            box_len_z,
             p[2],
             p[9],
             bool(p[10]),
@@ -959,6 +1009,7 @@ extern "C" __global__ void eh_constants(const double *p,CosmoConstants *out){
             int(p[7]),
             self.grid.get_function("spectral_filter"),
             streaming,
+            wisdom=wisdom,
         ):
             device = cp.ascontiguousarray(field if i or not external else supplied)
             if i < len(names):
@@ -987,7 +1038,7 @@ class Evolution(InitialFieldsEngine):
         self.table_size = int(
             re.search(r"#define NDELTA (\d+)", (SRC / "interp_tables.c").read_text())[1]
         )
-        self.counts = [0] * 35
+        self.counts = [0] * 36
         self.ion_spectra = {}
         self.ion_filtered = {}
         self.ion_state = {}
@@ -1017,6 +1068,7 @@ class Evolution(InitialFieldsEngine):
         self.global_rows = mass_module.get_function("global_rows")
         self.constant_globals = mass_module.get_function("constant_global_integrals")
         self.global_integral = mass_module.get_function("global_source_table")
+        self.grid_dndm = mass_module.get_function("grid_dndm_table")
         self.rec_tables = None
         if heat_cuda is not None:
             self._initialize_thermal_kernels(heat_cuda, nsc)
@@ -1210,33 +1262,49 @@ class Evolution(InitialFieldsEngine):
                 kernel(((size + 255) // 256,), (256,), args)
 
             if stage == 0:
-                args = []
-                thermal = bool(a[2])
-                names = ["Nion_conditional_table1D_acg"]
-                if thermal:
-                    names.append("SFRD_conditional_table1D_acg")
-                for name in names:
+                thermal = bool(p[6])
+                extra = bool(p[7])
+                mass_dep = bool(p[8])
+                metal = bool(p[16])
+                need_sfr = thermal or (extra and mass_dep)
+
+                def _tbl_args(name, dtype="f"):
                     t = Table.from_address(self.symbols[name])
                     if not t.allocated or not (1 < t.n < 1000000) or t.width <= 0:
-                        raise ValueError("Invalid v4 emissivity lookup table")
-                    args.extend(
-                        [
-                            cp.asarray(np.ctypeslib.as_array(t.y, shape=(t.n,))),
-                            np.float64(t.low),
-                            np.float64(t.width),
-                            np.int32(t.n),
-                        ]
-                    )
-                outs = [cp.empty(n, dtype="f") for _ in range(3 if thermal else 1)]
-                if not thermal:
-                    args.extend(
-                        (np.uint64(0), np.float64(0), np.float64(0), np.int32(0))
-                    )
-                outputs = outs if thermal else (outs[0], np.uint64(0), np.uint64(0))
+                        raise ValueError(f"Invalid v4 lookup table {name}")
+                    return [
+                        cp.asarray(view(C.cast(t.y, C.c_void_p).value, t.n, dtype)),
+                        np.float64(t.low),
+                        np.float64(t.width),
+                        np.int32(t.n),
+                    ]
+
+                empty_tbl = (np.uint64(0), np.float64(0), np.float64(0), np.int32(0))
+                args = _tbl_args("Nion_conditional_table1D_acg")
+                args.extend(_tbl_args("SFRD_conditional_table1D_acg") if need_sfr else empty_tbl)
+                if extra:
+                    args.extend(_tbl_args("Nhalo_table", "d"))
+                    args.extend(_tbl_args("Fcoll_table", "d"))
+                else:
+                    args.extend(empty_tbl)
+                    args.extend(empty_tbl)
+                args.extend(
+                    _tbl_args("Xray_conditional_table1D_acg")
+                    if (thermal and metal)
+                    else empty_tbl
+                )
+                slots = {1: cp.empty(n, dtype="f")}
+                if thermal:
+                    slots[2] = cp.empty(n, dtype="f")
+                    slots[3] = cp.empty(n, dtype="f")
+                if extra:
+                    slots[4] = cp.empty(n, dtype="f")
+                    slots[5] = cp.empty(n, dtype="f")
+                    slots[6] = cp.empty(n, dtype="f")
+                outputs = [slots.get(i, np.uint64(0)) for i in range(1, 7)]
                 normalize = bool(p[1])
-                count = len(outs)
                 blocks = min((n + 255) // 256, 1024)
-                partials = cp.empty((count, blocks), dtype="d") if normalize else None
+                partials = cp.zeros((6, blocks), dtype="d") if normalize else None
                 self.grid.get_function("emission")(
                     (blocks,),
                     (256,),
@@ -1244,16 +1312,18 @@ class Evolution(InitialFieldsEngine):
                         np.int32(n),
                         get(0),
                         *args,
-                        np.float64(p[0]),
+                        np.int32(metal),
+                        *(np.float64(p[j]) for j in (0, 9, 10, 11, 12)),
+                        np.int32(mass_dep),
                         *outputs,
                         np.float64(p[2] if normalize else 0.0),
                         partials if normalize else np.uint64(0),
                     ),
                 )
                 if normalize:
-                    sums = cp.empty(count, dtype="d")
+                    sums = cp.empty(6, dtype="d")
                     finish = self.grid.get_function("sum_double_pass2")
-                    for j in range(count):
+                    for j in range(6):
                         finish(
                             (1,),
                             (256,),
@@ -1265,16 +1335,16 @@ class Evolution(InitialFieldsEngine):
                             np.int32(n),
                             *outputs,
                             sums,
-                            *(np.float64(p[j]) for j in range(3, 6)),
+                            *(np.float64(p[j]) for j in (3, 4, 5, 13, 14, 15)),
                         ),
                     )
                     self.normalized_emissivity += 1
-                for j, x in enumerate(outs, 1):
-                    put_record(j, x)
+                for idx_a, dev in slots.items():
+                    put_record(idx_a, dev)
             elif stage == 1:
                 outs = [cp.empty(n, dtype="f") for _ in range(3)]
                 inputs = [
-                    get(i, "f" if i < 4 else "d") if a[i] else cp.zeros(n, dtype="d")
+                    get(i, "f" if i < 4 else "d") if a[i] else np.uint64(0)
                     for i in range(9)
                 ]
                 terms = cp.empty((n, len(THERMAL_TERMS)), dtype="d") if a[12] else None
@@ -1313,7 +1383,7 @@ class Evolution(InitialFieldsEngine):
             elif stage == 2:
                 side = int(p[0])
                 padded = n // side * (2 * (side // 2 + 1))
-                residency = self.ion_residency_enabled
+                residency = self.ion_residency_enabled and not molecular
                 contiguous = int(
                     residency
                     and int(a[1]) in self.ion_filtered
@@ -1337,18 +1407,81 @@ class Evolution(InitialFieldsEngine):
                         args.append(ion_buf(i))
                     else:
                         args.append(get(i, size=field_sizes.get(i, n)))
-                launch(
-                    self.grid.get_function("ion_center"),
-                    (
-                        np.int32(n),
-                        cp.asarray(
-                            np.ctypeslib.as_array(p, shape=(18 if molecular else 16,))
+                pars = cp.asarray(np.ctypeslib.as_array(p, shape=(22,)))
+                photons_mcg = get(12) if (molecular and a[12]) else np.uint64(0)
+                if p[18]:
+                    from ion_sphere import paint_ion_spheres
+
+                    triggered = cp.empty(n, dtype="B")
+                    eligible = cp.empty(n, dtype="B") if p[11] else None
+                    gamma_cand = cp.empty(n, dtype="f") if p[11] else None
+                    launch(
+                        self.grid.get_function("ion_center_sphere_mark"),
+                        (
+                            np.int32(n),
+                            pars,
+                            args[0],
+                            args[1],
+                            args[2],
+                            args[3],
+                            args[4],
+                            args[5],
+                            args[7],
+                            args[8],
+                            photons_mcg,
+                            np.int32(contiguous),
+                            triggered,
+                            eligible if eligible is not None else np.uint64(0),
+                            gamma_cand if gamma_cand is not None else np.uint64(0),
                         ),
-                        *args,
-                        get(12) if molecular else np.uint64(0),
-                        np.int32(contiguous),
-                    ),
-                )
+                    )
+                    is_last = p[1] == 0.0
+                    min_painter = paint_ion_spheres(
+                        self.grid,
+                        shape=(int(p[19]), int(p[20]), int(p[0])),
+                        radius=p[2],
+                        box_len=p[21],
+                        xh=args[7],
+                        triggered=triggered,
+                        eligible=eligible,
+                        gamma_cand=gamma_cand,
+                        gamma12=args[10] if p[11] else None,
+                        mfp=args[9] if (p[11] and a[9]) else None,
+                        track_painter=is_last,
+                        write_xh=(not is_last),
+                    )
+                    if is_last:
+                        launch(
+                            self.grid.get_function("ion_center_sphere_partial"),
+                            (
+                                np.int32(n),
+                                pars,
+                                args[0],
+                                args[1],
+                                args[2],
+                                args[3],
+                                args[6],
+                                args[7],
+                                args[11],
+                                photons_mcg,
+                                np.int32(contiguous),
+                                triggered,
+                                min_painter
+                                if min_painter is not None
+                                else np.uint64(0),
+                            ),
+                        )
+                else:
+                    launch(
+                        self.grid.get_function("ion_center"),
+                        (
+                            np.int32(n),
+                            pars,
+                            *args,
+                            photons_mcg,
+                            np.int32(contiguous),
+                        ),
+                    )
                 if not residency:
                     for i in range(7, 12):
                         if a[i]:
@@ -1378,19 +1511,24 @@ class Evolution(InitialFieldsEngine):
                     raise ValueError("Nonfinite recombination")
                 put_record(4, out)
             elif stage in (4, 34):
-                from fft_plan_cuda import transform
+                from fft_general import transform_3d
 
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[8])
+                shape = (nx, ny, nz)
                 threads = int(p[4])
+                wisdom = bool(p[10])
                 history = active_emissivity_history.get()
                 resident = None if history is None else history.shell_field(a[0], n)
-                x = (get(0) if resident is None else resident).reshape((side,) * 3)
-                if p[2] > 0 and side > 1:
+                x = (get(0) if resident is None else resident).reshape(shape)
+                if p[2] > 0 and nx > 1:
                     f = None
                     if resident is not None and stage == 4:
                         f = history.take_shell_spectrum(a[0])
                     if f is None:
-                        f = cp.ascontiguousarray(transform(x, side, False, threads))
+                        f = cp.ascontiguousarray(
+                            transform_3d(x, shape, False, threads, wisdom=wisdom)
+                        )
                         if (
                             stage == 34
                             and resident is not None
@@ -1400,8 +1538,11 @@ class Evolution(InitialFieldsEngine):
                     window = self.grid.get_function("shell_window")
                     args = (
                         f,
-                        np.int32(side),
+                        np.int32(nx),
+                        np.int32(ny),
+                        np.int32(nz),
                         np.float64(2 * np.pi / p[1]),
+                        np.float64(2 * np.pi / p[9]),
                         np.float64(p[2]),
                         np.float64(p[3]),
                     )
@@ -1415,7 +1556,7 @@ class Evolution(InitialFieldsEngine):
                         window = self.scattering_window
                         args += (np.float64(p[6]),)
                     launch(window, args, size=f.size)
-                    result = transform(f, side, True, threads)
+                    result = transform_3d(f, shape, True, threads, wisdom=wisdom)
                 else:
                     result = x
                 result = cp.maximum(result, 0)
@@ -1449,7 +1590,13 @@ class Evolution(InitialFieldsEngine):
 
                 args = [filter_grid(0), filter_grid(1), get(2, "i"), get(3)]
                 args += [get(i, "d", 14 * int(p[3])) for i in range(4, 10)]
-                outputs = [(i, accumulator(i)) for i in range(10, 15)]
+                slots = [
+                    (i, accumulator(i))
+                    if (i in (11, 12, 13) or a[i])
+                    else (i, None)
+                    for i in range(10, 15)
+                ]
+                outputs = [(i, val) for i, val in slots if val is not None]
                 mcg_sfr = filter_grid(15) if a[15] else np.uint64(0)
                 lw = accumulator(16) if a[16] else None
                 launch(
@@ -1458,7 +1605,7 @@ class Evolution(InitialFieldsEngine):
                         np.int32(n),
                         cp.asarray(np.ctypeslib.as_array(p, shape=(10,))),
                         *args,
-                        *(value for _, value in outputs),
+                        *(val if val is not None else np.uint64(0) for _, val in slots),
                         mcg_sfr,
                         lw if lw is not None else np.uint64(0),
                         filter_grid(17) if a[17] else np.uint64(0),
@@ -1478,17 +1625,76 @@ class Evolution(InitialFieldsEngine):
                     else:
                         put(i, field)
             elif stage == 6:
-                from halo_subgrid import conditional_table
+                from halo_subgrid import _xray_device_source, conditional_table
 
+                kernel = self.mass_integral
+                if int(p[18]) == 2:
+                    if not hasattr(self, "xray_table"):
+                        self.xray_table = module(
+                            [
+                                SHARED / "table_qag.cuh",
+                                ROOT / "hmf_device.cuh",
+                                ROOT / "source_integrals.cu",
+                            ],
+                            _xray_device_source(),
+                        ).get_function("xray_conditional_table")
+                    kernel = self.xray_table
                 conditional_table(
                     p,
-                    self.mass_integral,
+                    kernel,
                     self.symbols,
                     self.rule,
                     self.allocate,
                     self.table_size,
                     self.table_errors if self.audit else None,
                 )
+            elif stage == 35:
+                nx = int(p[12])
+                sigma, slope = [
+                    Table.from_address(self.symbols[k])
+                    for k in ("Sigma_InterpTable", "dSigmasqdm_InterpTable")
+                ]
+                nh_out = cp.empty(nx, dtype="d")
+                fc_out = cp.empty(nx, dtype="d")
+                self.grid_dndm(
+                    (nx,),
+                    (32,),
+                    (
+                        cp.asarray(np.ctypeslib.as_array(p, shape=(12,))),
+                        np.int32(nx),
+                        cp.asarray(np.ctypeslib.as_array(sigma.y, shape=(sigma.n,))),
+                        cp.asarray(np.ctypeslib.as_array(slope.y, shape=(slope.n,))),
+                        np.float64(sigma.low),
+                        np.float64(sigma.width),
+                        np.int32(sigma.n),
+                        self.rule,
+                        nh_out,
+                        fc_out,
+                    ),
+                )
+                nh_host = nh_out.get()
+                fc_host = fc_out.get()
+                if not np.isfinite(nh_host).all() or not np.isfinite(fc_host).all():
+                    raise ValueError("Nonfinite GPU dNdM conditional table")
+                allocate_d = C.CDLL(str(NATIVE)).allocate_RGTable1D
+                allocate_d.argtypes = [C.c_int, C.c_void_p]
+                for name, vals in (("Nhalo_table", nh_host), ("Fcoll_table", fc_host)):
+                    tbl = Table.from_address(self.symbols[name])
+                    if not self.audit:
+                        if not tbl.allocated:
+                            allocate_d(nx, C.byref(tbl))
+                        tbl.low = p[0]
+                        tbl.width = (p[1] - p[0]) / (nx - 1)
+                    host = view(C.cast(tbl.y, C.c_void_p).value, tbl.n, "d")
+                    if self.audit:
+                        delta = abs(vals - host)
+                        row = self.table_errors.setdefault(
+                            name, dict(tested=0, failed=0, max_abs=0.0)
+                        )
+                        row["tested"] += tbl.n
+                        row["failed"] += int(np.sum(delta > 1e-8 + 1e-4 * abs(host)))
+                        row["max_abs"] = max(row["max_abs"], float(delta.max()))
+                    host[:] = vals
             elif stage == 21:
                 nr = int(p[1])
                 if not hasattr(self, "lyman_shells"):
@@ -1802,7 +2008,7 @@ class Evolution(InitialFieldsEngine):
                     if a[3]
                     else (p[2] * (1.0 + p[3] * density.astype("d"))).astype("f")
                 )
-                residency = self.ion_residency_enabled and int(a[1]) in self.ion_state
+                residency = self.ion_residency_enabled and not molecular and int(a[1]) in self.ion_state
                 out_tk = ion_buf(4) if residency else get(4)
                 data = [get(0), get(1), density, neutral_tk, out_tk]
                 flag = cp.zeros(1, dtype=cp.int32)
@@ -1826,27 +2032,36 @@ class Evolution(InitialFieldsEngine):
                 if not residency:
                     put_record(4, data[4])
             elif stage == 11:
-                from fft_plan_cuda import transform
+                from fft_general import transform_3d
 
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[6])
+                shape = (nx, ny, nz)
+                wisdom = bool(p[7])
                 data = (
                     cp.clip(get(0).astype("d") * p[1], p[2], p[3])
                     .astype("f")
-                    .reshape((side,) * 3)
+                    .reshape(shape)
                 )
-                spectrum = cp.ascontiguousarray(transform(data, side, False, int(p[4])))
+                spectrum = cp.ascontiguousarray(
+                    transform_3d(data, shape, False, int(p[4]), wisdom=wisdom)
+                )
                 spectrum *= np.float32(1.0 / n)
                 if p[5]:
                     self.ion_spectra[int(a[1])] = spectrum
                 else:
                     put(1, spectrum.view("f"))
             elif stage == 31:
-                from fft_plan_cuda import transform
+                from fft_general import transform_3d
 
-                side, index, radius, kind, threads, box_len = p[:6]
-                side, threads = int(side), int(threads)
-                width = 2 * (side // 2 + 1)
-                residency = self.ion_residency_enabled
+                side, index, radius, kind, threads, box_xy, nz, box_z, wisdom = p[:9]
+                nx = ny = int(side)
+                nz = int(nz)
+                threads = int(threads)
+                wisdom = bool(wisdom)
+                shape = (nx, ny, nz)
+                width = 2 * (nz // 2 + 1)
+                residency = self.ion_residency_enabled and not molecular
                 for i in range(0, 12 if molecular else 6, 2):
                     if not a[i]:
                         continue
@@ -1858,31 +2073,36 @@ class Evolution(InitialFieldsEngine):
                             self.grid.get_function("spectral_filter"),
                             (
                                 spectrum,
-                                np.int32(side),
-                                np.float64(2 * np.pi / box_len),
+                                np.int32(nx),
+                                np.int32(ny),
+                                np.int32(nz),
+                                np.float64(2 * np.pi / box_xy),
+                                np.float64(2 * np.pi / box_z),
                                 np.float32(radius),
                                 np.int32(kind),
                             ),
                             size=spectrum.size,
                         )
                     real = cp.ascontiguousarray(
-                        transform(spectrum, side, True, threads)
+                        transform_3d(spectrum, shape, True, threads, wisdom=wisdom)
                     )
                     if residency:
                         self.ion_filtered[int(a[i + 1])] = real
                     else:
-                        padded = view(a[i + 1], side * side * width, "f").reshape(
-                            side, side, width
+                        padded = view(a[i + 1], nx * ny * width, "f").reshape(
+                            nx, ny, width
                         )
-                        padded[..., :side] = real.get()
+                        padded[..., :nz] = real.get()
             elif stage in (12, 13):
-                side = int(p[0])
+                nx = ny = int(p[0])
+                nz = int(p[3])
+                width = 2 * (nz // 2 + 1)
                 ptr0 = int(a[0])
 
                 def padded(idx):
-                    return view(a[idx], n // side * (2 * (side // 2 + 1)), "f").reshape(
-                        side, side, -1
-                    )[:, :, :side]
+                    return view(a[idx], nx * ny * width, "f").reshape(
+                        nx, ny, width
+                    )[:, :, :nz]
 
                 resident0 = self.ion_filtered.get(ptr0)
                 if resident0 is not None:
@@ -1963,6 +2183,8 @@ class Evolution(InitialFieldsEngine):
                     p[3],
                 )
                 for i, factor in enumerate(factors):
+                    if not a[i]:
+                        continue
                     field = radiation_grid(
                         accumulated, i, "d", "accumulator_input_reuses"
                     )
@@ -1976,35 +2198,41 @@ class Evolution(InitialFieldsEngine):
             elif stage == 10:
                 self.fill_initial_fields(p, a)
             elif stage == 9:
-                side, depth, kind = (int(p[i]) for i in range(3))
-                if side != depth or kind not in (0, 1, 2):
-                    raise ValueError(f"Unsupported spectral filter {kind} or shape")
+                nx, ny, nz, kind = (int(p[i]) for i in range(4))
+                if kind not in (0, 1, 2):
+                    raise ValueError(f"Unsupported spectral filter {kind}")
                 host = view(a[0], 2 * n, "f").view("complex64")
                 freq = cp.asarray(host)
                 launch(
                     self.grid.get_function("spectral_filter"),
                     (
                         freq,
-                        np.int32(side),
-                        np.float64(2 * np.pi / p[3]),
-                        np.float32(p[4]),
+                        np.int32(nx),
+                        np.int32(ny),
+                        np.int32(nz),
+                        np.float64(2 * np.pi / p[4]),
+                        np.float64(2 * np.pi / p[5]),
+                        np.float32(p[6]),
                         np.int32(kind),
                     ),
                 )
                 freq.get(out=host)
             elif stage in (7, 8):
-                from fft_plan_cuda import transform
+                from fft_general import transform_3d
 
-                side, depth, threads, wisdom = (int(p[i]) for i in range(4))
-                if depth != side or wisdom:
-                    raise ValueError("Unsupported CUDA FFT geometry or wisdom")
-                width = 2 * (side // 2 + 1)
-                padded = view(a[0], side * side * width, "f").reshape(side, side, width)
+                nx, nz, threads, wisdom = (int(p[i]) for i in range(4))
+                ny = nx
+                shape = (nx, ny, nz)
+                wisdom = bool(wisdom)
+                width = 2 * (nz // 2 + 1)
+                padded = view(a[0], nx * ny * width, "f").reshape(nx, ny, width)
                 inverse = stage == 8
-                data = padded.view("complex64") if inverse else padded[..., :side]
-                result = transform(cp.asarray(data), side, inverse, threads).get()
+                data = padded.view("complex64") if inverse else padded[..., :nz]
+                result = transform_3d(
+                    cp.asarray(data), shape, inverse, threads, wisdom=wisdom
+                ).get()
                 if inverse:
-                    padded[..., :side] = result
+                    padded[..., :nz] = result
                 else:
                     padded.view("complex64")[:] = result
             return 0
@@ -2031,7 +2259,8 @@ def initial_conditions_source():
                 physconst.l_factor*simulation_options_global->BOX_LEN/(lo_dim[0]+0.0),
                 matter_options_global->PERTURB_ON_HIGH_RES,
                 matter_options_global->PERTURB_ALGORITHM == PERTURB_ALGORITHM_2LPT,
-                matter_options_global->V_CB_MODEL == V_CB_MODEL_FLUCTS ? physconst.c_kms : 0.};
+                matter_options_global->V_CB_MODEL == V_CB_MODEL_FLUCTS ? physconst.c_kms : 0.,
+                box_len[2],lo_dim[2],matter_options_global->USE_FFTW_WISDOM};
             void *args[]={&random_seed,boxes->hires_density,boxes->lowres_density,
                 vel_pointers[0],vel_pointers[1],vel_pointers[2],
                 vel_pointers_2LPT[0],vel_pointers_2LPT[1],vel_pointers_2LPT[2],
@@ -2092,12 +2321,22 @@ def install_power_setup(stack, adapter, engine):
             if adapter.gpu_sigma(lo, hi, ntab):
                 raise engine.error
 
+        def CreateFFTWWisdoms(self):
+            return 0
+
     stack.enter_context(patch.object(initialization, "lib", PowerLibrary()))
 
 
 @contextmanager
 def evolution_backend(
-    report, audit=False, *, thermal=True, photon_calibration=None, molecular=False
+    report,
+    audit=False,
+    *,
+    thermal=True,
+    photon_calibration=None,
+    molecular=False,
+    photo=False,
+    photon_cons="no-photoncons",
 ):
     """Use the Eulerian adapter, optionally omitting spin and radiation stages."""
     if version("21cmfast") != "4.3.2":
@@ -2105,6 +2344,10 @@ def evolution_backend(
     heat_src, cuda, nsc = thermal_source(audit) if thermal else (None, None, 0)
     engine = Evolution(cuda, nsc, audit, scattering_reuse=molecular)
     engine.eulerian_mcg_stages = {}
+    has_photon_cons = (
+        photon_calibration is not None or photon_cons != "no-photoncons"
+    )
+    use_mcg_tables = molecular or photo
     with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
         tmp = Path(tmp)
         sources = {
@@ -2115,9 +2358,10 @@ def evolution_backend(
             + """
 #include "filtering.h"
 #include "InputParameters.h"
+#include "indexing.h"
 #include "exceptions.h"
 void filter_box(fftwf_complex *grid,int dim[3],int kind,float radius,float param,float star) {
-    double p[]={dim[0],dim[2],kind,simulation_options_global->BOX_LEN,radius};
+    double p[]={dim[0],dim[1],dim[2],kind,simulation_options_global->BOX_LEN,BOXLEN_PARA,radius};
     void *a[]={grid};
     if(gpu_dispatch(9,dim[0]*dim[1]*(dim[2]/2+1),p,a)) Throw(ValueError);
 }
@@ -2145,13 +2389,36 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                 """
                 if (source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL)
                     && uses_interpolation_tables(matter_options_global->USE_INTERPOLATION_TABLES)
-                    && !astro_options_global->USE_MCGS && !astro_options_global->USE_METALLICITY
-                    && !config_settings.EXTRA_EMISSIVITY_FIELDS) {
-                    bool thermal=astro_options_global->USE_TS_FLUCT;
-                    double result[2]={0}, z[]={consts->redshift,consts->redshift};
-                    gpu_global_pair(29,thermal ? 2 : 1,z,thermal,lnMmin,lnMmax,M_turn_acg,consts,result);
-                    *averages_out=(IntegralProperties){.n_ion=result[0], .sfrd_acg=result[1],
-                        .xray_emissivity=consts->lx_over_sfr_acg*result[1]};
+                    && !astro_options_global->USE_MCGS) {
+                    bool thermal = astro_options_global->USE_TS_FLUCT;
+                    bool extra = config_settings.EXTRA_EMISSIVITY_FIELDS;
+                    bool mass_dep = source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL);
+                    bool need_sfr = thermal || (extra && mass_dep);
+                    double result[2] = {0}, z[] = {consts->redshift, consts->redshift};
+                    gpu_global_pair(29, need_sfr ? 2 : 1, z, need_sfr, lnMmin, lnMmax, M_turn_acg, consts, result);
+                    double nhalo = 0., fcoll = 0., sm = 0., xray = 0.;
+                    if (thermal) {
+                        xray = astro_options_global->USE_METALLICITY
+                            ? xray_emissivity_unconditional_acg(consts->redshift, lnMmin, lnMmax, M_turn_acg, consts)
+                            : consts->lx_over_sfr_acg * result[1];
+                    }
+                    if (extra) {
+                        double dndm[2] = {0};
+                        gpu_global_dndm(29, lnMmin, lnMmax, consts, VOLUME / HII_TOT_NUM_PIXELS, dndm);
+                        nhalo = dndm[0];
+                        fcoll = dndm[1];
+                        sm = mass_dep ? (result[1] * consts->sfr_timescale)
+                                      : (result[0] * RHOcrit * cosmo_params_global->OMb * consts->fstar_10_acg
+                                         / astro_params_global->HII_EFF_FACTOR);
+                    }
+                    *averages_out = (IntegralProperties){
+                        .halo_number = nhalo,
+                        .halo_mass_density = fcoll,
+                        .stellar_mass_density_acg = sm,
+                        .sfrd_acg = need_sfr ? result[1] : 0.,
+                        .n_ion = result[0],
+                        .xray_emissivity = xray,
+                    };
                     return 0;
                 }
                 """,
@@ -2171,30 +2438,36 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                 .replace("initialize_sfrd_conditional_tables(", "gpu_init_sfr(")
             )
             if name == "emission.c":
-                src = HEADER + src
-            sources[name] = src.replace(
-                marker,
+                src = HEADER + src.replace("initialize_dndm_tables(", "gpu_dndm_tables(").replace(
+                    "initialize_xray_emissivity_conditional_tables(", "gpu_init_xray("
+                )
+            extra_headers = (
                 (ROOT / "global_integrals.h").read_text()
                 + "\n"
                 + (ROOT / "source_integrals.h").read_text()
+                + ("\n" + (ROOT / "halo_xray.h").read_text() if name == "emission.c" else "")
                 + "\n"
-                + marker,
-                1,
+                + marker
             )
+            sources[name] = src.replace(marker, extra_headers, 1)
         for name in ("ion.c", "scaling.c"):
             sources[name] = use_gpu_scalar_sigma(sources[name])
         if not thermal:
             for name in ("heat.c", "rad_setup.c", "rad.c"):
                 del sources[name]
-        if photon_calibration is not None:
+        if has_photon_cons:
             from photon_conservation import private_source
 
-            sources["photon.c"] = private_source((SRC / "photoncons.c").read_text())
-        if molecular:
+            sources["photon.c"] = use_gpu_scalar_sigma(
+                private_source((SRC / "photoncons.c").read_text())
+            )
+        if use_mcg_tables:
             from eulerian_mcg_sources import source as molecular_emission_source
-            from halo_mcg_global import source as global_photon_source
 
-            sources["rad_setup.c"] = global_photon_source(sources["rad_setup.c"])
+            if molecular and thermal:
+                from halo_mcg_global import source as global_photon_source
+
+                sources["rad_setup.c"] = global_photon_source(sources["rad_setup.c"])
             sources["emission.c"] = molecular_emission_source(
                 sources["emission.c"], audit=audit
             )
@@ -2205,9 +2478,8 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                 eulerian_mcg_ion.source(sources["ion.c"])
             )
         adapter = compile_adapter(tmp, sources, [f"-DGPU_TABLE_AUDIT={int(audit)}"])
-        if molecular:
+        if use_mcg_tables:
             from eulerian_mcg_sources import bind as bind_molecular_emission
-            from halo_mcg_global import bind as bind_global_photons
 
             _molecular_emission = bind_molecular_emission(
                 adapter,
@@ -2222,12 +2494,14 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                 lambda exc: setattr(engine, "error", exc),
                 engine=engine,
             )
+            if molecular and thermal:
+                from halo_mcg_global import bind as bind_global_photons
 
-            _global_photons = bind_global_photons(
-                adapter,
-                engine.eulerian_mcg_stages,
-                lambda exc: setattr(engine, "error", exc),
-            )
+                _global_photons = bind_global_photons(
+                    adapter,
+                    engine.eulerian_mcg_stages,
+                    lambda exc: setattr(engine, "error", exc),
+                )
         if thermal:
             engine.tabulate_xhii_inverse_widths = adapter.tabulate_xhii_inverse_widths
             engine.tabulate_xhii_inverse_widths.argtypes = [
@@ -2276,6 +2550,12 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
             if not initialization._GlobalInitManagerSingleton._scopes:
                 stack.callback(initialization._GlobalInitManagerSingleton.free)
             engine.photon_data = install(stack, adapter, photon_calibration)
+        elif has_photon_cons:
+            from photon_conservation import install_auto
+
+            if not initialization._GlobalInitManagerSingleton._scopes:
+                stack.callback(initialization._GlobalInitManagerSingleton.free)
+            install_auto(stack, adapter)
         entries = [
             (InitialConditions, "ComputeInitialConditions"),
             (EmissivityFields, "ComputeEmissivityFields"),
@@ -2369,6 +2649,7 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                                 "homogeneous_recombination",
                                 "mcg_xray_optical_depth_and_frequency",
                                 "radiation_lya_scattering_filter",
+                                "grid_dndm_tables",
                             ),
                             engine.counts,
                         )
@@ -2378,7 +2659,7 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
                     indent=2,
                 )
             )
-            if molecular:
+            if use_mcg_tables:
                 from halo_radiation import _STAGES
 
                 counters = {
@@ -2404,15 +2685,21 @@ int dft_c2r_cube(bool w,int n,int los,int threads,fftwf_complex *grid) {
 
 
 @contextmanager
-def lagrangian_backend(report, source="CHMF-SAMPLER", *, inputs=None):
+def lagrangian_backend(
+    report, source="CHMF-SAMPLER", *, inputs=None, photon_calibration=None
+):
     """CUDA hooks for 4.3.2 Lagrangian integral and sampled-halo source models."""
     from halo_catalog import halo_catalog_backend
     from halo_grid import halo_grid_backend
     from halo_ionization import install_ionization, ionization_source
+    from py21cmfast.drivers import _global_initialization as initialization
 
     stage_counts = {}
     engine = InitialFieldsEngine()
     engine.counters = stage_counts
+    has_photon_cons = photon_calibration is not None or (
+        inputs is not None and inputs.astro_options.PHOTON_CONS_TYPE != "no-photoncons"
+    )
 
     def prepare_initial_fields(stage, n, p, a):
         try:
@@ -2447,18 +2734,22 @@ def lagrangian_backend(report, source="CHMF-SAMPLER", *, inputs=None):
 
     with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
         callback = CB(prepare_initial_fields)
-        adapter = compile_adapter(
-            Path(tmp),
-            {
-                "ic.c": initial_conditions_source(),
-                "dispatch.c": "int (*gpu_dispatch)(int,int,double*,void**);",
-                "ion.c": use_gpu_scalar_sigma(ionization_source()),
-                "scaling.c": use_gpu_scalar_sigma(
-                    (SRC / "scaling_relations.c").read_text()
-                ),
-                "moments.c": HEADER + (ROOT / "power_setup.c").read_text(),
-            },
-        )
+        adapter_sources = {
+            "ic.c": initial_conditions_source(),
+            "dispatch.c": "int (*gpu_dispatch)(int,int,double*,void**);",
+            "ion.c": use_gpu_scalar_sigma(ionization_source()),
+            "scaling.c": use_gpu_scalar_sigma(
+                (SRC / "scaling_relations.c").read_text()
+            ),
+            "moments.c": HEADER + (ROOT / "power_setup.c").read_text(),
+        }
+        if has_photon_cons:
+            from photon_conservation import private_source
+
+            adapter_sources["photon.c"] = use_gpu_scalar_sigma(
+                private_source((SRC / "photoncons.c").read_text())
+            )
+        adapter = compile_adapter(Path(tmp), adapter_sources)
         C.c_void_p.in_dll(adapter, "gpu_dispatch").value = C.cast(
             callback, C.c_void_p
         ).value
@@ -2466,6 +2757,18 @@ def lagrangian_backend(report, source="CHMF-SAMPLER", *, inputs=None):
             stack, engine, adapter, InitialConditions, "ComputeInitialConditions"
         )
         install_power_setup(stack, adapter, engine)
+        if photon_calibration is not None:
+            from photon_conservation import install
+
+            if not initialization._GlobalInitManagerSingleton._scopes:
+                stack.callback(initialization._GlobalInitManagerSingleton.free)
+            engine.photon_data = install(stack, adapter, photon_calibration)
+        elif has_photon_cons:
+            from photon_conservation import install_auto
+
+            if not initialization._GlobalInitManagerSingleton._scopes:
+                stack.callback(initialization._GlobalInitManagerSingleton.free)
+            install_auto(stack, adapter)
         if source != "L-INTEGRAL":
             stack.enter_context(halo_catalog_backend(stage_counts))
         scaling = adapter.set_scaling_constants
@@ -2484,8 +2787,7 @@ def lagrangian_backend(report, source="CHMF-SAMPLER", *, inputs=None):
             stack,
             adapter,
             stage_counts,
-            use_mhr=inputs is not None
-            and inputs.astro_options.RECOMB_MODEL == "inhomogeneous",
+            use_mhr=inputs is not None and inputs.astro_options.RECOMB_MODEL != "none",
             engine=engine,
         )
 

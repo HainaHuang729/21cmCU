@@ -3,11 +3,22 @@
 int (*cuda_eulerian_sources)(int, double *, void **);
 static void eulerian_molecular_fields(double mmin, double mmax, float *density, float *acg,
                                       float *mcg, ScalingConstants *sc, EmissivityFields *out) {
-    double at = pow(10., out->log10_mturn_acg_ave), mt = pow(10., out->log10_mturn_mcg_ave);
+    bool photo = astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+                 source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL);
+    bool use_mcg = astro_options_global->USE_MCGS;
+    bool thermal = astro_options_global->USE_TS_FLUCT;
+    bool extra = config_settings.EXTRA_EMISSIVITY_FIELDS;
+    double at = photo ? pow(10., out->log10_mturn_acg_ave) : sc->mturn_acg_homogeneous;
+    double mt = use_mcg ? pow(10., out->log10_mturn_mcg_ave) : 0.;
     double rows[3][2][30] = {0};
     for (int kind = 0; kind < 3; ++kind) {
         for (int mini = 0; mini < 2; ++mini) {
             double *p = rows[kind][mini];
+            if ((mini && !use_mcg) || (kind == 1 && !thermal && !extra) ||
+                (kind == 2 && (!thermal || !astro_options_global->USE_METALLICITY))) {
+                p[24] = 1.;
+                continue;
+            }
             global_acg_row(p, sc->redshift, log(mmin), log(mmax), at, sc, kind != 0);
             p[0] = sc->redshift;
             if (mini) {
@@ -41,9 +52,33 @@ static void eulerian_molecular_fields(double mmin, double mmax, float *density, 
             p[29] = cosmo_params_global->OMr;
         }
     }
+    double dndm_rows[2][23];
+    if (extra) {
+        global_acg_row(dndm_rows[0], sc->redshift, log(mmin), log(mmax), 0., sc, false);
+        dndm_rows[0][11] = 0.; dndm_rows[0][12] = 0.; dndm_rows[0][13] = 0.; dndm_rows[0][14] = 0.;
+        dndm_rows[0][15] = -1000.; dndm_rows[0][16] = 0.;
+        dndm_rows[0][17] = RHOcrit * cosmo_params_global->OMm * VOLUME / HII_TOT_NUM_PIXELS;
+        memcpy(dndm_rows[1], dndm_rows[0], sizeof(dndm_rows[0]));
+        dndm_rows[1][15] = 0.;
+        dndm_rows[1][17] = RHOcrit * cosmo_params_global->OMm;
+    }
+    double rho_m = RHOcrit * cosmo_params_global->OMm;
     double params[] = {sc->atomic_cooling_threshold * 1.001, sc->lx_over_sfr_acg,
-                       sc->lx_over_sfr_mcg, astro_options_global->USE_METALLICITY, FRACT_FLOAT_ERR};
-    void *a[] = {rows,       density,       acg,           mcg,
-                 out->n_ion, out->sfrd_acg, out->sfrd_mcg, out->xray_emissivity};
+                       sc->lx_over_sfr_mcg, astro_options_global->USE_METALLICITY, FRACT_FLOAT_ERR,
+                       extra, sc->M_cell / rho_m, rho_m, sc->sfr_timescale,
+                       thermal, use_mcg, photo, sc->mturn_acg_homogeneous};
+    void *a[] = {rows,
+                 extra ? dndm_rows : NULL,
+                 density,
+                 photo ? acg : NULL,
+                 use_mcg ? mcg : NULL,
+                 out->n_ion,
+                 thermal ? out->sfrd_acg : NULL,
+                 (thermal && use_mcg) ? out->sfrd_mcg : NULL,
+                 thermal ? out->xray_emissivity : NULL,
+                 extra ? out->halo_number : NULL,
+                 extra ? out->halo_mass_density : NULL,
+                 extra ? out->stellar_mass_density_acg : NULL,
+                 (extra && use_mcg) ? out->stellar_mass_density_mcg : NULL};
     if (cuda_eulerian_sources(HII_TOT_NUM_PIXELS, params, a)) Throw(ValueError);
 }

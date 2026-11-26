@@ -42,3 +42,33 @@ extern "C" __global__ void enforce_real_planes(float2 *modes, int n) {
         } else if (y==0 || y==n/2) modes[target].y=0.f;
     }
 }
+
+extern "C" __global__ void enforce_real_planes_general(float2 *modes, int nx, int ny, int nz) {
+    const long long index=(long long)blockIdx.x*blockDim.x+threadIdx.x;
+    const long long plane_sz=(long long)nx*ny;
+    if (index >= 2*plane_sz) return;
+    const int mx=nx/2, my=ny/2, mz=nz/2, hz=nz/2+1;
+    const int plane_k=(int)(index%2);
+    if (plane_k && mz==0) return;
+    const int k=plane_k ? mz : 0;
+    const long long q=index/2;
+    const int i=(int)(q/ny), j=(int)(q%ny);
+    const long long pos=((long long)i*ny+j)*hz+k;
+    if (i==0 && j==0 && k==0) {
+        modes[0]=make_float2(0.f,0.f);
+    } else if ((i==0 || i==mx) && (j==0 || j==my)) {
+        modes[pos].y=0.f;
+    } else if (i>0 && i<mx) {
+        if (j==0 || j==my) {
+            const float2 v=modes[((long long)(nx-i)*ny+j)*hz+k];
+            modes[pos]=make_float2(v.x,-v.y);
+        } else if (j<my || j>ny-my) {
+            const int sy=ny-j;
+            const float2 v=modes[((long long)(nx-i)*ny+sy)*hz+k];
+            modes[pos]=make_float2(v.x,-v.y);
+        }
+    } else if ((i==0 || i==mx) && j>0 && j<my) {
+        const float2 v=modes[((long long)i*ny+(ny-j))*hz+k];
+        modes[pos]=make_float2(v.x,-v.y);
+    }
+}

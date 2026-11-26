@@ -15,6 +15,7 @@ struct SourceIntegral {
         return v[i] * (1. - t) + v[i + 1] * t;
     }
     __device__ double weighted_mass(double x) const {
+        if (p[15] < -900.) return 1.;
         double a = p[11], e = p[12], pivot = 10. * 2.30258509299404568402;
         double star = ((a > 0 && x > p[15]) || (a < 0 && x < p[15])) ? -p[13] : a * (x - pivot);
         double esc = ((e > 0 && x > p[16]) || (e < 0 && x < p[16])) ? -p[14] : e * (x - pivot);
@@ -140,5 +141,51 @@ extern "C" __global__ void global_rows(int n, double lo, double step, int sfr, c
         double y = 1.f + (float)z;
         double hubble = c[4] * 3.2407e-18 * sqrt(c[0] * y * y * y + c[2] * y * y * y * y + c[1]);
         p[17] = c[9] * base[17] / (c[10] / hubble);
+    }
+}
+
+struct DndmIntegral {
+    SourceIntegral source;
+    bool weighted;
+    __device__ double operator()(double x) const {
+        double s = source.interp(source.sigma, x);
+        if (s < source.p[7]) return 0.;
+        double cmf = source.mass_function(x, s);
+        return weighted ? exp(x) * cmf : cmf;
+    }
+};
+
+extern "C" __global__ void grid_dndm_table(const double *p, int n, const float *sigma,
+        const float *slope, double low, double step, int ns, const double *rule,
+        double *nhalo_out, double *fcoll_out) {
+    int i = blockIdx.x;
+    double delta = p[0] + (p[1] - p[0]) * ((double)i / (double)(n - 1));
+    double nhalo = 0., fcoll = 0.;
+    if (p[2] < p[5]) {
+        if (delta > 0.99 * p[11]) {
+            if (p[5] * (1. - 1.e-7) <= p[3]) {
+                nhalo = p[8] / exp(p[5]);
+                fcoll = 1.;
+            }
+        } else {
+            __shared__ double params[10];
+            if (threadIdx.x == 0) {
+                params[6] = p[4];
+                params[7] = p[6];
+                params[9] = p[7];
+            }
+            __syncwarp();
+            SourceIntegral s = {params, sigma, slope, low, step, delta, ns, (int)p[9], p[10]};
+            DndmIntegral fn = {s, false};
+            double vn = table_integral(p[2], p[3], .001, fn, rule);
+            fn.weighted = true;
+            double vf = table_integral(p[2], p[3], .001, fn, rule);
+            nhalo = vn * p[8];
+            fcoll = vf;
+        }
+    }
+    if (threadIdx.x == 0) {
+        nhalo_out[i] = nhalo;
+        fcoll_out[i] = fcoll;
     }
 }

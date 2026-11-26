@@ -14,8 +14,10 @@ def source(native):
     start = native.index("void get_log10_turnovers(")
     pos = native.index("    double log10_mturn_mcg_avg", start)
     hook = """
-    if (astro_options_global->USE_MCGS) {
+    if (astro_options_global->USE_MCGS ||
+        astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
         bool history = consts->redshift < simulation_options_global->Z_HEAT_MAX;
+        bool mcg = astro_options_global->USE_MCGS;
         bool photo = astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK;
         bool streaming = matter_options_global->V_CB_MODEL == V_CB_MODEL_FLUCTS;
         double p[]={consts->redshift, consts->mturn_acg_homogeneous,
@@ -23,11 +25,12 @@ def source(native):
             cosmo_tables_global->V_CB_AVG * sqrt(3*M_PI/8),
             astro_params_global->A_LW, astro_params_global->BETA_LW,
             astro_params_global->A_VCB, astro_params_global->BETA_VCB};
-        void *a[]={history ? previous_spin_temp->J_21_LW : NULL,
-            streaming ? ini_boxes->lowres_vcb : NULL,
-            photo && history ? previous_ionize_box->ionisation_rate_G12 : NULL,
-            photo && history ? previous_ionize_box->z_reion : NULL,
-            photo ? log10_mturn_acg_grid : NULL, log10_mturn_mcg_grid, averages};
+        void *a[]={(mcg && history) ? previous_spin_temp->J_21_LW : NULL,
+            (mcg && streaming) ? ini_boxes->lowres_vcb : NULL,
+            (photo && history) ? previous_ionize_box->ionisation_rate_G12 : NULL,
+            (photo && history) ? previous_ionize_box->z_reion : NULL,
+            photo ? log10_mturn_acg_grid : NULL,
+            mcg ? log10_mturn_mcg_grid : NULL, averages};
         if (cuda_mcg_turnovers(HII_TOT_NUM_PIXELS,p,a)) Throw(ValueError);
         return;
     }
@@ -66,12 +69,13 @@ def device_turnovers(n, p, a, *, registry=None):
 
     fields = [load(a[j]) for j in range(4)]
     photo = bool(a[4])
+    mcg_enabled = bool(a[5])
     # Native accumulates log10 of the float threshold *before* narrowing
     # it into the output grid. Preserve that distinction for Nion history.
     acg = cp.empty(n, dtype="d") if photo else np.uint64(0)
-    mcg = cp.empty(n, dtype="d")
+    mcg = cp.empty(n, dtype="d") if mcg_enabled else np.uint64(0)
     acg_grid = cp.empty(n, dtype="f") if photo else np.uint64(0)
-    mcg_grid = cp.empty(n, dtype="f")
+    mcg_grid = cp.empty(n, dtype="f") if mcg_enabled else np.uint64(0)
     _kernel()(
         ((n + 255) // 256,),
         (256,),
@@ -101,8 +105,11 @@ def bind(adapter, report, errors, *, registry=None):
                 averages[0] = acg.mean().item()
             else:
                 averages[0] = np.log10(p[1])
-            mcg_grid.get(out=view(a[5], n, "f"))
-            averages[1] = mcg.mean().item()
+            if a[5]:
+                mcg_grid.get(out=view(a[5], n, "f"))
+                averages[1] = mcg.mean().item()
+            else:
+                averages[1] = 0.0
             report["mcg_turnover_grids"] = report.get("mcg_turnover_grids", 0) + 1
             report["mcg_turnover_cells"] = report.get("mcg_turnover_cells", 0) + n
             return 0

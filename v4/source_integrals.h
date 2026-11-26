@@ -67,3 +67,18 @@ static void gpu_init_sfr(double z, double lo, double hi, double mmin, double mma
     if (GPU_TABLE_AUDIT) initialize_sfrd_conditional_tables(z, lo, hi, mmin, mmax, cell, sc);
     gpu_source_table(z, lo, hi, mmin, mmax, cell, sc, 1);
 }
+static void gpu_dndm_tables(double xmin, double xmax, double ymin, double ymax,
+                            double growth, double lnM_cond, int unused) {
+    if (!uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)) {
+        initialize_dndm_tables(xmin, xmax, ymin, ymax, growth, lnM_cond, unused);
+        return;
+    }
+    if (GPU_TABLE_AUDIT) initialize_dndm_tables(xmin, xmax, ymin, ymax, growth, lnM_cond, unused);
+    double sigma = evaluate_sigma(lnM_cond);
+    double p[] = {xmin, xmax, ymin, ymax, growth, lnM_cond, sigma, physconst.delta_c_sph,
+                  RHOcrit * cosmo_params_global->OMm, matter_options_global->HMF,
+                  physconst.delta_c_delos,
+                  get_delta_crit(matter_options_global->HMF, sigma, growth),
+                  simulation_options_global->N_COND_INTERP};
+    GPU_CALL(35, p, NULL);
+}

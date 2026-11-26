@@ -29,6 +29,20 @@ __device__ double molecular_emissivity(double delta, double turn, int field, con
     return exp(left * (1. - wx) + right * wx);
 }
 
+__device__ double acg_emissivity(double delta, double turn, bool photo, int field,
+                                 const double *meta, const double *values, int *bad) {
+    if (photo) return molecular_emissivity(delta, turn, field, meta, values, bad);
+    const double *m = meta + 7 * field;
+    int j = (int)floor((delta - m[0]) / m[2]);
+    if (j < 0 || j >= (int)m[5] - 1) {
+        atomicExch(bad, 1);
+        return 0.;
+    }
+    double w = (delta - (m[0] + m[2] * j)) / m[2];
+    const double *y = values + (int)m[4];
+    return exp(y[j] * (1. - w) + y[j + 1] * w);
+}
+
 extern "C" __global__ void advect_unresolved_cells(
     int offset, int n, const int *dims, const double *p, const double *meta, const double *values,
     const float *density, const float *vx, const float *vy, const float *vz, const float *vx2,
@@ -64,23 +78,27 @@ extern "C" __global__ void advect_unresolved_cells(
                              (z ? dist[2] : 1. - dist[2]);
     }
     double delta = density[input_index] * p[0], volume = p[12];
-    if (p[19]) {
-        double a = turn_acg[input_index], m = turn_mcg[input_index];
-        bool active = pow(10., a) <= p[20];
-        double *out = props + (p[11] ? 9 : 8) * i;
-        double nion = molecular_emissivity(delta, a, 0, meta, values, bad);
+    bool mcg = p[19] != 0., photo = p[22] != 0.;
+    if (mcg || photo) {
+        double a = photo ? turn_acg[input_index] : 0.;
+        double m = mcg ? turn_mcg[input_index] : 0.;
+        double a_lin = photo ? pow(10., a) : p[23];
+        bool active = mcg && (a_lin <= p[20]);
+        int stride = mcg ? 9 : 7;
+        double *out = props + stride * i;
+        double nion = acg_emissivity(delta, a, photo, 0, meta, values, bad);
         if (active) {
             nion += molecular_emissivity(delta, m, 3, meta, values, bad);
         }
         out[0] = nion * volume;
         double sfr_acg =
-            (p[9] || p[11]) ? molecular_emissivity(delta, a, 1, meta, values, bad) : 0.;
+            (p[9] || p[11]) ? acg_emissivity(delta, a, photo, 1, meta, values, bad) : 0.;
         double sfr_mcg =
             (active && (p[9] || p[11])) ? molecular_emissivity(delta, m, 4, meta, values, bad) : 0.;
         out[1] = sfr_acg * volume;
-        out[7] = sfr_mcg * volume;
+        if (mcg) out[7] = sfr_mcg * volume;
         if (p[9] && p[10]) {
-            double xray = molecular_emissivity(delta, a, 2, meta, values, bad);
+            double xray = acg_emissivity(delta, a, photo, 2, meta, values, bad);
             if (active) xray += molecular_emissivity(delta, m, 5, meta, values, bad);
             out[2] = xray * volume;
         }
@@ -88,7 +106,7 @@ extern "C" __global__ void advect_unresolved_cells(
             out[4] = linear_lookup(delta, meta + 7 * 6, values, bad) * p[13];
             out[5] = linear_lookup(delta, meta + 7 * 7, values, bad) * p[14] * volume;
             out[6] = out[1] * p[15];
-            out[8] = out[7] * p[15];
+            if (mcg) out[8] = out[7] * p[15];
         }
         return;
     }

@@ -35,6 +35,7 @@ def table_resources():
 
     names = [f"{k}_conditional_table2D_{p}" for k in _KINDS for p in _POPS]
     names.extend(f"Nion_conditional_table2D_{p}_prev" for p in _POPS)
+    names.extend(f"{k}_conditional_table1D_acg" for k in _KINDS)
     addresses = native_tables(names)
     kernel = module(
         [
@@ -46,24 +47,30 @@ def table_resources():
         + (ROOT / "halo_mcg_weight.cuh").read_text()
         + (ROOT / "halo_mcg_tables.cu").read_text(),
     ).get_function("population_table")
-    allocate = C.CDLL(str(NATIVE)).allocate_RGTable2D_f
+    native_lib = C.CDLL(str(NATIVE))
+    allocate = native_lib.allocate_RGTable2D_f
     allocate.argtypes = [C.c_int, C.c_int, C.POINTER(Table2D)]
     allocate.restype = None
+    allocate_1d = native_lib.allocate_RGTable1D_f
+    allocate_1d.argtypes = [C.c_int, C.POINTER(Table)]
+    allocate_1d.restype = None
     return (
         addresses,
         kernel,
         cp.asarray(json.loads((ROOT / "gk61.json").read_text())),
         allocate,
+        allocate_1d,
     )
 
 
 def device_values(resources, p, nx, ny, kind, mini):
     """Evaluate one native table, leaving its completed array on device."""
-    addresses, kernel, rule, _ = resources
+    addresses, kernel, rule, _, _ = resources
     rows = np.tile(p, (ny, 1))
-    rows[:, 10] = 10.0 ** (
-        p[25] + np.arange(ny, dtype="d") / (ny - 1.0) * (p[26] - p[25])
-    )
+    if ny > 1:
+        rows[:, 10] = 10.0 ** (
+            p[25] + np.arange(ny, dtype="d") / (ny - 1.0) * (p[26] - p[25])
+        )
     sigma, slope = [
         Table.from_address(addresses[k])
         for k in ("Sigma_InterpTable", "dSigmasqdm_InterpTable")
@@ -112,7 +119,30 @@ def bind(adapter, report, errors, *, symbol="cuda_mcg_table", resident=None):
         try:
             if resources is None:
                 resources = table_resources()
-            addresses, _, _, allocate = resources
+            addresses, _, _, allocate, allocate_1d = resources
+            p = np.ctypeslib.as_array(ptr, (30,))
+            if ny == 1:
+                name = f"{_KINDS[kind]}_conditional_table1D_acg"
+                values = device_values(resources, p, nx, 1, kind, mini).reshape(nx)
+                xmin, xstep = p[1], (p[2] - p[1]) / (nx - 1.0)
+                if resident is not None:
+                    if not bool(cp.isfinite(values).all()):
+                        raise ValueError(f"Nonfinite {name} at z={p[0]}")
+                    resident[name] = ((xmin, 0.0, xstep, 0.0), values)
+                else:
+                    table = Table.from_address(addresses[name])
+                    if not table.allocated:
+                        allocate_1d(nx, C.byref(table))
+                    if table.n != nx:
+                        raise ValueError(f"Invalid size for {name}")
+                    table.low, table.width = xmin, xstep
+                    host = values.get()
+                    if not np.isfinite(host).all():
+                        raise ValueError(f"Nonfinite {name} at z={p[0]}")
+                    np.ctypeslib.as_array(table.y, (nx,))[:] = host
+                key = f"subgrid_{_KINDS[kind].lower()}_acg_1d_tables"
+                report[key] = report.get(key, 0) + 1
+                return 0
             name = f"{_KINDS[kind]}_conditional_table2D_{_POPS[mini]}"
             if prev:
                 if kind != 0:
@@ -123,7 +153,6 @@ def bind(adapter, report, errors, *, symbol="cuda_mcg_table", resident=None):
                 allocate(nx, ny, C.byref(table))
             if (table.nx, table.ny) != (nx, ny):
                 raise ValueError(f"Invalid shape for {name}")
-            p = np.ctypeslib.as_array(ptr, (30,))
             table.xmin, table.xstep = p[1], (p[2] - p[1]) / (nx - 1.0)
             table.ymin, table.ystep = p[25], (p[26] - p[25]) / (ny - 1.0)
             values = device_values(resources, p, nx, ny, kind, mini)

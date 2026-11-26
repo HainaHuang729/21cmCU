@@ -32,7 +32,10 @@ def source(native, src_dir):
         velocity_displacement_factor_2LPT[2],matter_options_global->PERTURB_ALGORITHM==PERTURB_ALGORITHM_2LPT,
         thermal, metal, extra, vol_ratio_out,consts->M_cell/rho_m,rho_m,consts->sfr_timescale,
         RHOcrit*cosmo_params_global->OMb/consts->sfr_timescale,consts->lx_over_sfr_acg,slabs,
-        astro_options_global->USE_MCGS,consts->atomic_cooling_threshold*1.001,consts->lx_over_sfr_mcg};
+        astro_options_global->USE_MCGS,consts->atomic_cooling_threshold*1.001,consts->lx_over_sfr_mcg,
+        astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+            source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL),
+        consts->mturn_acg_homogeneous};
     void *a[]={dens_pointer,vel_pointers[0],vel_pointers[1],vel_pointers[2],
         vel_pointers_2LPT[0],vel_pointers_2LPT[1],vel_pointers_2LPT[2],
         emissivity_fields->n_ion,thermal?emissivity_fields->sfrd_acg:NULL,
@@ -52,9 +55,7 @@ def source(native, src_dir):
         """    if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL) &&
         uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES) &&
         ((!astro_options_global->USE_MCGS && !astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) ||
-         (astro_options_global->USE_MCGS && astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
-          astro_options_global->USE_TS_FLUCT && astro_options_global->USE_METALLICITY &&
-          grid_dim[0] == simulation_options_global->HII_DIM))) {
+         grid_dim[0] == simulation_options_global->HII_DIM)) {
 """
         + original_call.replace("move_integral_emissivities", "gpu_advect_sources", 1)
         + "\n    } else\n"
@@ -86,36 +87,73 @@ _MOLECULAR_TABLES = tuple(
 )
 
 
-def _molecular_tables(symbols, needed_2d, extra):
+def _molecular_tables(symbols, photo, mcg, thermal, metal, extra):
     from evolution_backend import Table, Table2DFloat, view
 
     nodes = []
     meta = np.zeros((8 if extra else 6, 7), dtype="d")
     offset = 0
-    for idx, name in enumerate(_MOLECULAR_TABLES):
-        if not needed_2d[idx]:
+    needed_1d = (True, thermal or extra, thermal and metal)
+    for idx, need in enumerate(needed_1d):
+        if not need:
             continue
-        table = Table2DFloat.from_address(symbols[name])
-        if (
-            not table.allocated
-            or min(table.nx, table.ny) < 2
-            or min(table.xstep, table.ystep) <= 0
-        ):
-            raise ValueError(f"Invalid molecular emissivity table {name}")
-        meta[idx] = (
-            table.xmin,
-            table.ymin,
-            table.xstep,
-            table.ystep,
-            offset,
-            table.nx,
-            table.ny,
-        )
-        nodes.extend(
-            np.ctypeslib.as_array(table.values[i], shape=(table.ny,))
-            for i in range(table.nx)
-        )
-        offset += table.nx * table.ny
+        if photo:
+            name = _MOLECULAR_TABLES[idx]
+            table = Table2DFloat.from_address(symbols[name])
+            if (
+                not table.allocated
+                or min(table.nx, table.ny) < 2
+                or min(table.xstep, table.ystep) <= 0
+            ):
+                raise ValueError(f"Invalid molecular emissivity table {name}")
+            meta[idx] = (
+                table.xmin,
+                table.ymin,
+                table.xstep,
+                table.ystep,
+                offset,
+                table.nx,
+                table.ny,
+            )
+            nodes.extend(
+                np.ctypeslib.as_array(table.values[i], shape=(table.ny,))
+                for i in range(table.nx)
+            )
+            offset += table.nx * table.ny
+        else:
+            name = _TABLES[idx]
+            table = Table.from_address(symbols[name])
+            if not table.allocated or table.n < 2 or table.width <= 0:
+                raise ValueError(f"Invalid unresolved emissivity table {name}")
+            nodes.append(view(table.y, table.n, "f"))
+            meta[idx] = (table.low, 0.0, table.width, 0.0, offset, table.n, 0)
+            offset += table.n
+    if mcg:
+        for idx, need in enumerate(needed_1d, 3):
+            if not need:
+                continue
+            name = _MOLECULAR_TABLES[idx]
+            table = Table2DFloat.from_address(symbols[name])
+            if (
+                not table.allocated
+                or min(table.nx, table.ny) < 2
+                or min(table.xstep, table.ystep) <= 0
+            ):
+                raise ValueError(f"Invalid molecular emissivity table {name}")
+            meta[idx] = (
+                table.xmin,
+                table.ymin,
+                table.xstep,
+                table.ystep,
+                offset,
+                table.nx,
+                table.ny,
+            )
+            nodes.extend(
+                np.ctypeslib.as_array(table.values[i], shape=(table.ny,))
+                for i in range(table.nx)
+            )
+            offset += table.nx * table.ny
     if extra:
         for idx, name in ((6, "Nhalo_table"), (7, "Fcoll_table")):
             table = Table.from_address(symbols[name])
@@ -163,16 +201,18 @@ def bind(adapter, module, report, errors):
         try:
             start = perf_counter()
             dims = np.ctypeslib.as_array(dims_ptr, (6,))
-            p = np.ctypeslib.as_array(p_ptr, (22,))
+            p = np.ctypeslib.as_array(p_ptr, (24,))
             second, thermal, metal, extra = map(bool, p[8:12])
             n, ng = (int(np.prod(dims[j : j + 3], dtype=np.int64)) for j in (0, 3))
             if max(n, ng) > np.iinfo(np.int32).max:
                 raise ValueError("Unresolved halo grids exceed the signed cell index")
             molecular = bool(p[19])
-            stride = (9 if extra else 8) if molecular else 7
-            if molecular:
-                needed_2d = (True, thermal or extra, thermal and metal) * 2
-                meta, tables = _molecular_tables(symbols, needed_2d, extra)
+            photo = bool(p[22])
+            stride = (9 if molecular else 7) if (molecular or photo) else 7
+            if molecular or photo:
+                meta, tables = _molecular_tables(
+                    symbols, photo, molecular, thermal, metal, extra
+                )
             else:
                 needed = (True, thermal or extra, thermal and metal, extra, extra)
                 meta, tables = _atomic_tables(symbols, needed)
@@ -181,8 +221,9 @@ def bind(adapter, module, report, errors):
             ]
             rows = {field: i for i, field in enumerate(fields)}
             source_fields = [view(a[i], n, "f") for i in range(7 if second else 4)]
-            if molecular:
-                source_fields.extend(view(a[i], n, "f") for i in (16, 17))
+            if molecular or photo:
+                source_fields.append(view(a[16], n, "f") if photo else None)
+                source_fields.append(view(a[17], n, "f") if molecular else None)
             dev_p, dev_dims, dev_meta, dev_tables = map(
                 cp.asarray, (p, dims, meta, tables)
             )
@@ -204,7 +245,9 @@ def bind(adapter, module, report, errors):
                 # Each input transfers one contiguous portion of each slab. The
                 # CUDA output interleaves these portions in local source order.
                 inputs = [
-                    cp.asarray(
+                    dummy
+                    if x is None
+                    else cp.asarray(
                         x.reshape(slabs, slab_size)[:, first : first + slab_count],
                         order="C",
                     )
@@ -212,7 +255,7 @@ def bind(adapter, module, report, errors):
                 ]
                 if not second:
                     inputs[4:4] = [dummy] * 3
-                if not molecular:
+                if not (molecular or photo):
                     inputs.extend([dummy] * 2)
                 kernel(
                     ((count + 127) // 128,),

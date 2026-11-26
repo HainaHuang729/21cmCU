@@ -56,10 +56,6 @@ def _validate(inputs, lightconer, photon_calibration=None):
                 "CUDA requires a native rectilinear or angular lightconer"
             )
     sim = inputs.simulation_options
-    if sim.NON_CUBIC_FACTOR != 1 or sim.DIM % 2 or sim.HII_DIM % 2:
-        raise _UnsupportedCUDAOptionsError(
-            "CUDA requires even, cubic fine and coarse grids"
-        )
     if sim.N_THREADS < 1:
         raise ValueError("CUDA requires N_THREADS >= 1")
     source = inputs.matter_options.SOURCE_MODEL
@@ -82,54 +78,64 @@ def _validate(inputs, lightconer, photon_calibration=None):
     ):
         raise _UnsupportedCUDAOptionsError(f"Unsupported CUDA source model: {source}")
     molecular = inputs.astro_options.USE_MCGS
+    photo = inputs.astro_options.USE_REIONIZATION_PHOTOHEATING_FEEDBACK
     transfer = inputs.matter_options.POWER_SPECTRUM
     streaming = inputs.matter_options.V_CB_MODEL
     if transfer not in ("EH", "BBKS", "EFSTATHIOU", "PEEBLES", "WHITE", "CLASS"):
         raise _UnsupportedCUDAOptionsError(
             f"Unsupported CUDA power spectrum: {transfer}"
         )
-    if molecular and (
-        source not in ("E-INTEGRAL", "L-INTEGRAL", "CHMF-SAMPLER")
-        or (transfer, streaming)
-        not in (("EH", "AVG-DEBUG"), ("CLASS", "AVG-AUTO"), ("CLASS", "FLUCTS"))
-        or not inputs.astro_options.USE_TS_FLUCT
-    ):
+    if streaming not in ("NONE", "AVG-AUTO", "AVG-DEBUG", "FLUCTS"):
         raise _UnsupportedCUDAOptionsError(
-            "Molecular cooling requires a supported thermal source model and "
-            "EH with AVG-DEBUG or CLASS with AVG-AUTO or FLUCTS"
+            f"Unsupported CUDA streaming velocity model: {streaming}"
+        )
+    if streaming == "FLUCTS" and transfer != "CLASS":
+        raise _UnsupportedCUDAOptionsError(
+            "Fluctuating relative velocities require CLASS transfer"
         )
     if (
-        molecular
-        and inputs.matter_options.lagrangian_source_grid
+        (molecular or photo)
+        and source in ("L-INTEGRAL", "DEXM-ESF")
         and inputs.matter_options.PERTURB_ON_HIGH_RES
         and sim.DIM != sim.HII_DIM
     ):
         raise ValueError(
-            "Native molecular feedback requires the density and turnover grids to match"
+            "Native halo turnover feedback requires the density and turnover grids to match"
         )
-    if molecular and source == "E-INTEGRAL":
-        methods = (
-            inputs.astro_options.INTEGRATION_METHOD_ACGS,
-            inputs.astro_options.INTEGRATION_METHOD_MCGS,
+    if inputs.astro_options.INTEGRATION_METHOD_ACGS not in (
+        "GAUSS-LEGENDRE",
+        "GSL-QAG",
+        "GAMMA-APPROX",
+    ):
+        raise _UnsupportedCUDAOptionsError(
+            "CUDA ACG source integrals require Gauss–Legendre, GSL-QAG, or GAMMA-APPROX"
         )
-        if any(m not in ("GAUSS-LEGENDRE", "GSL-QAG") for m in methods):
-            raise _UnsupportedCUDAOptionsError(
-                "Eulerian molecular feedback requires GL or QAG for both source populations"
-            )
-        if (
-            inputs.astro_options.PHOTON_CONS_TYPE != "no-photoncons"
-            or inputs.astro_options.RECOMB_MODEL != "inhomogeneous"
-        ):
-            raise _UnsupportedCUDAOptionsError(
-                "Eulerian molecular feedback currently requires inhomogeneous recombinations and no photon calibration"
-            )
+    if molecular and inputs.astro_options.INTEGRATION_METHOD_MCGS not in (
+        "GAUSS-LEGENDRE",
+        "GSL-QAG",
+        "GAMMA-APPROX",
+    ):
+        raise _UnsupportedCUDAOptionsError(
+            "CUDA MCG source integrals require Gauss–Legendre, GSL-QAG, or GAMMA-APPROX"
+        )
     correction = inputs.astro_options.PHOTON_CONS_TYPE
+    allowed_corrections = {
+        "E-INTEGRAL": ("no-photoncons", "z-photoncons", "f-photoncons", "alpha-photoncons"),
+        "CONST-ION-EFF": ("no-photoncons", "z-photoncons"),
+        "L-INTEGRAL": ("no-photoncons", "f-photoncons", "alpha-photoncons"),
+        "CHMF-SAMPLER": ("no-photoncons", "f-photoncons", "alpha-photoncons"),
+        "DEXM-ESF": ("no-photoncons", "f-photoncons", "alpha-photoncons"),
+    }
+    if correction not in allowed_corrections[source]:
+        raise _UnsupportedCUDAOptionsError(
+            f"Unsupported photon correction {correction} for {source}"
+        )
     if correction == "no-photoncons":
         if photon_calibration is not None:
             raise ValueError(
                 "A photon calibration requires an active photon conservation mode"
             )
-    else:
+    elif photon_calibration is not None:
         from photon_conservation import PhotonCalibration
 
         if not isinstance(photon_calibration, PhotonCalibration):
@@ -137,103 +143,47 @@ def _validate(inputs, lightconer, photon_calibration=None):
                 "Supply a PhotonCalibration with paired native calibration samples"
             )
         photon_calibration.validate(inputs)
-    matter = dict(
-        HMF="ST",
-        USE_INTERPOLATION_TABLES="hmf-interpolation",
-        V_CB_MODEL=streaming if molecular else "NONE",
-        USE_FFTW_WISDOM=False,
-    )
+    if inputs.matter_options.HMF not in (
+        "PS",
+        "ST",
+        "WATSON",
+        "WATSON-Z",
+        "DELOS",
+        "REED07",
+        "YUNG24",
+    ):
+        raise _UnsupportedCUDAOptionsError(
+            f"Unsupported CUDA HMF: {inputs.matter_options.HMF}"
+        )
+    if inputs.matter_options.USE_INTERPOLATION_TABLES not in (
+        "hmf-interpolation",
+        "sigma-interpolation",
+        "no-interpolation",
+    ):
+        raise _UnsupportedCUDAOptionsError(
+            f"Unsupported CUDA interpolation mode: {inputs.matter_options.USE_INTERPOLATION_TABLES}"
+        )
     if inputs.matter_options.FILTER not in ("spherical-tophat", "gaussian"):
         raise _UnsupportedCUDAOptionsError(
             "CUDA mass variance requires a top-hat or Gaussian filter"
         )
     if inputs.matter_options.PERTURB_ALGORITHM not in ("LINEAR", "ZELDOVICH", "2LPT"):
         raise ValueError("Unknown 4.3.2 perturbation algorithm")
-    astro = dict(
-        PHOTON_CONS_TYPE=correction,
-        USE_MCGS=molecular,
-        USE_REIONIZATION_PHOTOHEATING_FEEDBACK=molecular,
-        IONISE_ENTIRE_SPHERE=False,
-    )
-    homogeneous = inputs.astro_options.RECOMB_MODEL == "homogeneous"
-    if source == "E-INTEGRAL":
-        if inputs.astro_options.INTEGRATION_METHOD_ACGS not in (
-            "GAUSS-LEGENDRE",
-            "GSL-QAG",
-        ):
-            raise _UnsupportedCUDAOptionsError(
-                "CUDA Eulerian mass-dependent sources require Gauss–Legendre or GSL-QAG quadrature"
-            )
-        astro.update(
-            RECOMB_MODEL="homogeneous"
-            if homogeneous
-            else ("inhomogeneous" if inputs.astro_options.USE_TS_FLUCT else "none"),
-            USE_METALLICITY=False,
-            USE_UPPER_STELLAR_TURNOVER=False,
-            USE_EXP_FILTER=False,
-            CELL_RECOMB=homogeneous,
-        )
-        if inputs.astro_options.USE_TS_FLUCT:
-            astro.update(
-                USE_X_RAY_HEATING=True,
-                USE_LYA_HEATING=True,
-            )
-    elif source == "CONST-ION-EFF":
-        # The conditional collapse fraction is EPS. Its unconditional normalization
-        # follows the requested halo mass function over the native finite mass interval.
-        if inputs.matter_options.HMF not in ("PS", "ST"):
-            raise _UnsupportedCUDAOptionsError(
-                "CUDA constant efficiency supports PS and ST halo mass functions"
-            )
-        matter["HMF"] = inputs.matter_options.HMF
-        astro.update(USE_METALLICITY=False, USE_UPPER_STELLAR_TURNOVER=False)
-        if homogeneous:
-            astro["CELL_RECOMB"] = True
-        elif inputs.astro_options.RECOMB_MODEL not in ("none", "inhomogeneous"):
-            raise ValueError("Unknown recombination model for constant efficiency")
-        if inputs.astro_options.USE_TS_FLUCT:
-            astro.update(
-                USE_X_RAY_HEATING=True,
-                USE_LYA_HEATING=True,
-            )
-    else:
-        if source == "CHMF-SAMPLER" and inputs.matter_options.SAMPLE_METHOD not in (
-            "MASS-LIMITED",
-            "NUMBER-LIMITED",
-            "BINARY-SPLIT",
-            "PARTITION",
-        ):
-            raise ValueError("Unknown 4.3.2 CHMF progenitor sampling method")
-        thermal = inputs.astro_options.USE_TS_FLUCT
-        if thermal:
-            astro.update(
-                USE_X_RAY_HEATING=True,
-                USE_LYA_HEATING=True,
-            )
-        astro.update(
-            USE_TS_FLUCT=thermal,
-            RECOMB_MODEL="inhomogeneous" if thermal else "none",
-            HII_FILTER="spherical-tophat",
-            USE_EXP_FILTER=True,
-            CELL_RECOMB=True,
-            USE_METALLICITY=True,
-            USE_UPPER_STELLAR_TURNOVER=source != "L-INTEGRAL",
-        )
-    wrong = [
-        f"{name}={getattr(options, name)!r} (requires {expected!r})"
-        for options, required in (
-            (inputs.matter_options, matter),
-            (inputs.astro_options, astro),
-        )
-        for name, expected in required.items()
-        if getattr(options, name) != expected
-    ]
-    if p21.config["EXTRA_EMISSIVITY_FIELDS"]:
-        wrong.append("EXTRA_EMISSIVITY_FIELDS=True (requires False)")
-    if wrong:
+    if inputs.astro_options.HII_FILTER not in ("spherical-tophat", "sharp-k", "gaussian"):
         raise _UnsupportedCUDAOptionsError(
-            "Unsupported CUDA lightcone options: " + ", ".join(wrong)
+            f"Unsupported CUDA ionization filter: {inputs.astro_options.HII_FILTER}"
         )
+    if inputs.astro_options.RECOMB_MODEL not in ("none", "homogeneous", "inhomogeneous"):
+        raise ValueError(
+            f"Unknown recombination model: {inputs.astro_options.RECOMB_MODEL}"
+        )
+    if source == "CHMF-SAMPLER" and inputs.matter_options.SAMPLE_METHOD not in (
+        "MASS-LIMITED",
+        "NUMBER-LIMITED",
+        "BINARY-SPLIT",
+        "PARTITION",
+    ):
+        raise ValueError("Unknown 4.3.2 CHMF progenitor sampling method")
 
 
 @dataclass
@@ -321,7 +271,12 @@ def _backend(
             )
         setup_start = perf_counter()
         engine = stack.enter_context(
-            lagrangian_backend(report, source, inputs=inputs)
+            lagrangian_backend(
+                report,
+                source,
+                inputs=inputs,
+                photon_calibration=photon_calibration,
+            )
             if lagrangian
             else evolution_backend(
                 report,
@@ -329,6 +284,8 @@ def _backend(
                 thermal=inputs.astro_options.USE_TS_FLUCT,
                 photon_calibration=photon_calibration,
                 molecular=inputs.astro_options.USE_MCGS,
+                photo=inputs.astro_options.USE_REIONIZATION_PHOTOHEATING_FEEDBACK,
+                photon_cons=inputs.astro_options.PHOTON_CONS_TYPE,
             )
         )
         if lagrangian:
@@ -483,7 +440,12 @@ def _backend(
                 redshift=redshift,
                 initial_conditions=initial_conditions,
                 inputs=inputs,
-                strict_fft=True,
+                strict_fft=(
+                    inputs.simulation_options.NON_CUBIC_FACTOR == 1
+                    and inputs.simulation_options.DIM % 2 == 0
+                    and inputs.simulation_options.HII_DIM % 2 == 0
+                    and not inputs.matter_options.USE_FFTW_WISDOM
+                ),
                 resident=engine,
             )
             timings.perturb.append(perf_counter() - start)
@@ -553,13 +515,16 @@ def generate_lightcone(
 def run_coeval(
     *,
     inputs,
-    out_redshifts=(),
+    out_redshifts=None,
     diagnostics_dir=None,
     photon_calibration=None,
     fallback_to_cpu: bool = True,
     **kwargs,
 ):
     """Return native Coeval boxes using the supplied parameters and upstream run options."""
+    call_kwargs = dict(kwargs)
+    if out_redshifts is not None:
+        call_kwargs["out_redshifts"] = out_redshifts
     with _backend(
         inputs,
         None,
@@ -567,21 +532,22 @@ def run_coeval(
         photon_calibration=photon_calibration,
         fallback_to_cpu=fallback_to_cpu,
     ):
-        return coeval_driver.run_coeval(
-            inputs=inputs, out_redshifts=out_redshifts, **kwargs
-        )
+        return coeval_driver.run_coeval(inputs=inputs, **call_kwargs)
 
 
 def generate_coeval(
     *,
     inputs,
-    out_redshifts=(),
+    out_redshifts=None,
     diagnostics_dir=None,
     photon_calibration=None,
     fallback_to_cpu: bool = True,
     **kwargs,
 ):
     """Yield native Coeval boxes. Close the generator when stopping early."""
+    call_kwargs = dict(kwargs)
+    if out_redshifts is not None:
+        call_kwargs["out_redshifts"] = out_redshifts
     with _backend(
         inputs,
         None,
@@ -589,9 +555,7 @@ def generate_coeval(
         photon_calibration=photon_calibration,
         fallback_to_cpu=fallback_to_cpu,
     ):
-        yield from coeval_driver.generate_coeval(
-            inputs=inputs, out_redshifts=out_redshifts, **kwargs
-        )
+        yield from coeval_driver.generate_coeval(inputs=inputs, **call_kwargs)
 
 
 def save_lightcone(cone, path, **kwargs):

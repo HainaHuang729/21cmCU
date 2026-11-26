@@ -61,11 +61,11 @@ __device__ double reciprocal_gamma(double x) {
 
     def launch(grid, block, args):
         nonlocal last_shell, weights, buffer_size
-        modes, side, *shell_args = args
-        shell = (side, *shell_args)
+        modes, nx, ny, nz, *shell_args = args
+        shell = (nx, ny, nz, *shell_args)
         if reuse:
             if weights is not None and last_shell == shell:
-                apply_cached(grid, block, (modes, side, weights))
+                apply_cached(grid, block, (modes, nx, ny, nz, weights))
                 launch.reuses += 1
                 return
             if buffer_size != modes.size:

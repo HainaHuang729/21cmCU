@@ -47,18 +47,25 @@ def source(native):
     start = native.index("void calculate_conditional_nion(")
     pos = native.index("    double nion_total_acg", start)
     hook = """
-    if (use_mcg_conditional_gpu() && consts->need_mcgs_nion) {
+    if (use_mcg_conditional_gpu()) {
         int n=HII_TOT_NUM_PIXELS;
-        size_t offset=(size_t)rspec->R_index*n;
-        bool prev=previous_ionize_box->nion_unconditional_mcg + previous_ionize_box->nion_unconditional_acg > 1.e-4;
+        bool need_mcg=consts->need_mcgs_nion;
+        bool photo=astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+                   source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL);
+        size_t offset=need_mcg ? (size_t)rspec->R_index*n : 0;
+        bool prev=need_mcg && (previous_ionize_box->nion_unconditional_mcg + previous_ionize_box->nion_unconditional_acg > 1.e-4);
         double p[]={-1.+FRACT_FLOAT_ERR,consts->scale_consts.atomic_cooling_threshold*1.001,
-                    consts->nion_prefactor_acg,consts->nion_prefactor_mcg};
-        void *a[]={fg_struct->deltax_filtered,prev ? fg_struct->prev_deltax_filtered : NULL,
-                   fg_struct->log10_mturn_acg_grid_filtered,fg_struct->log10_mturn_mcg_grid_filtered,
-                   previous_ionize_box->nion_conditional_filtered_acg+offset,previous_ionize_box->nion_conditional_filtered_mcg+offset,
+                    consts->nion_prefactor_acg,consts->nion_prefactor_mcg,
+                    photo,need_mcg,consts->scale_consts.mturn_acg_homogeneous};
+        void *a[]={fg_struct->deltax_filtered,(need_mcg && prev) ? fg_struct->prev_deltax_filtered : NULL,
+                   photo ? fg_struct->log10_mturn_acg_grid_filtered : NULL,
+                   need_mcg ? fg_struct->log10_mturn_mcg_grid_filtered : NULL,
+                   need_mcg ? previous_ionize_box->nion_conditional_filtered_acg+offset : NULL,
+                   need_mcg ? previous_ionize_box->nion_conditional_filtered_mcg+offset : NULL,
                    astro_options_global->USE_TS_FLUCT ? fg_struct->xe_filtered : NULL,
                    consts->filter_recombinations ? fg_struct->N_rec_filtered : NULL,
-                   box->nion_conditional_filtered_acg+offset,box->nion_conditional_filtered_mcg+offset,
+                   box->nion_conditional_filtered_acg+offset,
+                   need_mcg ? box->nion_conditional_filtered_mcg+offset : NULL,
                    &rspec->nion_conditional_ave_acg,&rspec->nion_conditional_ave_mcg};
         if(cuda_e_ion_history(simulation_options_global->HII_DIM,HII_D_PARA,prev,p,a)) Throw(ValueError);
         return;
@@ -91,8 +98,8 @@ def bind(adapter, report, set_error, *, engine=None):
                 )
             if resources is None:
                 resources = halo_mcg_tables.table_resources()
-            p = np.ctypeslib.as_array(ptr, (27,))
-            key = previous, mini
+            p = np.ctypeslib.as_array(ptr, (30,))
+            key = (previous, mini)
             values = halo_mcg_tables.device_values(resources, p, nx, ny, kind, mini)
             if not bool(cp.isfinite(values).all()):
                 raise ValueError("Nonfinite conditional ionization table")
@@ -100,8 +107,10 @@ def bind(adapter, report, set_error, *, engine=None):
             axes[key] = (
                 p[1],
                 (p[2] - p[1]) / (nx - 1.0),
-                p[25],
-                (p[26] - p[25]) / (ny - 1.0),
+                p[25] if ny > 1 else 0.0,
+                (p[26] - p[25]) / (ny - 1.0) if ny > 1 else 0.0,
+                float(nx),
+                float(ny),
             )
             count("ion_mcg_previous_tables" if previous else "ion_mcg_current_tables")
             return 0
@@ -117,15 +126,24 @@ def bind(adapter, report, set_error, *, engine=None):
                 kernel = module([ROOT / "eulerian_mcg_history.cu"]).get_function(
                     "ion_history"
                 )
-            keys = [(0, 0), (0, 1)] + ([(1, 0), (1, 1)] if previous else [])
-            shape = tables[0, 0].shape
-            if any(tables[k].shape != shape for k in keys):
-                raise ValueError("Mismatched conditional table sizes")
-            rows = [tables[k] for k in keys]
+            pars = np.ctypeslib.as_array(p, (7,))
+            photo, need_mcg = bool(pars[4]), bool(pars[5])
             null = np.uint64(0)
-            if not previous:
-                rows.extend((null, null))
-            dev_axes = cp.asarray(np.asarray([axes[k] for k in keys], dtype="d"))
+            if need_mcg:
+                keys = [(0, 0), (0, 1)] + (
+                    [(1, 0), (1, 1)] if previous else []
+                )
+                rows = [tables[k] for k in keys]
+                if not previous:
+                    rows.extend((null, null))
+                axis_rows = [axes[k] for k in keys]
+                if not previous:
+                    axis_rows.extend(([0.0] * 6, [0.0] * 6))
+            else:
+                keys = [(0, 0)]
+                rows = [tables[(0, 0)], null, null, null]
+                axis_rows = [axes[(0, 0)], *([0.0] * 6 for _ in range(3))]
+            dev_axes = cp.asarray(np.asarray(axis_rows, dtype="d"))
             n = side * side * depth
             stride = 2 * (depth // 2 + 1)
 
@@ -153,20 +171,20 @@ def bind(adapter, report, set_error, *, engine=None):
                 return cp.asarray(host(i), order="C")
 
             fields = [load(i) for i in range(8)]
-            out = [cp.empty(n, dtype="f") for _ in range(2)]
+            out_a = cp.empty(n, dtype="f")
+            out_m = cp.empty(n, dtype="f") if need_mcg else null
             bad = cp.zeros(1, "i")
             kernel(
                 ((n + 255) // 256,),
                 (256,),
                 (
                     np.int32(n),
-                    np.int32(shape[0]),
-                    np.int32(shape[1]),
                     dev_axes,
-                    cp.asarray(np.ctypeslib.as_array(p, (4,))),
+                    cp.asarray(pars),
                     *rows,
                     *fields,
-                    *out,
+                    out_a,
+                    out_m,
                     bad,
                 ),
             )
@@ -182,7 +200,8 @@ def bind(adapter, report, set_error, *, engine=None):
                         ion_filtered[ptr] = fields[j]
                     if not (residency and ptr in ion_filtered):
                         host(j)[:] = fields[j].get().reshape(host(j).shape)
-            for j, x in enumerate(out):
+            outputs = [out_a] + ([out_m] if need_mcg else [])
+            for j, x in enumerate(outputs):
                 ptr = int(a[8 + j])
                 if residency:
                     ion_filtered[ptr] = x
@@ -192,6 +211,8 @@ def bind(adapter, report, set_error, *, engine=None):
                 if not np.isfinite(mean):
                     raise ValueError("Nonfinite conditional ionization grid")
                 view(a[10 + j], 1, "d")[0] = mean
+            if not need_mcg:
+                view(a[11], 1, "d")[0] = 0.0
             count("ion_mcg_radius_history")
             if previous:
                 count("ion_mcg_radius_previous_correction")

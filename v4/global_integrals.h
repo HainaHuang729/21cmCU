@@ -142,3 +142,18 @@ static void gpu_global_pair(int stage, int count, const double z[2], bool second
         GPU_CALL(stage, p, a);
     }
 }
+
+static void gpu_global_dndm(int stage, double ln_min, double ln_max, const ScalingConstants *sc,
+                            double cell_volume, double result[2]) {
+    double p[] = {2., 0.};
+    double rows[2][23];
+    global_acg_row(rows[0], sc->redshift, ln_min, ln_max, 0., sc, false);
+    rows[0][11] = 0.; rows[0][12] = 0.; rows[0][13] = 0.; rows[0][14] = 0.;
+    rows[0][15] = -1000.; rows[0][16] = 0.;
+    rows[0][17] = RHOcrit * cosmo_params_global->OMm * cell_volume;
+    memcpy(rows[1], rows[0], sizeof(rows[0]));
+    rows[1][15] = 0.;
+    rows[1][17] = RHOcrit * cosmo_params_global->OMm;
+    void *a[] = {rows, result};
+    GPU_CALL(stage, p, a);
+}

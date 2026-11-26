@@ -123,24 +123,41 @@ def gaussian(stream, count):
 
 
 def sample(
-    side, length, volume, seed, threads, cosmology, norm, index, density_power=None
+    hi_shape,
+    box_len_xy,
+    box_len_z,
+    volume,
+    seed,
+    threads,
+    cosmology,
+    norm,
+    index,
+    density_power=None,
 ):
     if threads < 1:
         raise ValueError("GPU IC seed stream requires N_THREADS >= 1")
+    nx, ny, nz = (int(d) for d in hi_shape)
+    hz = nz // 2 + 1
     module = stream_module()
-    boxes = cp.empty((side, side, side // 2 + 1), dtype="F")
-    k = cp.arange(side, dtype="d")
-    k = cp.where(k <= side // 2, k, k - side) * (2 * np.pi / length)
+    boxes = cp.empty((nx, ny, hz), dtype="F")
+
+    def k_axis(dim, length):
+        k = cp.arange(dim, dtype="d")
+        return cp.where(k <= dim // 2, k, k - dim) * (2 * np.pi / length)
+
+    kx = k_axis(nx, box_len_xy)
+    ky = k_axis(ny, box_len_xy)
+    kz = k_axis(nz, box_len_z)[:hz]
     sound, alpha, beta, omhh, fnu, _, theta, sigma = cosmology
     for thread, subseed in enumerate(seeds(module, int(seed), threads)):
-        first = thread * (side // threads) + min(thread, side % threads)
-        stop = first + side // threads + int(thread < side % threads)
+        first = thread * (nx // threads) + min(thread, nx % threads)
+        stop = first + nx // threads + int(thread < nx % threads)
         out = boxes[first:stop]
         g = gaussian(Stream(module, RNG_ORDER[thread % 5], subseed), out.size * 2)
         wave = cp.sqrt(
-            k[first:stop, None, None] ** 2
-            + k[None, :, None] ** 2
-            + k[None, None, : side // 2 + 1] ** 2
+            kx[first:stop, None, None] ** 2
+            + ky[None, :, None] ** 2
+            + kz[None, None, :] ** 2
         )
         if density_power is not None:
             amp = cp.sqrt(
@@ -171,15 +188,21 @@ def sample(
     boxes[0, 0, 0] = 0
     plane = cp.RawModule(
         code=(Path(__file__).resolve().parents[1] / "lightcone/ic_seed.cu").read_text()
-    ).get_function("enforce_real_planes")
-    plane(((2 * side**2 + 255) // 256,), (256,), (boxes, np.int32(side)))
+    ).get_function("enforce_real_planes_general")
+    plane(
+        ((2 * nx * ny + 255) // 256,),
+        (256,),
+        (boxes, np.int32(nx), np.int32(ny), np.int32(nz)),
+    )
     return boxes
 
 
 def initial_fields(
     modes,
-    low,
-    length,
+    hi_shape,
+    lo_shape,
+    box_len_xy,
+    box_len_z,
     volume,
     radius,
     high,
@@ -187,48 +210,61 @@ def initial_fields(
     threads,
     filter_kernel,
     streaming=None,
+    wisdom=False,
 ):
-    from fft_plan_cuda import transform
+    from fft_general import transform_3d
     from itertools import combinations
 
-    n = modes.shape[0]
+    nx, ny, nz = (int(d) for d in hi_shape)
+    lx, ly, lz = (int(d) for d in lo_shape)
 
     def inverse(f):
-        return transform(f, n, True, threads)
+        return transform_3d(f, (nx, ny, nz), True, threads, wisdom=wisdom)
 
-    def sampled(f, target, smooth):
-        if smooth and target != n:
+    dk_x = 2 * np.pi / box_len_xy
+    dk_y = (1.0 / box_len_xy) * (2 * np.pi)
+    dk_z = 2 * np.pi / box_len_z
+
+    def sampled(f, target_shape, smooth):
+        tx, ty, tz = (int(d) for d in target_shape)
+        if smooth and (tx, ty, tz) != (nx, ny, nz):
             f = cp.ascontiguousarray(f).copy()
             filter_kernel(
                 ((f.size + 255) // 256,),
                 (256,),
                 (
                     f,
-                    np.int32(n),
-                    np.float64(2 * np.pi / length),
+                    np.int32(nx),
+                    np.int32(ny),
+                    np.int32(nz),
+                    np.float64(dk_x),
+                    np.float64(dk_z),
                     np.float32(radius),
                     np.int32(0),
                 ),
             )
         x = inverse(f)
-        if target != n:
-            idx = cp.floor(cp.arange(target) * (n / target) + 0.5).astype("i")
-            x = x[cp.ix_(idx, idx, idx)]
+        if (tx, ty, tz) != (nx, ny, nz):
+            ratio = nx / tx
+            idx_xy = cp.floor(cp.arange(tx) * ratio + 0.5).astype("i")
+            idx_z = cp.floor(cp.arange(tz) * ratio + 0.5).astype("i")
+            x = x[cp.ix_(idx_xy, idx_xy, idx_z)]
         return x
 
     invvol = np.float32(1 / np.float32(volume))
     yield 0, inverse(modes) * invvol
-    yield 1, sampled(modes, low, True) / np.float32(volume)
-    indices = cp.arange(n, dtype="d")
-    indices = cp.where(indices <= n // 2, indices, indices - n)
-    dk = 2 * np.pi / length
+    yield 1, sampled(modes, lo_shape, True) / np.float32(volume)
+
+    def axis_idx(dim):
+        k = cp.arange(dim, dtype="d")
+        return cp.where(k <= dim // 2, k, k - dim)
+
     # The native GCC loops in compute_f_gradient/laplacian hoist 1/L for
     # the middle axis, and 2*pi/L for the two outer axes.
-    dk_y = (1.0 / length) * (2 * np.pi)
     axes = (
-        (indices * dk)[:, None, None],
-        (indices * dk_y)[None, :, None],
-        (indices[: n // 2 + 1] * dk)[None, None, :],
+        (axis_idx(nx) * dk_x)[:, None, None],
+        (axis_idx(ny) * dk_y)[None, :, None],
+        (axis_idx(nz)[: nz // 2 + 1] * dk_z)[None, None, :],
     )
     k2 = axes[0] ** 2 + axes[1] ** 2 + axes[2] ** 2
     if streaming is not None:
@@ -239,17 +275,17 @@ def initial_fields(
         # Both native spectra vanish at DC. Set its directional weight to zero.
         matter[0, 0, 0] = wave[0, 0, 0] = 1.0
         ratio = cp.sqrt(velocity / matter)
-        total = cp.zeros((low, low, low), dtype="f")
+        total = cp.zeros((lx, ly, lz), dtype="f")
         for axis in axes:
             component = cp.empty_like(modes)
             component.real = (-modes.imag * axis) / wave * ratio * speed_kms
             component.imag = (modes.real * axis) / wave * ratio * speed_kms
-            real = sampled(component, low, True).astype("d")
+            real = sampled(component, lo_shape, True).astype("d")
             # The native output accumulator is float after each of x, y and z.
             total[...] = total.astype("d") + real * real
         yield 11, (cp.sqrt(total.astype("d")) / volume).astype("f")
     k2[0, 0, 0] = 1
-    target = n if high else low
+    target = hi_shape if high else lo_shape
 
     def deriv(f, i):
         scale = axes[i]
@@ -275,9 +311,12 @@ def initial_fields(
                 (
                     modes,
                     f,
-                    np.int32(n),
-                    np.float64(dk),
+                    np.int32(nx),
+                    np.int32(ny),
+                    np.int32(nz),
+                    np.float64(dk_x),
                     np.float64(dk_y),
+                    np.float64(dk_z),
                     np.int32(i),
                     np.int32(j),
                 ),
@@ -289,12 +328,17 @@ def initial_fields(
             # The native low-resolution path exposes its three high-resolution
             # diagonal Hessian work arrays through the InitialConditions struct.
             yield from enumerate(diag, 8)
-        source = cp.zeros((n, n, n), dtype="f")
+        source = cp.zeros((nx, ny, nz), dtype="f")
         for i, j in combinations(range(3), 2):
             cross = hessian(i, j)
             source += diag[i].astype("d") * diag[j]
             source -= cross.astype("d") * cross
-        denom = np.float32(np.float32(volume) * np.float32(volume)) * np.float32(n**3)
-        modes2 = transform(source / denom, n, False, threads)
+        denom = np.float32(np.float32(volume) * np.float32(volume)) * np.float32(
+            nx * ny * nz
+        )
+        modes2 = transform_3d(
+            source / denom, (nx, ny, nz), False, threads, wisdom=wisdom
+        )
         for i in range(3):
             yield 5 + i, deriv(modes2, i)
+

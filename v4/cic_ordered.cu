@@ -3,8 +3,9 @@
 // rounded float grid. Both passes use the same position and weight arithmetic.
 struct CICGrid {
     const float *rho, *vel, *second;
-    int n, m;
-    double growth, first, correction;
+    int nx, ny, nz, mx, my, mz;
+    double ratio, growth;
+    double first[3], correction[3];
     bool two;
     // The native x expression adds the coordinate before the 2LPT correction.
     // The y and z expressions combine the two displacements first.
@@ -12,29 +13,33 @@ struct CICGrid {
                                          double second_shift, int &lower) const {
         double pos = coord + first_shift;
         if (two) pos = axis == 0 ? pos - second_shift : coord + (first_shift - second_shift);
-        pos *= (double)m / n;
+        pos *= ratio;
+        int m_axis = axis == 0 ? mx : (axis == 1 ? my : mz);
         int cell = (int)floor(pos);
-        lower = (cell % m + m) % m;
+        lower = (cell % m_axis + m_axis) % m_axis;
         return pos - cell;
     }
     __device__ void particle(int x, int y, int z, int *base, double *fraction) const {
         const int coords[] = {x, y, z};
-        const double ratio = (double)m / n;
+        const int mdims[] = {mx, my, mz};
+        const long long msize = (long long)mx * my * mz;
         long long source = 0;
-        for (int a = 0; a < 3; ++a) source = source * m + ((int)(coords[a] * ratio + .5)) % m;
+        for (int a = 0; a < 3; ++a)
+            source = source * mdims[a] + ((int)(coords[a] * ratio + .5)) % mdims[a];
         for (int a = 0; a < 3; ++a) {
-            long long j = source + (long long)a * m * m * m;
-            fraction[a] = lower_and_fraction(a, coords[a], vel[j] * first,
-                                             two ? second[j] * correction : 0., base[a]);
+            long long j = source + (long long)a * msize;
+            fraction[a] = lower_and_fraction(a, coords[a], vel[j] * first[a],
+                                             two ? second[j] * correction[a] : 0., base[a]);
         }
     }
     __device__ long long corner(int bits, const int *base, const double *frac, double &w) const {
+        const int mdims[] = {mx, my, mz};
         long long cell = 0;
         w = 1.;
         for (int a = 0; a < 3; ++a) {
             int bit = (bits >> a) & 1;
             int ix = base[a] + bit;
-            cell = cell * m + (ix == m ? 0 : ix);
+            cell = cell * mdims[a] + (ix == mdims[a] ? 0 : ix);
             w *= bit ? frac[a] : 1. - frac[a];
         }
         return cell;
@@ -43,7 +48,7 @@ struct CICGrid {
         int base[3];
         double frac[3];
         particle(x, y, z, base, frac);
-        double particle_mass = 1. + rho[((long long)x * n + y) * n + z] * growth;
+        double particle_mass = 1. + rho[((long long)x * ny + y) * nz + z] * growth;
         for (int b = 0; b < 8; ++b) {
             double w;
             long long dst = corner(b, base, frac, w);
@@ -54,12 +59,16 @@ struct CICGrid {
 };
 
 extern "C" __global__ void scatter(const float *rho, const float *vel, const float *second,
-                                   double *mass, int *counts, int n, int m, double growth,
-                                   double first, double correction, bool two) {
+                                   double *mass, int *counts, int nx, int ny, int nz, int mx,
+                                   int my, int mz, double ratio, double growth, double fx,
+                                   double fy, double fz, double cx, double cy, double cz,
+                                   bool two) {
     long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
-    if (t >= (long long)n * n * n) return;
-    CICGrid grid = {rho, vel, second, n, m, growth, first, correction, two};
-    grid.scatter_site(t / n / n, t / n % n, t % n, mass, counts);
+    long long yz = (long long)ny * nz;
+    if (t >= (long long)nx * yz) return;
+    CICGrid grid = {rho, vel, second, nx, ny, nz, mx, my, mz, ratio, growth,
+                    {fx, fy, fz}, {cx, cy, cz}, two};
+    grid.scatter_site((int)(t / yz), (int)(t / nz % ny), (int)(t % nz), mass, counts);
 }
 
 // Four fine samples per axis use one nearest coarse displacement. Accumulate
@@ -77,7 +86,9 @@ extern "C" __global__ void scatter_tile4(const float *rho, const float *vel, con
 
     int coordinates[3][4], offset[3][4], base[3], hits[3][3] = {};
     double weight[3][4][2];
-    CICGrid grid = {rho, vel, second, fine, coarse, growth, first, correction, two};
+    CICGrid grid = {rho, vel, second, fine, fine, fine, coarse, coarse, coarse,
+                    (double)coarse / fine, growth, {first, first, first},
+                    {correction, correction, correction}, two};
     bool compact = true;
     for (int axis = 0; axis < 3; ++axis) {
         const long long j = tile + axis * size;
@@ -172,9 +183,9 @@ extern "C" __global__ void uncertain(const double *mass, const int *counts, cons
 // Return the wrapped interval in increasing order of original source index.
 struct PeriodicRange {
     int start, count, wrap, n;
-    __device__ PeriodicRange(int cell, int n_, int m, double shift) : n(n_) {
-        int lo = (int)floor((cell - 1.) * n / m - shift) - 1;
-        int hi = (int)ceil((cell + 1.) * n / m + shift) + 1;
+    __device__ PeriodicRange(int cell, int n_, double ratio, double shift) : n(n_) {
+        int lo = (int)floor((cell - 1.) / ratio - shift) - 1;
+        int hi = (int)ceil((cell + 1.) / ratio + shift) + 1;
         count = min(n, hi - lo + 1);
         start = count == n ? 0 : (lo % n + n) % n;
         wrap = max(0, start + count - n);
@@ -184,15 +195,19 @@ struct PeriodicRange {
 
 extern "C" __global__ void replay(const float *rho, const float *vel, const float *second,
                                   double *mass, const long long *indices, int num,
-                                  const double *shift, int n, int m, double growth, double first,
-                                  double correction, bool two) {
+                                  const double *shift, int nx, int ny, int nz, int mx, int my,
+                                  int mz, double ratio, double growth, double fx, double fy,
+                                  double fz, double cx, double cy, double cz, bool two) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num) return;
     long long cell = indices[i];
-    int target[] = {int(cell / m / m), int(cell / m % m), int(cell % m)};
-    PeriodicRange xs(target[0], n, m, *shift), ys(target[1], n, m, *shift),
-        zs(target[2], n, m, *shift);
-    CICGrid grid = {rho, vel, second, n, m, growth, first, correction, two};
+    long long myz = (long long)my * mz;
+    int target[] = {(int)(cell / myz), (int)(cell / mz % my), (int)(cell % mz)};
+    const int mdims[] = {mx, my, mz};
+    PeriodicRange xs(target[0], nx, ratio, shift[0]), ys(target[1], ny, ratio, shift[1]),
+        zs(target[2], nz, ratio, shift[2]);
+    CICGrid grid = {rho, vel, second, nx, ny, nz, mx, my, mz, ratio, growth,
+                    {fx, fy, fz}, {cx, cy, cz}, two};
     double sum = 0.;
     for (int a = 0; a < xs.count; ++a)
         for (int b = 0; b < ys.count; ++b)
@@ -202,7 +217,7 @@ extern "C" __global__ void replay(const float *rho, const float *vel, const floa
                 grid.particle(x, y, z, base, frac);
                 bool hit = true;
                 for (int axis = 0; axis < 3; ++axis) {
-                    int d = (target[axis] - base[axis] + m) % m;
+                    int d = (target[axis] - base[axis] + mdims[axis]) % mdims[axis];
                     if (d > 1) {
                         hit = false;
                         break;
@@ -210,12 +225,12 @@ extern "C" __global__ void replay(const float *rho, const float *vel, const floa
                     bits |= d << axis;
                 }
                 if (hit) {
-                    long long t = ((long long)x * n + y) * n + z;
+                    long long t = ((long long)x * ny + y) * nz + z;
                     double w;
-                    if (m == 1) {
+                    if (mx == 1 || my == 1 || mz == 1) {
                         for (int corner = 0; corner < 8; ++corner) {
-                            grid.corner(corner, base, frac, w);
-                            sum += w * (1. + rho[t] * growth);
+                            long long dst = grid.corner(corner, base, frac, w);
+                            if (dst == cell) sum += w * (1. + rho[t] * growth);
                         }
                     } else {
                         grid.corner(bits, base, frac, w);
@@ -231,15 +246,20 @@ extern "C" __global__ void replay(const float *rho, const float *vel, const floa
 // of those weights could change a float at the rounding boundary being repaired.
 extern "C" __global__ void replay_block(const float *rho, const float *vel, const float *second,
                                         double *mass, const long long *indices, int num,
-                                        const double *shift, int n, int m, double growth,
-                                        double first, double correction, bool two) {
+                                        const double *shift, int nx, int ny, int nz, int mx,
+                                        int my, int mz, double ratio, double growth, double fx,
+                                        double fy, double fz, double cx, double cy, double cz,
+                                        bool two) {
     const int site = blockIdx.x;
     if (site >= num) return;
     const long long cell = indices[site];
-    const int target[] = {int(cell / m / m), int(cell / m % m), int(cell % m)};
-    PeriodicRange xs(target[0], n, m, *shift), ys(target[1], n, m, *shift),
-        zs(target[2], n, m, *shift);
-    CICGrid grid = {rho, vel, second, n, m, growth, first, correction, two};
+    const long long myz = (long long)my * mz;
+    const int target[] = {(int)(cell / myz), (int)(cell / mz % my), (int)(cell % mz)};
+    const int mdims[] = {mx, my, mz};
+    PeriodicRange xs(target[0], nx, ratio, shift[0]), ys(target[1], ny, ratio, shift[1]),
+        zs(target[2], nz, ratio, shift[2]);
+    CICGrid grid = {rho, vel, second, nx, ny, nz, mx, my, mz, ratio, growth,
+                    {fx, fy, fz}, {cx, cy, cz}, two};
     const int tid = threadIdx.x, lane = tid % 32, warp = tid / 32;
     const long long yz = (long long)ys.count * zs.count;
     const long long total = xs.count * yz;
@@ -257,7 +277,7 @@ extern "C" __global__ void replay_block(const float *rho, const float *vel, cons
             grid.particle(x, y, z, base, frac);
             hit = true;
             for (int a = 0; a < 3; ++a) {
-                const int bit = (target[a] - base[a] + m) % m;
+                const int bit = (target[a] - base[a] + mdims[a]) % mdims[a];
                 if (bit > 1) {
                     hit = false;
                     break;
@@ -267,7 +287,7 @@ extern "C" __global__ void replay_block(const float *rho, const float *vel, cons
             if (hit) {
                 double weight;
                 grid.corner(bits, base, frac, weight);
-                weights[tid] = weight * (1. + rho[((long long)x * n + y) * n + z] * growth);
+                weights[tid] = weight * (1. + rho[((long long)x * ny + y) * nz + z] * growth);
             }
         }
         const unsigned mask = __ballot_sync(0xffffffffu, hit);

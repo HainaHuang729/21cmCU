@@ -421,7 +421,6 @@ def emissivity_history(
         and need_c
         and workspace.keep_radiation_grids
         and earlier.inputs.simulation_options.HII_DIM > 1
-        and earlier.inputs.simulation_options.NON_CUBIC_FACTOR == 1
         and astro.USE_LYA_HEATING
         and astro.USE_X_RAY_HEATING
     )

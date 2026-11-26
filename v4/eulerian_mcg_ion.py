@@ -6,7 +6,7 @@ import cupy as cp
 import numpy as np
 
 from evolution_backend import CB, insert, view
-from fft_plan_cuda import transform
+from fft_general import transform_3d
 from halo_ionization import _unconditional_source
 from halo_mcg_global import evaluate
 from halo_mcg_turnover import device_turnovers
@@ -16,8 +16,9 @@ def source(native):
     native = _unconditional_source(native, eulerian=True)
     native = "int (*cuda_eulerian_mcg_ion)(int,int,double*,void**);\n" + native
     active = """(matter_options_global->SOURCE_MODEL == SOURCE_MODEL_E_INTEGRAL &&
-        astro_options_global->USE_MCGS && simulation_options_global->NON_CUBIC_FACTOR == 1. &&
-        !matter_options_global->USE_FFTW_WISDOM &&
+        (astro_options_global->USE_MCGS ||
+         astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) &&
+        uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES) &&
         astro_options_global->HII_FILTER >= 0 && astro_options_global->HII_FILTER <= 2)"""
     native = insert(
         native,
@@ -26,6 +27,7 @@ def source(native):
         """
     if (ACTIVE) {
         bool history = consts->redshift < simulation_options_global->Z_HEAT_MAX;
+        bool mcg = astro_options_global->USE_MCGS;
         bool photo = astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK;
         bool streaming = matter_options_global->V_CB_MODEL == V_CB_MODEL_FLUCTS;
         const ScalingConstants *sc = &consts->scale_consts;
@@ -33,12 +35,14 @@ def source(native):
             astro_params_global->M_TURN_STELLAR_FEEDBACK,sc->vcb_const,
             cosmo_tables_global->V_CB_AVG * sqrt(3*M_PI/8),
             astro_params_global->A_LW,astro_params_global->BETA_LW,
-            astro_params_global->A_VCB,astro_params_global->BETA_VCB,simulation_options_global->HII_DIM};
-        void *a[]={history ? spin_temp->J_21_LW : NULL,
-            streaming ? ini_boxes->lowres_vcb : NULL,
+            astro_params_global->A_VCB,astro_params_global->BETA_VCB,simulation_options_global->HII_DIM,
+            HII_D_PARA};
+        void *a[]={(mcg && history) ? spin_temp->J_21_LW : NULL,
+            (mcg && streaming) ? ini_boxes->lowres_vcb : NULL,
             photo && history ? prev_ionbox->ionisation_rate_G12 : NULL,
             photo && history ? prev_ionbox->z_reion : NULL,
-            photo ? log10_mturn_acg_grid : NULL,log10_mturn_mcg_grid,
+            photo ? log10_mturn_acg_grid : NULL,
+            mcg ? log10_mturn_mcg_grid : NULL,
             log10_mturn_acg_avg_out,log10_mturn_mcg_avg_out};
         if (cuda_eulerian_mcg_ion(0,HII_TOT_NUM_PIXELS,p,a)) Throw(ValueError);
         return;
@@ -53,7 +57,7 @@ def source(native):
         + """
     if (ACTIVE) {
         double p[]={simulation_options_global->HII_DIM,const_factor,limit_min,limit_max,
-                    simulation_options_global->N_THREADS,1.};
+                    simulation_options_global->N_THREADS,1.,HII_D_PARA,matter_options_global->USE_FFTW_WISDOM};
         void *a[]={input_box,output_c_box};
         GPU_CALL(11,p,a); return;
     }
@@ -67,7 +71,8 @@ def source(native):
         end = native.index("}", target) + 1
         call = """
         if (ACTIVE) {
-            double p[]={simulation_options_global->HII_DIM,simulation_options_global->N_THREADS};
+            double p[]={simulation_options_global->HII_DIM,simulation_options_global->N_THREADS,
+                        HII_D_PARA,matter_options_global->USE_FFTW_WISDOM};
             void *a[]={GRID};
             if (cuda_eulerian_mcg_ion(1,HII_TOT_NUM_PIXELS,p,a)) Throw(ValueError);
         } else {
@@ -82,12 +87,14 @@ def source(native):
         """
     if (ACTIVE) {
         bool photo = astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK;
+        bool mcg = astro_options_global->USE_MCGS;
         double p[]={box_dim[0],rspec.R_index,(float)rspec.R,consts->hii_filter,
-                    simulation_options_global->N_THREADS,simulation_options_global->BOX_LEN};
+                    simulation_options_global->N_THREADS,simulation_options_global->BOX_LEN,
+                    box_dim[2],BOXLEN_PARA,matter_options_global->USE_FFTW_WISDOM};
         void *a[]={fg_struct->deltax_unfiltered,fg_struct->deltax_filtered,
-            fg_struct->prev_deltax_unfiltered,fg_struct->prev_deltax_filtered,
+            mcg ? fg_struct->prev_deltax_unfiltered : NULL,mcg ? fg_struct->prev_deltax_filtered : NULL,
             photo ? fg_struct->log10_mturn_acg_grid_unfiltered : NULL,photo ? fg_struct->log10_mturn_acg_grid_filtered : NULL,
-            fg_struct->log10_mturn_mcg_grid_unfiltered,fg_struct->log10_mturn_mcg_grid_filtered,
+            mcg ? fg_struct->log10_mturn_mcg_grid_unfiltered : NULL,mcg ? fg_struct->log10_mturn_mcg_grid_filtered : NULL,
             astro_options_global->USE_TS_FLUCT ? fg_struct->xe_unfiltered : NULL,
             astro_options_global->USE_TS_FLUCT ? fg_struct->xe_filtered : NULL,
             consts->filter_recombinations ? fg_struct->N_rec_unfiltered : NULL,
@@ -102,20 +109,22 @@ def source(native):
         "void find_ionised_regions(",
         "#pragma omp parallel",
         """
-    if (ACTIVE && !astro_options_global->IONISE_ENTIRE_SPHERE) {
+    if (ACTIVE) {
         bool ts=astro_options_global->USE_TS_FLUCT, rec=uses_recombination(astro_options_global->RECOMB_MODEL);
+        bool need_mcg=consts->need_mcgs_nion;
         index_huge offset=(index_huge)fc_r_idx*HII_TOT_NUM_PIXELS;
         double p[]={box_dim[2],rspec.R_index,rspec.R,consts->redshift,consts->photoncons_adjustment_factor,
             mean_fix_term_acg,nion_limit_acg,consts->mass_dep_zeta,consts->gamma_prefactor,consts->T_re,
             ts,rec,consts->filter_recombinations,ts?0.:consts->TK_nofluct,ts?0.:consts->adia_TK_term,
-            astro_options_global->RECOMB_MODEL == RECOMB_MODEL_HOMOGENEOUS,mean_fix_term_mcg,nion_limit_mcg};
+            astro_options_global->RECOMB_MODEL == RECOMB_MODEL_HOMOGENEOUS,mean_fix_term_mcg,nion_limit_mcg,
+            astro_options_global->IONISE_ENTIRE_SPHERE,box_dim[0],box_dim[1],simulation_options_global->BOX_LEN};
         void *a[]={perturbed_field->density,fg_struct->deltax_filtered,box->nion_conditional_filtered_acg+offset,
             ts?(void*)fg_struct->xe_filtered:NULL,rec?(consts->filter_recombinations?
             (void*)fg_struct->N_rec_filtered:(void*)previous_ionize_box->cumulative_recombinations):NULL,
             previous_ionize_box->z_reion,ts?spin_temp->kinetic_temp_neutral:NULL,box->neutral_fraction,box->z_reion,
             (rec && !matter_options_global->MINIMIZE_MEMORY)?box->mean_free_path:NULL,rec?box->ionisation_rate_G12:NULL,
             matter_options_global->MINIMIZE_MEMORY?NULL:box->kinetic_temperature,
-            box->nion_conditional_filtered_mcg+offset};
+            need_mcg?(box->nion_conditional_filtered_mcg+offset):NULL};
         if (cuda_eulerian_mcg_ion(3,HII_TOT_NUM_PIXELS,p,a)) Throw(ValueError);
         return;
     }
@@ -141,14 +150,15 @@ def bind(adapter, engine):
     def dispatch(stage, n, p, a):
         try:
             if stage == 0:
-                side = int(p[9])
-                width = 2 * (side // 2 + 1)
+                nx = ny = int(p[9])
+                nz = int(p[10])
+                width = 2 * (nz // 2 + 1)
 
                 def store(idx, data):
-                    padded = view(a[idx], side * side * width, "f").reshape(
-                        side, side, width
+                    padded = view(a[idx], nx * ny * width, "f").reshape(
+                        nx, ny, width
                     )
-                    padded[..., :side] = data.get().reshape(side, side, side)
+                    padded[..., :nz] = data.get().reshape(nx, ny, nz)
 
                 acg, mcg, grid_a, grid_m = device_turnovers(
                     n, p, a, registry=engine.device_registry
@@ -156,27 +166,33 @@ def bind(adapter, engine):
                 if a[4]:
                     store(4, grid_a)
                     average = acg.mean().item()
+                    engine.ion_filtered[int(a[4])] = grid_a
                 else:
                     average = np.log10(p[1])
-                store(5, grid_m)
+                if a[5]:
+                    store(5, grid_m)
+                    view(a[7], 1, "d")[0] = mcg.mean().item()
+                    engine.ion_filtered[int(a[5])] = grid_m
+                else:
+                    view(a[7], 1, "d")[0] = 0.0
                 view(a[6], 1, "d")[0] = average
-                view(a[7], 1, "d")[0] = mcg.mean().item()
-                if a[4]:
-                    engine.ion_filtered[int(a[4])] = grid_a
-                engine.ion_filtered[int(a[5])] = grid_m
             elif stage == 1:
-                side, threads = map(int, p[:2])
-                width = 2 * (side // 2 + 1)
+                nx = ny = int(p[0])
+                threads = int(p[1])
+                nz = int(p[2])
+                wisdom = bool(p[3])
+                shape = (nx, ny, nz)
+                width = 2 * (nz // 2 + 1)
                 resident = engine.ion_filtered.get(int(a[0]))
                 if resident is None:
-                    real = view(a[0], side * side * width, "f").reshape(
-                        side, side, width
-                    )[..., :side]
+                    real = view(a[0], nx * ny * width, "f").reshape(
+                        nx, ny, width
+                    )[..., :nz]
                     source_grid = cp.asarray(real, order="C")
                 else:
-                    source_grid = resident.reshape(side, side, side)
+                    source_grid = resident.reshape(shape)
                 spectrum = cp.ascontiguousarray(
-                    transform(source_grid, side, False, threads)
+                    transform_3d(source_grid, shape, False, threads, wisdom=wisdom)
                 )
                 spectrum *= np.float32(1.0 / n)
                 engine.ion_spectra[int(a[0])] = spectrum

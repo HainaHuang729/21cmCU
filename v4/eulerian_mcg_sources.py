@@ -23,7 +23,6 @@ def source(native, *, audit=False):
         .replace(
             "source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL)",
             """matter_options_global->SOURCE_MODEL == SOURCE_MODEL_E_INTEGRAL &&
-        astro_options_global->USE_TS_FLUCT && !config_settings.EXTRA_EMISSIVITY_FIELDS &&
         uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES)""",
         )
         .replace("cuda_mcg_table", "cuda_eulerian_emissivity_table")
@@ -35,7 +34,7 @@ def source(native, *, audit=False):
     for func, kind in (
         ("gpu_init_nion", 0),
         ("gpu_init_sfr", 1),
-        ("initialize_xray_emissivity_conditional_tables", 2),
+        ("gpu_init_xray", 2),
     ):
 
         def hook(match):
@@ -51,7 +50,7 @@ def source(native, *, audit=False):
             oracle = f"{originals[kind]}({match[1]});" if audit else ""
             return (
                 (
-                    f"if (use_mcg_conditional_gpu() && astro_options_global->INTEGRATION_METHOD_ACGS != INTEGRATION_METHOD_GAMMA_APPROX && astro_options_global->INTEGRATION_METHOD_MCGS != INTEGRATION_METHOD_GAMMA_APPROX)"
+                    "if (use_mcg_conditional_gpu() && astro_options_global->INTEGRATION_METHOD_ACGS != INTEGRATION_METHOD_GAMMA_APPROX && (!astro_options_global->USE_MCGS || astro_options_global->INTEGRATION_METHOD_MCGS != INTEGRATION_METHOD_GAMMA_APPROX))"
                     if kind == 2
                     else "if (use_mcg_conditional_gpu())"
                 )
@@ -120,13 +119,15 @@ def bind(adapter, counts, set_error):
     )
     turnover = halo_mcg_turnover.bind(adapter, counts, errors)
     cb = C.CFUNCTYPE(C.c_int, C.c_int, C.POINTER(C.c_double), C.POINTER(C.c_void_p))
-    symbols = native_tables(_MOLECULAR_TABLES)
+    symbols = native_tables((*_MOLECULAR_TABLES, "Nhalo_table", "Fcoll_table"))
 
     @cb
     def fields(n, ptr, a):
         try:
-            pars = np.ctypeslib.as_array(ptr, (5,))
-            metal = bool(pars[3])
+            pars = np.ctypeslib.as_array(ptr, (13,))
+            metal, extra = bool(pars[3]), bool(pars[5])
+            thermal, use_mcg, photo = bool(pars[9]), bool(pars[10]), bool(pars[11])
+            need_sfr = thermal or extra
             sigma, slope = (
                 Table.from_address(symbols[k])
                 for k in ("Sigma_InterpTable", "dSigmasqdm_InterpTable")
@@ -138,7 +139,7 @@ def bind(adapter, counts, set_error):
 
             rule = cp.asarray(json.loads((ROOT / "gk61.json").read_text()))
             rows = cp.asarray(view(a[0], 6 * 30, "d"))
-            target = cp.empty(6 if metal else 4, dtype="d")
+            target = cp.empty(6, dtype="d")
             kernels = _kernels()
             kernels.get_function("eulerian_targets")(
                 (target.size,),
@@ -153,32 +154,77 @@ def bind(adapter, counts, set_error):
                     target,
                 ),
             )
-            goals = cp.stack(
-                (
-                    target[0] + target[1],
-                    target[2],
-                    target[3],
-                    target[4] + target[5]
-                    if metal
-                    else pars[1] * target[2] + pars[2] * target[3],
+            goal_map = {
+                0: target[0] + (target[1] if use_mcg else 0.0),
+                1: target[2],
+                2: target[3],
+                3: (target[4] + (target[5] if use_mcg else 0.0))
+                if metal
+                else (pars[1] * target[2] + (pars[2] * target[3] if use_mcg else 0.0)),
+            }
+            if extra:
+                extra_rows = cp.asarray(view(a[1], 2 * 23, "d"))
+                extra_target = cp.empty(2, dtype="d")
+                kernels.get_function("global_source_table")(
+                    (2,),
+                    (32,),
+                    (
+                        extra_rows,
+                        *sigmas,
+                        np.float64(sigma.low),
+                        np.float64(sigma.width),
+                        np.int32(sigma.n),
+                        rule,
+                        extra_target,
+                    ),
                 )
+                goal_map[4] = extra_target[0]
+                goal_map[5] = extra_target[1]
+                goal_map[6] = target[2] * pars[8]
+                if use_mcg:
+                    goal_map[7] = target[3] * pars[8]
+                dndm_meta_rows, dndm_vals = [], []
+                dndm_offset = 0
+                for key in ("Nhalo_table", "Fcoll_table"):
+                    tbl = Table.from_address(symbols[key])
+                    if not tbl.allocated or not (1 < tbl.n < 1000000) or tbl.width <= 0:
+                        raise ValueError(f"Invalid Eulerian dNdM table {key}")
+                    dndm_meta_rows.append((tbl.low, tbl.width, dndm_offset, tbl.n))
+                    dndm_vals.append(view(C.cast(tbl.y, C.c_void_p).value, tbl.n, "d"))
+                    dndm_offset += tbl.n
+                dndm_meta = cp.asarray(dndm_meta_rows, dtype="d")
+                dndm_values = cp.asarray(np.concatenate(dndm_vals), dtype="d")
+            else:
+                dndm_meta = np.uint64(0)
+                dndm_values = np.uint64(0)
+            active_slots = [k for k in range(8) if a[5 + k]]
+            goals = cp.stack([goal_map[k] for k in active_slots])
+            kinds = (
+                ["Nion"]
+                + (["SFRD"] if need_sfr else [])
+                + (["Xray"] if thermal and metal else [])
             )
-            names = [
-                name
-                for name in _MOLECULAR_TABLES
-                if metal or not name.startswith("Xray")
-            ]
+            acg_suffix = "conditional_table2D_acg" if photo else "conditional_table1D_acg"
+            names = [f"{kind}_{acg_suffix}" for kind in kinds]
+            if use_mcg:
+                names.extend(f"{kind}_conditional_table2D_mcg" for kind in kinds)
             metadata, values = [], []
             offset = 0
             for name in names:
                 axes, table = resident.pop(name)
-                metadata.append((*axes, offset, *table.shape))
+                ny_tbl = table.shape[1] if table.ndim == 2 else 1
+                metadata.append((*axes, offset, table.shape[0], ny_tbl))
                 values.append(table.ravel())
                 offset += table.size
             meta = cp.asarray(metadata, dtype="d")
             vals = cp.concatenate(values).astype("d")
-            grids = [cp.asarray(view(a[i], n, "f")) for i in (1, 2, 3)]
-            raw = cp.empty((4, n), dtype="f")
+            density_dev = cp.asarray(view(a[2], n, "f"))
+            grids = [
+                density_dev,
+                cp.asarray(view(a[3], n, "f")) if (photo and a[3]) else np.uint64(0),
+                cp.asarray(view(a[4], n, "f")) if (use_mcg and a[4]) else np.uint64(0),
+            ]
+            raw = cp.empty((8 if (extra or use_mcg) else (4 if thermal else 2), n), dtype="f")
             bad = cp.zeros(1, dtype="i")
             kernels.get_function("eulerian_cells")(
                 ((n + 255) // 256,),
@@ -187,6 +233,8 @@ def bind(adapter, counts, set_error):
                     np.int32(n),
                     meta,
                     vals,
+                    dndm_meta,
+                    dndm_values,
                     *grids,
                     cp.asarray(pars),
                     raw,
@@ -200,26 +248,30 @@ def bind(adapter, counts, set_error):
             # The native mean loop divides float SFRD and X-ray arrays by a float
             # density factor before its double reduction. Photons use a volume mean.
             factor = cp.where(
-                (1.0 + grids[0].astype("d")) > pars[4],
-                (1.0 + grids[0].astype("d")).astype("f"),
+                (1.0 + density_dev.astype("d")) > pars[4],
+                (1.0 + density_dev.astype("d")).astype("f"),
                 np.float32(1.0),
             )
-            mean = cp.concatenate(
-                (
-                    raw[:1].mean(axis=1, dtype="d"),
-                    (raw[1:] / factor).mean(axis=1, dtype="d"),
-                )
+            mean = cp.stack(
+                [
+                    raw[0].mean(dtype="d")
+                    if k == 0
+                    else (raw[k] / factor).mean(dtype="d")
+                    for k in active_slots
+                ]
             )
-            result = (raw * (goals / mean)[:, None]).astype("f")
+            ratios = cp.where(mean != 0.0, goals / mean, 1.0)
+            packed = cp.stack([raw[k] for k in active_slots])
+            result = (packed * ratios[:, None]).astype("f")
             if not bool(cp.isfinite(result).all()):
                 raise ValueError("Nonfinite normalized molecular emissivity")
-            for i in range(4):
-                result[i].get(out=view(a[4 + i], n, "f"))
+            for pos, k in enumerate(active_slots):
+                result[pos].get(out=view(a[5 + k], n, "f"))
             counts["eulerian_mcg_emissivity_cells"] = (
                 counts.get("eulerian_mcg_emissivity_cells", 0) + n
             )
             counts["eulerian_mcg_global_integrals"] = (
-                counts.get("eulerian_mcg_global_integrals", 0) + target.size
+                counts.get("eulerian_mcg_global_integrals", 0) + target.size + (2 if extra else 0)
             )
             return 0
         except BaseException as exc:

@@ -1,13 +1,14 @@
 // The four native filter functions are supplied from the installed 4.3.2 source.
-extern "C" __global__ void halo_window(float2 *spectrum, int side, double dk, float radius,
-                                       float mfp, double decay, int kind) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int half_side = side / 2 + 1;
-    if (i >= side * side * half_side) return;
-    int x = i / (side * half_side), y = i / half_side % side;
-    float kx = (x > side / 2 ? x - side : x) * dk;
-    float ky = (y > side / 2 ? y - side : y) * dk;
-    float kz = (i % half_side) * dk;
+extern "C" __global__ void halo_window(float2 *spectrum, int nx, int ny, int nz, double dk_xy,
+                                       double dk_z, float radius, float mfp, double decay,
+                                       int kind) {
+    long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+    int half_z = nz / 2 + 1;
+    if (i >= (long long)nx * ny * half_z) return;
+    int x = (int)(i / ((long long)ny * half_z)), y = (int)(i / half_z % ny);
+    float kx = (x > nx / 2 ? x - nx : x) * dk_xy;
+    float ky = (y > ny / 2 ? y - ny : y) * dk_xy;
+    float kz = (i % half_z) * dk_z;
     float k2 = kx * kx + ky * ky + kz * kz;
     double k = sqrt((double)k2);
     float kr = k * radius;
