@@ -171,6 +171,10 @@ void compute_mturns(double z, float J_21_LW, float vcb, float Gamma12, float z_r
 /* CUDA backend runtime and diagnostics */
 int p21_cuda_is_compiled(void);
 int p21_cuda_is_available(void);
+int p21_cuda_device_count(void);
+void p21_cuda_set_devices(const int *device_ids, int n_devices);
+int p21_cuda_get_num_devices(void);
+int p21_cuda_get_devices(int *out_ids, int max_n);
 void p21_cuda_set_enabled(int enabled);
 int p21_cuda_get_enabled(void);
 void p21_cuda_set_mode(int mode);
@@ -226,4 +230,7 @@ int p21_cuda_angular_los_velocity(const float *h_vxa, const float *h_vya, const 
 int p21_cuda_lzf_compress_batch_f32(const float *host_chunks, int n_chunks, size_t chunk_elems,
                                     int shuffle, unsigned char *host_out, size_t max_out_bytes,
                                     size_t *out_sizes, int *has_nonfinite_out);
+int p21_cuda_mgpu_fft_r2c_host(const float *h_in, float *h_out_complex, int nx, int ny, int nz);
+int p21_cuda_mgpu_fft_c2r_host(const float *h_in_complex, float *h_out_real, int nx, int ny,
+                               int nz);
 /*-----------------------*/

@@ -40,6 +40,46 @@ def _normalize_cuda_mode(value: object) -> str:
     )
 
 
+def _normalize_cuda_devices(value: object) -> tuple[int, ...] | None:
+    """Normalize ``CUDA_DEVICES`` config/env value to a tuple of device IDs or ``None``."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        s = value.strip()
+        if not s or s.lower() in ("none", "null"):
+            return None
+        if s.lower() in ("all", "auto"):
+            cnt = int(lib.p21_cuda_device_count())
+            return tuple(range(cnt)) if cnt > 0 else (0,)
+        try:
+            ids = tuple(
+                dict.fromkeys(
+                    int(tok.strip())
+                    for tok in s.replace(",", " ").split()
+                    if tok.strip()
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(
+                f"Invalid CUDA_DEVICES '{value}'. Expected comma/space-separated GPU indices."
+            ) from exc
+    elif isinstance(value, int):
+        ids = (int(value),)
+    else:
+        try:
+            ids = tuple(dict.fromkeys(int(x) for x in value))
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(
+                f"Invalid CUDA_DEVICES '{value}'. Expected sequence of GPU indices."
+            ) from exc
+
+    if any(dev < 0 for dev in ids):
+        raise ConfigurationError(
+            f"Invalid CUDA_DEVICES '{value}'. Device indices must be non-negative."
+        )
+    return ids or None
+
+
 _DEFAULT_CUDA_MODE = os.environ.get("P21_CUDA_MODE", "strict").strip().lower()
 
 
@@ -57,6 +97,7 @@ class Config(dict):
         "CACHE_ARRAYS_ON_ACCESS": True,
         "USE_CUDA": _parse_env_bool("P21_USE_CUDA", default=False),
         "CUDA_LAZY_D2H": _parse_env_bool("P21_CUDA_LAZY_D2H", default=False),
+        "CUDA_DEVICES": _normalize_cuda_devices(os.environ.get("P21_CUDA_DEVICES")),
         "CUDA_MODE": _DEFAULT_CUDA_MODE,
         "CUDA_FAST_HALO_SAMPLER": (
             _parse_env_bool("P21_CUDA_FAST_HALO_SAMPLER", default=False)
@@ -125,18 +166,29 @@ class Config(dict):
         lib.p21_cuda_set_mode(is_fast)
         lib.p21_cuda_set_fast_ic(is_fast)
 
+    def _sync_cuda_devices(self, devices: tuple[int, ...] | None) -> None:
+        """Push active CUDA device list to the C/CUDA backend."""
+        if not devices:
+            lib.p21_cuda_set_devices(ffi.NULL, 0)
+            return
+        arr = ffi.new("int[]", list(devices))
+        lib.p21_cuda_set_devices(arr, len(devices))
+
     def _sync_cuda_backend(self) -> None:
         """Push all CUDA runtime flags to the C/CUDA backend."""
         lib.p21_cuda_set_enabled(int(bool(self["USE_CUDA"])))
         self._sync_cuda_mode(self["CUDA_MODE"])
         lib.p21_cuda_set_fast_halo_sampler(int(bool(self["CUDA_FAST_HALO_SAMPLER"])))
         lib.p21_cuda_set_lazy_d2h(int(bool(self["CUDA_LAZY_D2H"])))
+        self._sync_cuda_devices(self["CUDA_DEVICES"])
 
     def __setitem__(self, key, value):
         """Set an item in the config. Also updating the backend if it exists there."""
         key = self._resolve_deprecated_key(key)
         if key == "CUDA_MODE":
             value = _normalize_cuda_mode(value)
+        elif key == "CUDA_DEVICES":
+            value = _normalize_cuda_devices(value)
         super().__setitem__(key, value)
         if key in self._c_config_settings:
             self._pass_to_backend(key, value)
@@ -151,6 +203,8 @@ class Config(dict):
             lib.p21_cuda_set_fast_halo_sampler(int(bool(value)))
         elif key == "CUDA_LAZY_D2H":
             lib.p21_cuda_set_lazy_d2h(int(bool(value)))
+        elif key == "CUDA_DEVICES":
+            self._sync_cuda_devices(value)
 
     def _pass_to_backend(self, key, value):
         """Set the value in the backend."""

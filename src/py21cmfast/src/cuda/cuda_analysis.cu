@@ -2,9 +2,12 @@
 #include <cmath>
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <vector>
 
 #include "cuda_common.cuh"
+#include "cuda_mgpu.cuh"
 
 namespace {
 
@@ -376,10 +379,469 @@ __global__ void ps_2d_bin_kernel(const cufftComplex *d_fa, const cufftComplex *d
     }
 }
 
+__global__ void ps_1d_bin_yslab_kernel(const cufftComplex *d_fa, const cufftComplex *d_fb, int y0,
+                                       int sy, int nx, int ny, int nz, double lx, double ly,
+                                       double lz, double norm, int skip_dc, int n_bins,
+                                       const double *d_edges, double *d_k_sum, double *d_pk_sum,
+                                       unsigned long long *d_counts) {
+    int hz = nz / 2 + 1;
+    size_t total = (size_t)sy * (size_t)hz * (size_t)nx;
+    size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    bool even_z = (nz % 2 == 0);
+    double dk_z = 2.0 * M_PI / lz;
+
+    for (size_t idx = tid; idx < total; idx += stride) {
+        int ix = (int)(idx % (size_t)nx);
+        size_t q = idx / (size_t)nx;
+        int iz = (int)(q % (size_t)hz);
+        int iy = y0 + (int)(q / (size_t)hz);
+        if (skip_dc && ix == 0 && iy == 0 && iz == 0) {
+            continue;
+        }
+
+        double kx = p21_index_to_k(ix, lx, nx);
+        double ky = p21_index_to_k(iy, ly, ny);
+        double kz = (double)iz * dk_z;
+        double k = sqrt(kx * kx + ky * ky + kz * kz);
+        int b = binary_search_bin(k, d_edges, n_bins);
+        if (b < 0) {
+            continue;
+        }
+
+        unsigned long long mult = (iz == 0 || (even_z && iz == nz / 2)) ? 1ULL : 2ULL;
+        cufftComplex fa = d_fa[idx];
+        double p;
+        if (!d_fb) {
+            p = (double)fa.x * (double)fa.x + (double)fa.y * (double)fa.y;
+        } else {
+            cufftComplex fb = d_fb[idx];
+            p = (double)fa.x * (double)fb.x + (double)fa.y * (double)fb.y;
+        }
+        p *= norm;
+
+        double m_d = (double)mult;
+        p21_atomic_add_double(&d_k_sum[b], m_d * k);
+        p21_atomic_add_double(&d_pk_sum[b], m_d * p);
+        atomicAdd(&d_counts[b], mult);
+    }
+}
+
+__global__ void ps_2d_bin_yslab_kernel(const cufftComplex *d_fa, const cufftComplex *d_fb, int y0,
+                                       int sy, int nx, int ny, int nz, double lx, double ly,
+                                       double lz, int los_axis, double norm, int skip_dc,
+                                       int n_kperp, const double *d_kperp_edges, int n_kpara,
+                                       const double *d_kpara_edges, double *d_kperp_sum,
+                                       double *d_kpara_sum, double *d_pk_sum,
+                                       unsigned long long *d_counts) {
+    int hz = nz / 2 + 1;
+    size_t total = (size_t)sy * (size_t)hz * (size_t)nx;
+    size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    bool even_z = (nz % 2 == 0);
+    double dk_z = 2.0 * M_PI / lz;
+
+    for (size_t idx = tid; idx < total; idx += stride) {
+        int ix = (int)(idx % (size_t)nx);
+        size_t q = idx / (size_t)nx;
+        int iz = (int)(q % (size_t)hz);
+        int iy = y0 + (int)(q / (size_t)hz);
+        if (skip_dc && ix == 0 && iy == 0 && iz == 0) {
+            continue;
+        }
+
+        double kx = p21_index_to_k(ix, lx, nx);
+        double ky = p21_index_to_k(iy, ly, ny);
+        double kz = (double)iz * dk_z;
+
+        double k_para;
+        double k_perp;
+        if (los_axis == 0) {
+            k_para = fabs(kx);
+            k_perp = sqrt(ky * ky + kz * kz);
+        } else if (los_axis == 1) {
+            k_para = fabs(ky);
+            k_perp = sqrt(kx * kx + kz * kz);
+        } else {
+            k_para = fabs(kz);
+            k_perp = sqrt(kx * kx + ky * ky);
+        }
+
+        int b_perp = binary_search_bin(k_perp, d_kperp_edges, n_kperp);
+        if (b_perp < 0) {
+            continue;
+        }
+        int b_para = binary_search_bin(k_para, d_kpara_edges, n_kpara);
+        if (b_para < 0) {
+            continue;
+        }
+
+        int b = b_perp * n_kpara + b_para;
+        unsigned long long mult = (iz == 0 || (even_z && iz == nz / 2)) ? 1ULL : 2ULL;
+        cufftComplex fa = d_fa[idx];
+        double p;
+        if (!d_fb) {
+            p = (double)fa.x * (double)fa.x + (double)fa.y * (double)fa.y;
+        } else {
+            cufftComplex fb = d_fb[idx];
+            p = (double)fa.x * (double)fb.x + (double)fa.y * (double)fb.y;
+        }
+        p *= norm;
+
+        double m_d = (double)mult;
+        p21_atomic_add_double(&d_kperp_sum[b], m_d * k_perp);
+        p21_atomic_add_double(&d_kpara_sum[b], m_d * k_para);
+        p21_atomic_add_double(&d_pk_sum[b], m_d * p);
+        atomicAdd(&d_counts[b], mult);
+    }
+}
+
 int compute_grid_blocks(size_t total, int threads) {
     size_t max_blocks = 65535ULL;
     size_t b = (total + (size_t)threads - 1) / (size_t)threads;
     return (int)std::min(b, max_blocks);
+}
+
+bool mgpu_ps_force_enabled(void) {
+    const char *env = getenv("P21_CUDA_FORCE_MGPU");
+    return env && strcmp(env, "1") == 0;
+}
+
+int mgpu_power_spectrum_1d(const float *h_field_a, const float *h_field_b, int nx, int ny, int nz,
+                           double lx, double ly, double lz, int n_bins, const double *h_k_edges,
+                           int skip_dc, double *h_k_mean_out, double *h_pk_out,
+                           double *h_delta_sq_out, unsigned long long *h_counts_out) {
+    p21_cuda_registry_sync_to_host(h_field_a);
+    if (h_field_b && h_field_b != h_field_a) {
+        p21_cuda_registry_sync_to_host(h_field_b);
+    }
+
+    P21MgpuGrid grid;
+    if (!grid.init(nx, ny, nz)) {
+        return -1;
+    }
+    const int G = grid.n_gpus;
+    const bool is_cross = (h_field_b != nullptr && h_field_b != h_field_a);
+
+    size_t max_slab_bytes = 0;
+    for (int g = 0; g < G; ++g) {
+        max_slab_bytes = std::max(max_slab_bytes, grid.cplx_elems_y(g) * sizeof(cufftComplex));
+    }
+    const size_t min_free = p21_mgpu_min_free_mem(grid);
+    void *h_stage = nullptr;
+    if (min_free < (is_cross ? 3ULL : 2ULL) * max_slab_bytes + (768ULL << 20)) {
+        h_stage = malloc(grid.total_cplx_elems() * sizeof(cufftComplex));
+        if (!h_stage) {
+            grid.destroy();
+            return -1;
+        }
+    }
+
+    std::vector<cufftComplex *> d_fa((size_t)G, nullptr);
+    std::vector<cufftComplex *> d_fb((size_t)G, nullptr);
+    bool ok = true;
+    for (int g = 0; g < G; ++g) {
+        size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
+        d_fa[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
+        if (!d_fa[(size_t)g]) {
+            ok = false;
+        }
+        if (is_cross) {
+            d_fb[(size_t)g] =
+                (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
+            if (!d_fb[(size_t)g]) {
+                ok = false;
+            }
+        }
+    }
+
+    if (ok) {
+        ok = p21_mgpu_fft_r2c_from_host(grid, h_field_a, 1.0, d_fa.data(), h_stage);
+    }
+    if (ok && is_cross) {
+        ok = p21_mgpu_fft_r2c_from_host(grid, h_field_b, 1.0, d_fb.data(), h_stage);
+    }
+
+    if (h_stage) {
+        free(h_stage);
+        h_stage = nullptr;
+    }
+
+    std::vector<double> tot_k((size_t)n_bins, 0.0);
+    std::vector<double> tot_pk((size_t)n_bins, 0.0);
+    memset(h_counts_out, 0, (size_t)n_bins * sizeof(unsigned long long));
+
+    if (ok) {
+        double vol = lx * ly * lz;
+        size_t n_tot = (size_t)nx * (size_t)ny * (size_t)nz;
+        double norm = vol / ((double)n_tot * (double)n_tot);
+        constexpr int kTpb = 256;
+
+        std::vector<double *> d_edges((size_t)G, nullptr);
+        std::vector<double *> d_ks((size_t)G, nullptr);
+        std::vector<double *> d_pks((size_t)G, nullptr);
+        std::vector<unsigned long long *> d_cnt((size_t)G, nullptr);
+
+        for (int g = 0; g < G && ok; ++g) {
+            cudaSetDevice(grid.devs[g]);
+            d_edges[(size_t)g] = (double *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)(n_bins + 1) * sizeof(double), grid.streams[g]);
+            d_ks[(size_t)g] = (double *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)n_bins * sizeof(double), grid.streams[g]);
+            d_pks[(size_t)g] = (double *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)n_bins * sizeof(double), grid.streams[g]);
+            d_cnt[(size_t)g] = (unsigned long long *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)n_bins * sizeof(unsigned long long), grid.streams[g]);
+            if (!d_edges[(size_t)g] || !d_ks[(size_t)g] || !d_pks[(size_t)g] ||
+                !d_cnt[(size_t)g] ||
+                !P21_CUDA_OK(cudaMemcpyAsync(d_edges[(size_t)g], h_k_edges,
+                                             (size_t)(n_bins + 1) * sizeof(double),
+                                             cudaMemcpyHostToDevice, grid.streams[g])) ||
+                !P21_CUDA_OK(cudaMemsetAsync(d_ks[(size_t)g], 0, (size_t)n_bins * sizeof(double),
+                                           grid.streams[g])) ||
+                !P21_CUDA_OK(cudaMemsetAsync(d_pks[(size_t)g], 0, (size_t)n_bins * sizeof(double),
+                                           grid.streams[g])) ||
+                !P21_CUDA_OK(cudaMemsetAsync(d_cnt[(size_t)g], 0,
+                                           (size_t)n_bins * sizeof(unsigned long long),
+                                           grid.streams[g]))) {
+                ok = false;
+                break;
+            }
+            int blocks = compute_grid_blocks(grid.cplx_elems_y(g), kTpb);
+            ps_1d_bin_yslab_kernel<<<blocks, kTpb, 0, grid.streams[g]>>>(
+                d_fa[(size_t)g], is_cross ? d_fb[(size_t)g] : nullptr, grid.y0[g], grid.sy[g], nx,
+                ny, nz, lx, ly, lz, norm, skip_dc, n_bins, d_edges[(size_t)g], d_ks[(size_t)g],
+                d_pks[(size_t)g], d_cnt[(size_t)g]);
+            ok = P21_CUDA_OK(cudaGetLastError());
+        }
+
+        std::vector<double> lk((size_t)n_bins);
+        std::vector<double> lpk((size_t)n_bins);
+        std::vector<unsigned long long> lc((size_t)n_bins);
+        for (int g = 0; g < G && ok; ++g) {
+            cudaSetDevice(grid.devs[g]);
+            ok = P21_CUDA_OK(cudaMemcpyAsync(lk.data(), d_ks[(size_t)g],
+                                             (size_t)n_bins * sizeof(double),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(lpk.data(), d_pks[(size_t)g],
+                                             (size_t)n_bins * sizeof(double),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(lc.data(), d_cnt[(size_t)g],
+                                             (size_t)n_bins * sizeof(unsigned long long),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            if (ok) {
+                for (int b = 0; b < n_bins; ++b) {
+                    tot_k[(size_t)b] += lk[(size_t)b];
+                    tot_pk[(size_t)b] += lpk[(size_t)b];
+                    h_counts_out[b] += lc[(size_t)b];
+                }
+            }
+        }
+        for (int g = 0; g < G; ++g) {
+            p21_mgpu_free(grid.devs[g], d_cnt[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_pks[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_ks[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_edges[(size_t)g], grid.streams[g]);
+        }
+    }
+
+    for (int g = 0; g < G; ++g) {
+        if (is_cross) p21_mgpu_free(grid.devs[g], d_fb[(size_t)g], grid.streams[g]);
+        p21_mgpu_free(grid.devs[g], d_fa[(size_t)g], grid.streams[g]);
+    }
+    grid.destroy();
+    if (!ok) {
+        return -1;
+    }
+
+    const double inv_2pi2 = 1.0 / (2.0 * M_PI * M_PI);
+    for (int b = 0; b < n_bins; ++b) {
+        unsigned long long cnt = h_counts_out[b];
+        if (cnt > 0ULL) {
+            double km = tot_k[(size_t)b] / (double)cnt;
+            double pk = tot_pk[(size_t)b] / (double)cnt;
+            h_k_mean_out[b] = km;
+            h_pk_out[b] = pk;
+            h_delta_sq_out[b] = km * km * km * pk * inv_2pi2;
+        } else {
+            h_k_mean_out[b] = NAN;
+            h_pk_out[b] = NAN;
+            h_delta_sq_out[b] = NAN;
+        }
+    }
+    return 0;
+}
+
+int mgpu_power_spectrum_2d(const float *h_field_a, const float *h_field_b, int nx, int ny, int nz,
+                           double lx, double ly, double lz, int los_axis, int n_kperp,
+                           const double *h_kperp_edges, int n_kpara, const double *h_kpara_edges,
+                           int skip_dc, double *h_kperp_mean_out, double *h_kpara_mean_out,
+                           double *h_pk_out, unsigned long long *h_counts_out) {
+    p21_cuda_registry_sync_to_host(h_field_a);
+    if (h_field_b && h_field_b != h_field_a) {
+        p21_cuda_registry_sync_to_host(h_field_b);
+    }
+
+    P21MgpuGrid grid;
+    if (!grid.init(nx, ny, nz)) {
+        return -1;
+    }
+    const int G = grid.n_gpus;
+    const bool is_cross = (h_field_b != nullptr && h_field_b != h_field_a);
+    const size_t n_bins = (size_t)n_kperp * (size_t)n_kpara;
+
+    size_t max_slab_bytes = 0;
+    for (int g = 0; g < G; ++g) {
+        max_slab_bytes = std::max(max_slab_bytes, grid.cplx_elems_y(g) * sizeof(cufftComplex));
+    }
+    const size_t min_free = p21_mgpu_min_free_mem(grid);
+    void *h_stage = nullptr;
+    if (min_free < (is_cross ? 3ULL : 2ULL) * max_slab_bytes + (768ULL << 20)) {
+        h_stage = malloc(grid.total_cplx_elems() * sizeof(cufftComplex));
+        if (!h_stage) {
+            grid.destroy();
+            return -1;
+        }
+    }
+
+    std::vector<cufftComplex *> d_fa((size_t)G, nullptr);
+    std::vector<cufftComplex *> d_fb((size_t)G, nullptr);
+    bool ok = true;
+    for (int g = 0; g < G; ++g) {
+        size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
+        d_fa[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
+        if (!d_fa[(size_t)g]) ok = false;
+        if (is_cross) {
+            d_fb[(size_t)g] =
+                (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
+            if (!d_fb[(size_t)g]) ok = false;
+        }
+    }
+
+    if (ok) ok = p21_mgpu_fft_r2c_from_host(grid, h_field_a, 1.0, d_fa.data(), h_stage);
+    if (ok && is_cross) ok = p21_mgpu_fft_r2c_from_host(grid, h_field_b, 1.0, d_fb.data(), h_stage);
+
+    if (h_stage) {
+        free(h_stage);
+        h_stage = nullptr;
+    }
+
+    std::vector<double> tot_kp(n_bins, 0.0);
+    std::vector<double> tot_kz(n_bins, 0.0);
+    std::vector<double> tot_pk(n_bins, 0.0);
+    memset(h_counts_out, 0, n_bins * sizeof(unsigned long long));
+
+    if (ok) {
+        double vol = lx * ly * lz;
+        size_t n_tot = (size_t)nx * (size_t)ny * (size_t)nz;
+        double norm = vol / ((double)n_tot * (double)n_tot);
+        constexpr int kTpb = 256;
+
+        std::vector<double *> d_ekp((size_t)G, nullptr), d_ekz((size_t)G, nullptr);
+        std::vector<double *> d_kp((size_t)G, nullptr), d_kz((size_t)G, nullptr),
+            d_pk((size_t)G, nullptr);
+        std::vector<unsigned long long *> d_cnt((size_t)G, nullptr);
+
+        for (int g = 0; g < G && ok; ++g) {
+            cudaSetDevice(grid.devs[g]);
+            d_ekp[(size_t)g] = (double *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)(n_kperp + 1) * sizeof(double), grid.streams[g]);
+            d_ekz[(size_t)g] = (double *)p21_mgpu_malloc(
+                grid.devs[g], (size_t)(n_kpara + 1) * sizeof(double), grid.streams[g]);
+            d_kp[(size_t)g] =
+                (double *)p21_mgpu_malloc(grid.devs[g], n_bins * sizeof(double), grid.streams[g]);
+            d_kz[(size_t)g] =
+                (double *)p21_mgpu_malloc(grid.devs[g], n_bins * sizeof(double), grid.streams[g]);
+            d_pk[(size_t)g] =
+                (double *)p21_mgpu_malloc(grid.devs[g], n_bins * sizeof(double), grid.streams[g]);
+            d_cnt[(size_t)g] = (unsigned long long *)p21_mgpu_malloc(
+                grid.devs[g], n_bins * sizeof(unsigned long long), grid.streams[g]);
+
+            if (!d_ekp[(size_t)g] || !d_ekz[(size_t)g] || !d_kp[(size_t)g] || !d_kz[(size_t)g] ||
+                !d_pk[(size_t)g] || !d_cnt[(size_t)g] ||
+                !P21_CUDA_OK(cudaMemcpyAsync(d_ekp[(size_t)g], h_kperp_edges,
+                                             (size_t)(n_kperp + 1) * sizeof(double),
+                                             cudaMemcpyHostToDevice, grid.streams[g])) ||
+                !P21_CUDA_OK(cudaMemcpyAsync(d_ekz[(size_t)g], h_kpara_edges,
+                                             (size_t)(n_kpara + 1) * sizeof(double),
+                                             cudaMemcpyHostToDevice, grid.streams[g])) ||
+                !P21_CUDA_OK(
+                    cudaMemsetAsync(d_kp[(size_t)g], 0, n_bins * sizeof(double), grid.streams[g])) ||
+                !P21_CUDA_OK(
+                    cudaMemsetAsync(d_kz[(size_t)g], 0, n_bins * sizeof(double), grid.streams[g])) ||
+                !P21_CUDA_OK(
+                    cudaMemsetAsync(d_pk[(size_t)g], 0, n_bins * sizeof(double), grid.streams[g])) ||
+                !P21_CUDA_OK(cudaMemsetAsync(d_cnt[(size_t)g], 0,
+                                           n_bins * sizeof(unsigned long long), grid.streams[g]))) {
+                ok = false;
+                break;
+            }
+            int blocks = compute_grid_blocks(grid.cplx_elems_y(g), kTpb);
+            ps_2d_bin_yslab_kernel<<<blocks, kTpb, 0, grid.streams[g]>>>(
+                d_fa[(size_t)g], is_cross ? d_fb[(size_t)g] : nullptr, grid.y0[g], grid.sy[g], nx,
+                ny, nz, lx, ly, lz, los_axis, norm, skip_dc, n_kperp, d_ekp[(size_t)g], n_kpara,
+                d_ekz[(size_t)g], d_kp[(size_t)g], d_kz[(size_t)g], d_pk[(size_t)g],
+                d_cnt[(size_t)g]);
+            ok = P21_CUDA_OK(cudaGetLastError());
+        }
+
+        std::vector<double> lkp(n_bins), lkz(n_bins), lpk(n_bins);
+        std::vector<unsigned long long> lc(n_bins);
+        for (int g = 0; g < G && ok; ++g) {
+            cudaSetDevice(grid.devs[g]);
+            ok = P21_CUDA_OK(cudaMemcpyAsync(lkp.data(), d_kp[(size_t)g], n_bins * sizeof(double),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(lkz.data(), d_kz[(size_t)g], n_bins * sizeof(double),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(lpk.data(), d_pk[(size_t)g], n_bins * sizeof(double),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(lc.data(), d_cnt[(size_t)g],
+                                             n_bins * sizeof(unsigned long long),
+                                             cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                 P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            if (ok) {
+                for (size_t b = 0; b < n_bins; ++b) {
+                    tot_kp[b] += lkp[b];
+                    tot_kz[b] += lkz[b];
+                    tot_pk[b] += lpk[b];
+                    h_counts_out[b] += lc[b];
+                }
+            }
+        }
+        for (int g = 0; g < G; ++g) {
+            p21_mgpu_free(grid.devs[g], d_cnt[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_pk[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_kz[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_kp[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_ekz[(size_t)g], grid.streams[g]);
+            p21_mgpu_free(grid.devs[g], d_ekp[(size_t)g], grid.streams[g]);
+        }
+    }
+
+    for (int g = 0; g < G; ++g) {
+        if (is_cross) p21_mgpu_free(grid.devs[g], d_fb[(size_t)g], grid.streams[g]);
+        p21_mgpu_free(grid.devs[g], d_fa[(size_t)g], grid.streams[g]);
+    }
+    grid.destroy();
+    if (!ok) {
+        return -1;
+    }
+
+    for (size_t b = 0; b < n_bins; ++b) {
+        unsigned long long cnt = h_counts_out[b];
+        if (cnt > 0ULL) {
+            double c = (double)cnt;
+            h_kperp_mean_out[b] = tot_kp[b] / c;
+            h_kpara_mean_out[b] = tot_kz[b] / c;
+            h_pk_out[b] = tot_pk[b] / c;
+        } else {
+            h_kperp_mean_out[b] = NAN;
+            h_kpara_mean_out[b] = NAN;
+            h_pk_out[b] = NAN;
+        }
+    }
+    return 0;
 }
 
 __device__ static inline int wrap_coord_ll(long long v, int d) {
@@ -797,6 +1259,15 @@ int p21_cuda_power_spectrum_1d(const float *h_field_a, const float *h_field_b, i
     cudaStream_t stream = p21_cuda_stream();
     size_t n_tot = (size_t)nx * (size_t)ny * (size_t)nz;
     size_t box_bytes = n_tot * sizeof(float);
+    if (p21_cuda_get_num_devices() >= 2 &&
+        (box_bytes >= 512ULL * 1024 * 1024 || mgpu_ps_force_enabled())) {
+        int mres = mgpu_power_spectrum_1d(h_field_a, h_field_b, nx, ny, nz, lx, ly, lz, n_bins,
+                                          h_k_edges, skip_dc, h_k_mean_out, h_pk_out,
+                                          h_delta_sq_out, h_counts_out);
+        if (mres == 0) {
+            return 0;
+        }
+    }
     size_t hz = (size_t)(nz / 2 + 1);
     size_t n_freq = (size_t)nx * (size_t)ny * hz;
     bool is_cross = (h_field_b != nullptr && h_field_b != h_field_a);
@@ -913,6 +1384,16 @@ int p21_cuda_power_spectrum_2d(const float *h_field_a, const float *h_field_b, i
     cudaStream_t stream = p21_cuda_stream();
     size_t n_tot = (size_t)nx * (size_t)ny * (size_t)nz;
     size_t box_bytes = n_tot * sizeof(float);
+    if (p21_cuda_get_num_devices() >= 2 &&
+        (box_bytes >= 512ULL * 1024 * 1024 || mgpu_ps_force_enabled())) {
+        int mres = mgpu_power_spectrum_2d(h_field_a, h_field_b, nx, ny, nz, lx, ly, lz, los_axis,
+                                          n_kperp, h_kperp_edges, n_kpara, h_kpara_edges, skip_dc,
+                                          h_kperp_mean_out, h_kpara_mean_out, h_pk_out,
+                                          h_counts_out);
+        if (mres == 0) {
+            return 0;
+        }
+    }
     size_t hz = (size_t)(nz / 2 + 1);
     size_t n_freq = (size_t)nx * (size_t)ny * hz;
     size_t n_bins = (size_t)n_kperp * (size_t)n_kpara;

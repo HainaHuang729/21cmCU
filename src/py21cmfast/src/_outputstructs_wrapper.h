@@ -175,4 +175,6 @@ typedef struct P21CudaStats {
     unsigned long long int halo_perturb_runs;
     unsigned long long int dndm_table_runs;
     unsigned long long int cond_table_runs;
+    unsigned long long int mgpu_fft_runs;
+    unsigned long long int mgpu_ic_runs;
 } P21CudaStats;

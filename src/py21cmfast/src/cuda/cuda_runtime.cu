@@ -17,6 +17,8 @@ cudaStream_t g_stream = nullptr;
 int g_device_id = -1;
 int g_sm_count = 0;
 size_t g_total_mem_bytes = 0;
+int g_mgpu_devices[16] = {0};
+int g_mgpu_count = 1;
 
 }  // namespace
 
@@ -91,6 +93,65 @@ int p21_cuda_is_available(void) {
         return 0;
     }
     return count > 0 ? 1 : 0;
+}
+
+int p21_cuda_device_count(void) {
+    int count = 0;
+    cudaError_t err = cudaGetDeviceCount(&count);
+    if (err != cudaSuccess) {
+        cudaGetLastError();
+        return 0;
+    }
+    return count > 0 ? count : 0;
+}
+
+void p21_cuda_set_devices(const int *device_ids, int n_devices) {
+    std::lock_guard<std::mutex> lock(g_runtime_mu);
+    int avail = p21_cuda_device_count();
+    if (!device_ids || n_devices <= 0) {
+        g_mgpu_devices[0] = (g_device_id >= 0) ? g_device_id : 0;
+        g_mgpu_count = 1;
+        return;
+    }
+    int out_n = 0;
+    for (int i = 0; i < n_devices && out_n < 16; ++i) {
+        int id = device_ids[i];
+        if (id < 0 || (avail > 0 && id >= avail)) {
+            continue;
+        }
+        bool dup = false;
+        for (int j = 0; j < out_n; ++j) {
+            if (g_mgpu_devices[j] == id) {
+                dup = true;
+                break;
+            }
+        }
+        if (!dup) {
+            g_mgpu_devices[out_n++] = id;
+        }
+    }
+    if (out_n == 0) {
+        g_mgpu_devices[0] = (g_device_id >= 0) ? g_device_id : 0;
+        g_mgpu_count = 1;
+    } else {
+        g_mgpu_count = out_n;
+    }
+}
+
+int p21_cuda_get_num_devices(void) {
+    std::lock_guard<std::mutex> lock(g_runtime_mu);
+    return g_mgpu_count;
+}
+
+int p21_cuda_get_devices(int *out_ids, int max_n) {
+    std::lock_guard<std::mutex> lock(g_runtime_mu);
+    int n = g_mgpu_count < max_n ? g_mgpu_count : max_n;
+    if (out_ids && n > 0) {
+        for (int i = 0; i < n; ++i) {
+            out_ids[i] = g_mgpu_devices[i];
+        }
+    }
+    return g_mgpu_count;
 }
 
 void p21_cuda_set_enabled(int enabled) { g_enabled = enabled ? 1 : 0; }
