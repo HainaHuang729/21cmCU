@@ -108,40 +108,300 @@ __global__ void gfsr4_stream_kernel(uint32_t *ring, uint32_t *out, int count, ui
     }
 }
 
-__global__ void cmrg_stream_kernel(uint32_t *state, uint32_t *out, int count, uint32_t seed,
-                                   int init) {
-    if (blockIdx.x != 0 || threadIdx.x != 0) {
-        return;
+constexpr int kJumpWorkers = 2048;
+constexpr int kJumpBits = 11; /* 2^11 == kJumpWorkers */
+
+/* ==================== Parallel Jump-Ahead Helpers (cmrg, mrg, taus2) ==================== */
+
+struct Mat3Mod {
+    uint32_t m[3][3];
+};
+
+struct Mat5Mod {
+    uint32_t m[5][5];
+};
+
+struct GF2Mat32 {
+    uint32_t cols[32];
+};
+
+struct CmrgJumpTable {
+    Mat3Mod p1[kJumpBits];
+    Mat3Mod p2[kJumpBits];
+};
+
+struct MrgJumpTable {
+    Mat5Mod p[kJumpBits];
+};
+
+struct Taus2JumpTable {
+    GF2Mat32 p1[kJumpBits];
+    GF2Mat32 p2[kJumpBits];
+    GF2Mat32 p3[kJumpBits];
+};
+
+__host__ __device__ static inline void mat3_mul_vec(const Mat3Mod &A, const uint32_t v[3],
+                                                    uint32_t out[3], uint32_t mod) {
+    for (int r = 0; r < 3; ++r) {
+        uint64_t acc = 0ULL;
+        for (int c = 0; c < 3; ++c) {
+            acc += ((uint64_t)A.m[r][c] * (uint64_t)v[c]) % (uint64_t)mod;
+        }
+        out[r] = (uint32_t)(acc % (uint64_t)mod);
     }
+}
+
+__host__ __device__ static inline void mat5_mul_vec(const Mat5Mod &A, const uint32_t v[5],
+                                                    uint32_t out[5], uint32_t mod) {
+    for (int r = 0; r < 5; ++r) {
+        uint64_t acc = 0ULL;
+        for (int c = 0; c < 5; ++c) {
+            acc += ((uint64_t)A.m[r][c] * (uint64_t)v[c]) % (uint64_t)mod;
+        }
+        out[r] = (uint32_t)(acc % (uint64_t)mod);
+    }
+}
+
+__host__ __device__ static inline uint32_t gf2_apply(const GF2Mat32 &M, uint32_t v) {
+    uint32_t res = 0u;
+    for (int b = 0; b < 32; ++b) {
+        if ((v >> b) & 1u) {
+            res ^= M.cols[b];
+        }
+    }
+    return res;
+}
+
+static inline Mat3Mod mat3_mul(const Mat3Mod &A, const Mat3Mod &B, uint32_t mod) {
+    Mat3Mod C{};
+    for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 3; ++c) {
+            uint64_t acc = 0ULL;
+            for (int k = 0; k < 3; ++k) {
+                acc += ((uint64_t)A.m[r][k] * (uint64_t)B.m[k][c]) % (uint64_t)mod;
+            }
+            C.m[r][c] = (uint32_t)(acc % (uint64_t)mod);
+        }
+    }
+    return C;
+}
+
+static inline Mat3Mod mat3_pow(Mat3Mod base, size_t exp, uint32_t mod) {
+    Mat3Mod res{};
+    for (int i = 0; i < 3; ++i) {
+        res.m[i][i] = 1u;
+    }
+    while (exp > 0) {
+        if (exp & 1ULL) {
+            res = mat3_mul(res, base, mod);
+        }
+        exp >>= 1;
+        if (exp > 0) {
+            base = mat3_mul(base, base, mod);
+        }
+    }
+    return res;
+}
+
+static inline Mat5Mod mat5_mul(const Mat5Mod &A, const Mat5Mod &B, uint32_t mod) {
+    Mat5Mod C{};
+    for (int r = 0; r < 5; ++r) {
+        for (int c = 0; c < 5; ++c) {
+            uint64_t acc = 0ULL;
+            for (int k = 0; k < 5; ++k) {
+                acc += ((uint64_t)A.m[r][k] * (uint64_t)B.m[k][c]) % (uint64_t)mod;
+            }
+            C.m[r][c] = (uint32_t)(acc % (uint64_t)mod);
+        }
+    }
+    return C;
+}
+
+static inline Mat5Mod mat5_pow(Mat5Mod base, size_t exp, uint32_t mod) {
+    Mat5Mod res{};
+    for (int i = 0; i < 5; ++i) {
+        res.m[i][i] = 1u;
+    }
+    while (exp > 0) {
+        if (exp & 1ULL) {
+            res = mat5_mul(res, base, mod);
+        }
+        exp >>= 1;
+        if (exp > 0) {
+            base = mat5_mul(base, base, mod);
+        }
+    }
+    return res;
+}
+
+static inline GF2Mat32 gf2_compose(const GF2Mat32 &A, const GF2Mat32 &B) {
+    GF2Mat32 C{};
+    for (int b = 0; b < 32; ++b) {
+        C.cols[b] = gf2_apply(A, B.cols[b]);
+    }
+    return C;
+}
+
+static inline GF2Mat32 gf2_pow(GF2Mat32 base, size_t exp) {
+    GF2Mat32 res{};
+    for (int b = 0; b < 32; ++b) {
+        res.cols[b] = 1u << b;
+    }
+    while (exp > 0) {
+        if (exp & 1ULL) {
+            res = gf2_compose(res, base);
+        }
+        exp >>= 1;
+        if (exp > 0) {
+            base = gf2_compose(base, base);
+        }
+    }
+    return res;
+}
+
+CmrgJumpTable build_cmrg_jump_table(size_t stride) {
+    constexpr uint32_t kM1 = 2147483647u;
+    constexpr uint32_t kM2 = 2145483479u;
+    Mat3Mod a1{};
+    a1.m[0][1] = 63308u;
+    a1.m[0][2] = kM1 - 183326u;
+    a1.m[1][0] = 1u;
+    a1.m[2][1] = 1u;
+    Mat3Mod a2{};
+    a2.m[0][0] = 86098u;
+    a2.m[0][2] = kM2 - 539608u;
+    a2.m[1][0] = 1u;
+    a2.m[2][1] = 1u;
+
+    CmrgJumpTable jt{};
+    jt.p1[0] = mat3_pow(a1, stride, kM1);
+    jt.p2[0] = mat3_pow(a2, stride, kM2);
+    for (int b = 1; b < kJumpBits; ++b) {
+        jt.p1[b] = mat3_mul(jt.p1[b - 1], jt.p1[b - 1], kM1);
+        jt.p2[b] = mat3_mul(jt.p2[b - 1], jt.p2[b - 1], kM2);
+    }
+    return jt;
+}
+
+MrgJumpTable build_mrg_jump_table(size_t stride) {
+    constexpr uint32_t kM = 2147483647u;
+    Mat5Mod a{};
+    a.m[0][0] = 107374182u;
+    a.m[0][4] = 104480u;
+    a.m[1][0] = 1u;
+    a.m[2][1] = 1u;
+    a.m[3][2] = 1u;
+    a.m[4][3] = 1u;
+
+    MrgJumpTable jt{};
+    jt.p[0] = mat5_pow(a, stride, kM);
+    for (int b = 1; b < kJumpBits; ++b) {
+        jt.p[b] = mat5_mul(jt.p[b - 1], jt.p[b - 1], kM);
+    }
+    return jt;
+}
+
+Taus2JumpTable build_taus2_jump_table(size_t stride) {
+    GF2Mat32 a1{}, a2{}, a3{};
+    for (int b = 0; b < 32; ++b) {
+        uint32_t u = 1u << b;
+        a1.cols[b] = ((u & 4294967294u) << 12) ^ (((u << 13) ^ u) >> 19);
+        a2.cols[b] = ((u & 4294967288u) << 4) ^ (((u << 2) ^ u) >> 25);
+        a3.cols[b] = ((u & 4294967280u) << 17) ^ (((u << 3) ^ u) >> 11);
+    }
+    Taus2JumpTable jt{};
+    jt.p1[0] = gf2_pow(a1, stride);
+    jt.p2[0] = gf2_pow(a2, stride);
+    jt.p3[0] = gf2_pow(a3, stride);
+    for (int b = 1; b < kJumpBits; ++b) {
+        jt.p1[b] = gf2_compose(jt.p1[b - 1], jt.p1[b - 1]);
+        jt.p2[b] = gf2_compose(jt.p2[b - 1], jt.p2[b - 1]);
+        jt.p3[b] = gf2_compose(jt.p3[b - 1], jt.p3[b - 1]);
+    }
+    return jt;
+}
+
+__global__ void cmrg_init_kernel(uint32_t *state, uint32_t seed) {
+    if (blockIdx.x != 0 || threadIdx.x != 0) return;
     const long long m1 = 2147483647LL;
     const long long m2 = 2145483479LL;
-    long long x1, x2, x3, y1, y2, y3;
-    int warm = 0;
-    if (init) {
-        uint32_t s = seed ? seed : 1u;
-        s *= 69069u;
-        x1 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x2 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x3 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        y1 = (long long)(s % 2145483479u);
-        s *= 69069u;
-        y2 = (long long)(s % 2145483479u);
-        s *= 69069u;
-        y3 = (long long)(s % 2145483479u);
-        warm = 7;
-    } else {
-        x1 = (long long)state[0];
-        x2 = (long long)state[1];
-        x3 = (long long)state[2];
-        y1 = (long long)state[3];
-        y2 = (long long)state[4];
-        y3 = (long long)state[5];
+    uint32_t s = seed ? seed : 1u;
+    s *= 69069u;
+    long long x1 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x2 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x3 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long y1 = (long long)(s % 2145483479u);
+    s *= 69069u;
+    long long y2 = (long long)(s % 2145483479u);
+    s *= 69069u;
+    long long y3 = (long long)(s % 2145483479u);
+
+    for (int step = 0; step < 7; ++step) {
+        uint32_t h3 = (uint32_t)x3 / 11714u;
+        long long p3 = 183326LL * (x3 - (long long)h3 * 11714LL) - (long long)h3 * 2883LL;
+        uint32_t h2 = (uint32_t)x2 / 33921u;
+        long long p2 = 63308LL * (x2 - (long long)h2 * 33921LL) - (long long)h2 * 12979LL;
+        if (p3 < 0) p3 += m1;
+        if (p2 < 0) p2 += m1;
+        x3 = x2;
+        x2 = x1;
+        x1 = p2 - p3;
+        if (x1 < 0) x1 += m1;
+
+        uint32_t k3 = (uint32_t)y3 / 3976u;
+        long long q3 = 539608LL * (y3 - (long long)k3 * 3976LL) - (long long)k3 * 2071LL;
+        uint32_t k1 = (uint32_t)y1 / 24919u;
+        long long q1 = 86098LL * (y1 - (long long)k1 * 24919LL) - (long long)k1 * 7417LL;
+        if (q3 < 0) q3 += m2;
+        if (q1 < 0) q1 += m2;
+        y3 = y2;
+        y2 = y1;
+        y1 = q1 - q3;
+        if (y1 < 0) y1 += m2;
+    }
+    state[0] = (uint32_t)x1;
+    state[1] = (uint32_t)x2;
+    state[2] = (uint32_t)x3;
+    state[3] = (uint32_t)y1;
+    state[4] = (uint32_t)y2;
+    state[5] = (uint32_t)y3;
+}
+
+__global__ void cmrg_stream_parallel_kernel(uint32_t *state, uint32_t *out, int count, int stride,
+                                            CmrgJumpTable jt) {
+    int tid = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    int idx_start = tid * stride;
+    if (idx_start >= count) return;
+    int idx_end = idx_start + stride;
+    if (idx_end > count) idx_end = count;
+
+    constexpr uint32_t kM1 = 2147483647u;
+    constexpr uint32_t kM2 = 2145483479u;
+    uint32_t vx[3] = {state[0], state[1], state[2]};
+    uint32_t vy[3] = {state[3], state[4], state[5]};
+    for (int b = 0; b < kJumpBits; ++b) {
+        if ((tid >> b) & 1) {
+            uint32_t nx[3], ny[3];
+            mat3_mul_vec(jt.p1[b], vx, nx, kM1);
+            mat3_mul_vec(jt.p2[b], vy, ny, kM2);
+            vx[0] = nx[0];
+            vx[1] = nx[1];
+            vx[2] = nx[2];
+            vy[0] = ny[0];
+            vy[1] = ny[1];
+            vy[2] = ny[2];
+        }
     }
 
-    for (int step = 0; step < warm + count; ++step) {
+    const long long m1 = 2147483647LL;
+    const long long m2 = 2145483479LL;
+    long long x1 = (long long)vx[0], x2 = (long long)vx[1], x3 = (long long)vx[2];
+    long long y1 = (long long)vy[0], y2 = (long long)vy[1], y3 = (long long)vy[2];
+
+    for (int idx = idx_start; idx < idx_end; ++idx) {
         uint32_t h3 = (uint32_t)x3 / 11714u;
         long long p3 = 183326LL * (x3 - (long long)h3 * 11714LL) - (long long)h3 * 2883LL;
         uint32_t h2 = (uint32_t)x2 / 33921u;
@@ -166,49 +426,35 @@ __global__ void cmrg_stream_kernel(uint32_t *state, uint32_t *out, int count, ui
 
         long long ans = x1 - y1;
         if (ans < 0) ans += m1;
-        if (step >= warm) {
-            out[step - warm] = (uint32_t)ans;
-        }
+        out[idx] = (uint32_t)ans;
     }
 
-    state[0] = (uint32_t)x1;
-    state[1] = (uint32_t)x2;
-    state[2] = (uint32_t)x3;
-    state[3] = (uint32_t)y1;
-    state[4] = (uint32_t)y2;
-    state[5] = (uint32_t)y3;
+    if (idx_end == count) {
+        state[0] = (uint32_t)x1;
+        state[1] = (uint32_t)x2;
+        state[2] = (uint32_t)x3;
+        state[3] = (uint32_t)y1;
+        state[4] = (uint32_t)y2;
+        state[5] = (uint32_t)y3;
+    }
 }
 
-__global__ void mrg_stream_kernel(uint32_t *state, uint32_t *out, int count, uint32_t seed,
-                                  int init) {
-    if (blockIdx.x != 0 || threadIdx.x != 0) {
-        return;
-    }
+__global__ void mrg_init_kernel(uint32_t *state, uint32_t seed) {
+    if (blockIdx.x != 0 || threadIdx.x != 0) return;
     const long long m = 2147483647LL;
-    long long x1, x2, x3, x4, x5;
-    int warm = 0;
-    if (init) {
-        uint32_t s = seed ? seed : 1u;
-        s *= 69069u;
-        x1 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x2 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x3 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x4 = (long long)(s % 2147483647u);
-        s *= 69069u;
-        x5 = (long long)(s % 2147483647u);
-        warm = 6;
-    } else {
-        x1 = (long long)state[0];
-        x2 = (long long)state[1];
-        x3 = (long long)state[2];
-        x4 = (long long)state[3];
-        x5 = (long long)state[4];
-    }
+    uint32_t s = seed ? seed : 1u;
+    s *= 69069u;
+    long long x1 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x2 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x3 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x4 = (long long)(s % 2147483647u);
+    s *= 69069u;
+    long long x5 = (long long)(s % 2147483647u);
 
-    for (int step = 0; step < warm + count; ++step) {
+    for (int step = 0; step < 6; ++step) {
         uint32_t h5 = (uint32_t)x5 / 20554u;
         long long p5 = 104480LL * (x5 - (long long)h5 * 20554LL) - (long long)h5 * 1727LL;
         if (p5 > 0) p5 -= m;
@@ -222,11 +468,7 @@ __global__ void mrg_stream_kernel(uint32_t *state, uint32_t *out, int count, uin
         x3 = x2;
         x2 = x1;
         x1 = p1;
-        if (step >= warm) {
-            out[step - warm] = (uint32_t)x1;
-        }
     }
-
     state[0] = (uint32_t)x1;
     state[1] = (uint32_t)x2;
     state[2] = (uint32_t)x3;
@@ -234,43 +476,110 @@ __global__ void mrg_stream_kernel(uint32_t *state, uint32_t *out, int count, uin
     state[4] = (uint32_t)x5;
 }
 
-__global__ void taus2_stream_kernel(uint32_t *state, uint32_t *out, int count, uint32_t seed,
-                                    int init) {
-    if (blockIdx.x != 0 || threadIdx.x != 0) {
-        return;
-    }
-    uint32_t s1, s2, s3;
-    int warm = 0;
-    if (init) {
-        uint32_t s = seed ? seed : 1u;
-        s1 = 69069u * s;
-        if (s1 < 2u) s1 += 2u;
-        s2 = 69069u * s1;
-        if (s2 < 8u) s2 += 8u;
-        s3 = 69069u * s2;
-        if (s3 < 16u) s3 += 16u;
-        warm = 6;
-    } else {
-        s1 = state[0];
-        s2 = state[1];
-        s3 = state[2];
+__global__ void mrg_stream_parallel_kernel(uint32_t *state, uint32_t *out, int count, int stride,
+                                           MrgJumpTable jt) {
+    int tid = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    int idx_start = tid * stride;
+    if (idx_start >= count) return;
+    int idx_end = idx_start + stride;
+    if (idx_end > count) idx_end = count;
+
+    constexpr uint32_t kM = 2147483647u;
+    uint32_t v[5] = {state[0], state[1], state[2], state[3], state[4]};
+    for (int b = 0; b < kJumpBits; ++b) {
+        if ((tid >> b) & 1) {
+            uint32_t nv[5];
+            mat5_mul_vec(jt.p[b], v, nv, kM);
+            for (int i = 0; i < 5; ++i) v[i] = nv[i];
+        }
     }
 
-    for (int step = 0; step < warm + count; ++step) {
+    const long long m = 2147483647LL;
+    long long x1 = (long long)v[0], x2 = (long long)v[1], x3 = (long long)v[2],
+              x4 = (long long)v[3], x5 = (long long)v[4];
+    for (int idx = idx_start; idx < idx_end; ++idx) {
+        uint32_t h5 = (uint32_t)x5 / 20554u;
+        long long p5 = 104480LL * (x5 - (long long)h5 * 20554LL) - (long long)h5 * 1727LL;
+        if (p5 > 0) p5 -= m;
+        uint32_t h1 = (uint32_t)x1 / 20u;
+        long long p1 = 107374182LL * (x1 - (long long)h1 * 20LL) - (long long)h1 * 7LL;
+        if (p1 < 0) p1 += m;
+        p1 += p5;
+        if (p1 < 0) p1 += m;
+        x5 = x4;
+        x4 = x3;
+        x3 = x2;
+        x2 = x1;
+        x1 = p1;
+        out[idx] = (uint32_t)x1;
+    }
+
+    if (idx_end == count) {
+        state[0] = (uint32_t)x1;
+        state[1] = (uint32_t)x2;
+        state[2] = (uint32_t)x3;
+        state[3] = (uint32_t)x4;
+        state[4] = (uint32_t)x5;
+    }
+}
+
+__global__ void taus2_init_kernel(uint32_t *state, uint32_t seed) {
+    if (blockIdx.x != 0 || threadIdx.x != 0) return;
+    uint32_t s = seed ? seed : 1u;
+    uint32_t s1 = 69069u * s;
+    if (s1 < 2u) s1 += 2u;
+    uint32_t s2 = 69069u * s1;
+    if (s2 < 8u) s2 += 8u;
+    uint32_t s3 = 69069u * s2;
+    if (s3 < 16u) s3 += 16u;
+
+    for (int step = 0; step < 6; ++step) {
         uint32_t b1 = ((s1 << 13) ^ s1) >> 19;
         s1 = ((s1 & 4294967294u) << 12) ^ b1;
         uint32_t b2 = ((s2 << 2) ^ s2) >> 25;
         s2 = ((s2 & 4294967288u) << 4) ^ b2;
         uint32_t b3 = ((s3 << 3) ^ s3) >> 11;
         s3 = ((s3 & 4294967280u) << 17) ^ b3;
-        if (step >= warm) {
-            out[step - warm] = s1 ^ s2 ^ s3;
-        }
     }
-
     state[0] = s1;
     state[1] = s2;
     state[2] = s3;
+}
+
+__global__ void taus2_stream_parallel_kernel(uint32_t *state, uint32_t *out, int count, int stride,
+                                             Taus2JumpTable jt) {
+    int tid = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    int idx_start = tid * stride;
+    if (idx_start >= count) return;
+    int idx_end = idx_start + stride;
+    if (idx_end > count) idx_end = count;
+
+    uint32_t s1 = state[0];
+    uint32_t s2 = state[1];
+    uint32_t s3 = state[2];
+    for (int b = 0; b < kJumpBits; ++b) {
+        if ((tid >> b) & 1) {
+            s1 = gf2_apply(jt.p1[b], s1);
+            s2 = gf2_apply(jt.p2[b], s2);
+            s3 = gf2_apply(jt.p3[b], s3);
+        }
+    }
+
+    for (int idx = idx_start; idx < idx_end; ++idx) {
+        uint32_t b1 = ((s1 << 13) ^ s1) >> 19;
+        s1 = ((s1 & 4294967294u) << 12) ^ b1;
+        uint32_t b2 = ((s2 << 2) ^ s2) >> 25;
+        s2 = ((s2 & 4294967288u) << 4) ^ b2;
+        uint32_t b3 = ((s3 << 3) ^ s3) >> 11;
+        s3 = ((s3 & 4294967280u) << 17) ^ b3;
+        out[idx] = s1 ^ s2 ^ s3;
+    }
+
+    if (idx_end == count) {
+        state[0] = s1;
+        state[1] = s2;
+        state[2] = s3;
+    }
 }
 
 __global__ void choose_candidates_kernel(const uint32_t *raw, uint32_t valid_len, uint32_t start,
@@ -451,15 +760,39 @@ bool launch_rng_stream(int kind, uint32_t *d_state, uint32_t *d_raw, size_t raw_
             gfsr4_stream_kernel<<<1, 256, 0, stream>>>(d_state, d_raw, (int)raw_count, seed, init,
                                                        (int)(offset % 16384));
             break;
-        case P21_RNG_CMRG:
-            cmrg_stream_kernel<<<1, 1, 0, stream>>>(d_state, d_raw, (int)raw_count, seed, init);
+        case P21_RNG_CMRG: {
+            if (init) {
+                cmrg_init_kernel<<<1, 1, 0, stream>>>(d_state, seed);
+            }
+            size_t n_workers = std::min((size_t)kJumpWorkers, raw_count);
+            size_t stride = (raw_count + n_workers - 1) / n_workers;
+            int active_blocks = (int)((n_workers + kBlockSize - 1) / kBlockSize);
+            cmrg_stream_parallel_kernel<<<active_blocks, kBlockSize, 0, stream>>>(
+                d_state, d_raw, (int)raw_count, (int)stride, build_cmrg_jump_table(stride));
             break;
-        case P21_RNG_MRG:
-            mrg_stream_kernel<<<1, 1, 0, stream>>>(d_state, d_raw, (int)raw_count, seed, init);
+        }
+        case P21_RNG_MRG: {
+            if (init) {
+                mrg_init_kernel<<<1, 1, 0, stream>>>(d_state, seed);
+            }
+            size_t n_workers = std::min((size_t)kJumpWorkers, raw_count);
+            size_t stride = (raw_count + n_workers - 1) / n_workers;
+            int active_blocks = (int)((n_workers + kBlockSize - 1) / kBlockSize);
+            mrg_stream_parallel_kernel<<<active_blocks, kBlockSize, 0, stream>>>(
+                d_state, d_raw, (int)raw_count, (int)stride, build_mrg_jump_table(stride));
             break;
-        case P21_RNG_TAUS2:
-            taus2_stream_kernel<<<1, 1, 0, stream>>>(d_state, d_raw, (int)raw_count, seed, init);
+        }
+        case P21_RNG_TAUS2: {
+            if (init) {
+                taus2_init_kernel<<<1, 1, 0, stream>>>(d_state, seed);
+            }
+            size_t n_workers = std::min((size_t)kJumpWorkers, raw_count);
+            size_t stride = (raw_count + n_workers - 1) / n_workers;
+            int active_blocks = (int)((n_workers + kBlockSize - 1) / kBlockSize);
+            taus2_stream_parallel_kernel<<<active_blocks, kBlockSize, 0, stream>>>(
+                d_state, d_raw, (int)raw_count, (int)stride, build_taus2_jump_table(stride));
             break;
+        }
         default:
             return false;
     }

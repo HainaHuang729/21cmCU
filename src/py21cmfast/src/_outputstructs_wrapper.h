@@ -174,4 +174,5 @@ typedef struct P21CudaStats {
     unsigned long long int halo_sampler_runs;
     unsigned long long int halo_perturb_runs;
     unsigned long long int dndm_table_runs;
+    unsigned long long int cond_table_runs;
 } P21CudaStats;

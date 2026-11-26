@@ -1,9 +1,11 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <vector>
 
 #include "cuda_common.cuh"
 #include "cuda_halo_props.cuh"
+#include "cuda_philox.cuh"
 #include "cuda_tables.cuh"
 
 extern "C" {
@@ -15,6 +17,8 @@ namespace {
 constexpr int kBlockThreads = 256;
 constexpr int kMaxScanBlocks = 1024;
 constexpr int kLocalCap = 512;
+constexpr int kBigCap = 32768;
+constexpr int kMaxBigHalos = 4096;
 
 /* ==================== Part A: Conditional HMF & dNdM Table Builders ==================== */
 
@@ -353,154 +357,6 @@ __global__ void dndm_inverse_kernel(int nx, int np, double xmin, double xmax, do
     }
 }
 
-/* ==================== Part B: Deterministic Philox4x32-10 PRNG ==================== */
-
-struct P21PhiloxRng {
-    uint32_t k0, k1;
-    uint32_t c0, c1, c2, c3;
-    uint32_t buf[4];
-    int idx;
-
-    __device__ void refill() {
-        uint32_t v0 = c0, v1 = c1, v2 = c2, v3 = c3;
-        uint32_t rk0 = k0, rk1 = k1;
-        constexpr uint32_t kM0 = 0xD2511F53U;
-        constexpr uint32_t kM1 = 0xCD9E8D57U;
-        constexpr uint32_t kW0 = 0x9E3779B9U;
-        constexpr uint32_t kW1 = 0xBB67AE85U;
-
-        for (int r = 0; r < 10; ++r) {
-            uint32_t hi0 = __umulhi(kM0, v0);
-            uint32_t lo0 = kM0 * v0;
-            uint32_t hi1 = __umulhi(kM1, v2);
-            uint32_t lo1 = kM1 * v2;
-            uint32_t nv0 = hi1 ^ v1 ^ rk0;
-            uint32_t nv1 = lo1;
-            uint32_t nv2 = hi0 ^ v3 ^ rk1;
-            uint32_t nv3 = lo0;
-            v0 = nv0;
-            v1 = nv1;
-            v2 = nv2;
-            v3 = nv3;
-            rk0 += kW0;
-            rk1 += kW1;
-        }
-        buf[0] = v0;
-        buf[1] = v1;
-        buf[2] = v2;
-        buf[3] = v3;
-        idx = 0;
-        if (++c0 == 0U) {
-            c1 = (c1 & 0xFF000000U) | ((c1 + 1U) & 0x00FFFFFFU);
-        }
-    }
-
-    __device__ void init(uint64_t seed, uint64_t stream_id, uint32_t substream = 0) {
-        k0 = (uint32_t)(seed & 0xFFFFFFFFULL);
-        k1 = (uint32_t)(seed >> 32);
-        c0 = 0U;
-        c1 = (substream & 0xFFU) << 24;
-        c2 = (uint32_t)(stream_id & 0xFFFFFFFFULL);
-        c3 = (uint32_t)(stream_id >> 32);
-        idx = 4;
-    }
-
-    __device__ uint32_t next_u32() {
-        if (idx >= 4) {
-            refill();
-        }
-        return buf[idx++];
-    }
-
-    __device__ double uniform() {
-        uint64_t hi = (uint64_t)next_u32();
-        uint64_t lo = (uint64_t)next_u32();
-        uint64_t u53 = ((hi << 21) ^ (lo >> 11)) & ((1ULL << 53) - 1ULL);
-        return (double)u53 * (1.0 / 9007199254740992.0);
-    }
-
-    __device__ double ugaussian() {
-        double u1 = uniform();
-        if (u1 < 1e-300) {
-            u1 = 1e-300;
-        }
-        double u2 = uniform();
-        return sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-    }
-
-    __device__ double ugaussian_tail(double a) {
-        if (a <= 0.0) {
-            double z = ugaussian();
-            return fabs(z);
-        }
-        if (a < 1.0) {
-            while (true) {
-                double z = ugaussian();
-                if (z > a) {
-                    return z;
-                }
-            }
-        }
-        double s = a * a;
-        while (true) {
-            double u = uniform();
-            double v = uniform();
-            double d = 1.0 - u;
-            if (d < 1e-300) {
-                d = 1e-300;
-            }
-            double x = sqrt(s - 2.0 * log(d));
-            if (x * v <= a) {
-                return x;
-            }
-        }
-    }
-
-    __device__ int poisson(double lam) {
-        if (lam <= 0.0) {
-            return 0;
-        }
-        if (lam < 30.0) {
-            double L = exp(-lam);
-            int k = 0;
-            double p = 1.0;
-            do {
-                ++k;
-                double u = 1.0 - uniform();
-                p *= u;
-            } while (p > L);
-            return k - 1;
-        }
-        /* Hormann PTRS rejection algorithm for large lambda >= 30. */
-        double slam = sqrt(lam);
-        double loglam = log(lam);
-        double b = 0.931 + 2.53 * slam;
-        double a = -0.059 + 0.02483 * b;
-        double inv_alpha = 1.1239 + 1.1328 / (b - 3.4);
-        double v_r = 0.9277 - 3.6224 / (b - 2.0);
-        while (true) {
-            double u = uniform() - 0.5;
-            double v = uniform();
-            double us = 0.5 - fabs(u);
-            double kf = floor((2.0 * a / us + b) * u + lam + 0.43);
-            if (kf < 0.0) {
-                continue;
-            }
-            int k = (int)kf;
-            if (us >= 0.07 && v <= v_r) {
-                return k;
-            }
-            if (us < 0.013 && v > us) {
-                continue;
-            }
-            if ((log(v) + log(inv_alpha) - log(a / (us * us) + b)) <=
-                (-lam + (double)k * loglam - lgamma((double)k + 1.0))) {
-                return k;
-            }
-        }
-    }
-};
-
 /* ==================== Part C: GPU Halo Sampler Kernels ==================== */
 
 struct SamplerKernelParams {
@@ -619,7 +475,8 @@ __device__ static inline double eval_j_split_dev(double u_res, double gamma1,
 
 __device__ static inline bool stoc_sample_cond_dev(
     const SamplerKernelParams &p, const CondState &cs, P21PhiloxRng &rng, bool store_masses,
-    float *M_out, int *kept_count_out, int *overflow_flag) {
+    float *M_out, int *kept_count_out, int *overflow_flag, float *work_buf0,
+    float *work_buf1, int work_cap) {
     *kept_count_out = 0;
 
     if (cs.delta <= p.delta_min) {
@@ -662,12 +519,14 @@ __device__ static inline bool stoc_sample_cond_dev(
             }
             return true;
         }
-        float buf[kLocalCap];
+        float *buf = work_buf0;
         int n = 0;
         double m_prog = 0.0;
         while (m_prog < exp_M) {
-            if (n >= kLocalCap) {
-                atomicExch(overflow_flag, 1);
+            if (!buf || n >= work_cap) {
+                if (overflow_flag != nullptr) {
+                    atomicExch(overflow_flag, 1);
+                }
                 return false;
             }
             float m = (float)sample_dndm_inv_dev(p, cs, rng);
@@ -720,7 +579,9 @@ __device__ static inline bool stoc_sample_cond_dev(
         int guard = 0;
         while (M_rem > p.sampler_min_mass) {
             if (++guard > 100000) {
-                atomicExch(overflow_flag, 1);
+                if (overflow_flag != nullptr) {
+                    atomicExch(overflow_flag, 1);
+                }
                 return false;
             }
             double sigma_r = p21_eval_sigma_dev(lnM_rem, p.sig_tbl);
@@ -771,8 +632,14 @@ __device__ static inline bool stoc_sample_cond_dev(
     }
 
     if (p.sample_method == SAMPLE_BINARY_SPLIT) {
-        float d_pts[kLocalCap];
-        float m_pts[kLocalCap];
+        if (work_cap < 1 || !work_buf0 || !work_buf1) {
+            if (overflow_flag != nullptr) {
+                atomicExch(overflow_flag, 1);
+            }
+            return false;
+        }
+        float *d_pts = work_buf0;
+        float *m_pts = work_buf1;
         d_pts[0] = (float)(p.delta_c_sph / p.growth_in);
         m_pts[0] = (float)cs.M_cond;
         double d_target = p.delta_c_sph / p.growth_out;
@@ -869,20 +736,12 @@ __device__ static inline bool stoc_sample_cond_dev(
             if (save) {
                 if (m_prog1 > m_res && (float)m_prog1 >= (float)p.sampler_min_mass) {
                     if (store_masses) {
-                        if (kept >= kLocalCap) {
-                            atomicExch(overflow_flag, 1);
-                            return false;
-                        }
                         M_out[kept] = (float)m_prog1;
                     }
                     ++kept;
                 }
                 if (m_prog2 > m_res && (float)m_prog2 >= (float)p.sampler_min_mass) {
                     if (store_masses) {
-                        if (kept >= kLocalCap) {
-                            atomicExch(overflow_flag, 1);
-                            return false;
-                        }
                         M_out[kept] = (float)m_prog2;
                     }
                     ++kept;
@@ -895,8 +754,10 @@ __device__ static inline bool stoc_sample_cond_dev(
                     --idx;
                 }
                 if (m_prog2 > m_res) {
-                    if (n_points >= kLocalCap) {
-                        atomicExch(overflow_flag, 1);
+                    if (n_points >= work_cap) {
+                        if (overflow_flag != nullptr) {
+                            atomicExch(overflow_flag, 1);
+                        }
                         return false;
                     }
                     d_pts[n_points] = d_next;
@@ -974,7 +835,7 @@ __global__ void sampler_grid_count_kernel(size_t n_cells, SamplerKernelParams p,
     P21PhiloxRng rng;
     rng.init(seed, (uint64_t)idx, 0U);
     int kept = 0;
-    stoc_sample_cond_dev(p, cs, rng, false, nullptr, &kept, overflow_flag);
+    stoc_sample_cond_dev(p, cs, rng, false, nullptr, &kept, overflow_flag, nullptr, nullptr, 0);
     counts_out[idx] = (uint64_t)kept;
 }
 
@@ -1045,7 +906,8 @@ __global__ void sampler_grid_emit_kernel(size_t n_cells, SamplerKernelParams p, 
 
 __global__ void sampler_prog_count_kernel(size_t n_in, SamplerKernelParams p, uint64_t seed,
                                           const float *in_masses, uint64_t *counts_out,
-                                          int *overflow_flag, int *bad_mass_flag) {
+                                          int *overflow_flag, int *bad_mass_flag,
+                                          uint64_t *big_indices, int *n_big) {
     size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n_in) {
         return;
@@ -1064,22 +926,60 @@ __global__ void sampler_prog_count_kernel(size_t n_in, SamplerKernelParams p, ui
     P21PhiloxRng rng;
     rng.init(seed, (uint64_t)idx, 0U);
     int kept = 0;
-    stoc_sample_cond_dev(p, cs, rng, false, nullptr, &kept, overflow_flag);
+    float local_buf0[kLocalCap];
+    float local_buf1[kLocalCap];
+    if (!stoc_sample_cond_dev(p, cs, rng, false, nullptr, &kept, nullptr, local_buf0, local_buf1,
+                              kLocalCap)) {
+        if (p.sample_method == SAMPLE_MASS_LIMITED || p.sample_method == SAMPLE_BINARY_SPLIT) {
+            int slot = atomicAdd(n_big, 1);
+            if (slot < kMaxBigHalos) {
+                big_indices[slot] = (uint64_t)idx;
+            } else {
+                atomicExch(overflow_flag, 1);
+            }
+        } else {
+            atomicExch(overflow_flag, 1);
+        }
+        counts_out[idx] = 0ULL;
+        return;
+    }
     counts_out[idx] = (uint64_t)kept;
 }
 
-__global__ void sampler_prog_emit_kernel(size_t n_in, SamplerKernelParams p, uint64_t seed,
-                                         double m_to_r_pref, const float *in_masses,
-                                         const float *in_coords, const float *in_star_rng,
-                                         const float *in_sfr_rng, const float *in_xray_rng,
-                                         const uint64_t *offsets, float *out_masses,
-                                         float *out_coords, float *out_star_rng, float *out_sfr_rng,
-                                         float *out_xray_rng, int *overflow_flag) {
-    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n_in) {
+__global__ void sampler_prog_big_count_kernel(int n_big, const uint64_t *big_indices,
+                                              SamplerKernelParams p, uint64_t seed,
+                                              const float *in_masses, float *big_buf0,
+                                              float *big_buf1, uint64_t *counts_out,
+                                              int *overflow_flag) {
+    int b = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    if (b >= n_big) {
         return;
     }
+    size_t idx = (size_t)big_indices[b];
+    double m2 = (double)in_masses[idx];
 
+    CondState cs{};
+    setup_cond_state(p, m2, &cs);
+
+    P21PhiloxRng rng;
+    rng.init(seed, (uint64_t)idx, 0U);
+    int kept = 0;
+    float *b0 = big_buf0 + (size_t)b * (size_t)kBigCap;
+    float *b1 = big_buf1 ? (big_buf1 + (size_t)b * (size_t)kBigCap) : nullptr;
+    if (!stoc_sample_cond_dev(p, cs, rng, false, nullptr, &kept, overflow_flag, b0, b1,
+                              kBigCap)) {
+        counts_out[idx] = 0ULL;
+        return;
+    }
+    counts_out[idx] = (uint64_t)kept;
+}
+
+__device__ static inline void prog_emit_single_halo_dev(
+    size_t idx, const SamplerKernelParams &p, uint64_t seed, double m_to_r_pref,
+    const float *in_masses, const float *in_coords, const float *in_star_rng,
+    const float *in_sfr_rng, const float *in_xray_rng, const uint64_t *offsets,
+    float *out_masses, float *out_coords, float *out_star_rng, float *out_sfr_rng,
+    float *out_xray_rng, int *overflow_flag, float *work_buf0, float *work_buf1, int work_cap) {
     double m2 = (double)in_masses[idx];
     if (m2 < p.M_min || m2 > p.M_max_tables) {
         return;
@@ -1104,18 +1004,9 @@ __global__ void sampler_prog_emit_kernel(size_t n_in, SamplerKernelParams p, uin
                 ++kept;
             }
         }
-    } else {
-        if (p.sample_method == SAMPLE_PARTITION) {
-            stoc_sample_cond_dev(p, cs, rng, true, out_masses + write_pos, &kept, overflow_flag);
-        } else {
-            float tmp_masses[kLocalCap];
-            if (!stoc_sample_cond_dev(p, cs, rng, true, tmp_masses, &kept, overflow_flag)) {
-                return;
-            }
-            for (int i = 0; i < kept; ++i) {
-                out_masses[write_pos + (uint64_t)i] = tmp_masses[i];
-            }
-        }
+    } else if (!stoc_sample_cond_dev(p, cs, rng, true, out_masses + write_pos, &kept, overflow_flag,
+                                     work_buf0, work_buf1, work_cap)) {
+        return;
     }
 
     double r2 = cbrt(m2 / m_to_r_pref);
@@ -1141,6 +1032,48 @@ __global__ void sampler_prog_emit_kernel(size_t n_in, SamplerKernelParams p, uin
         set_prop_rng_dev(prng, true, p.corr_star, p.corr_sfr, p.corr_xray, sr_in, sfr_in, xr_in,
                          &out_star_rng[dst], &out_sfr_rng[dst], &out_xray_rng[dst]);
     }
+}
+
+__global__ void sampler_prog_emit_kernel(size_t n_in, SamplerKernelParams p, uint64_t seed,
+                                         double m_to_r_pref, const float *in_masses,
+                                         const float *in_coords, const float *in_star_rng,
+                                         const float *in_sfr_rng, const float *in_xray_rng,
+                                         const uint64_t *offsets, float *out_masses,
+                                         float *out_coords, float *out_star_rng, float *out_sfr_rng,
+                                         float *out_xray_rng, int *overflow_flag) {
+    (void)overflow_flag;
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n_in) {
+        return;
+    }
+    float local_buf0[kLocalCap];
+    float local_buf1[kLocalCap];
+    prog_emit_single_halo_dev(idx, p, seed, m_to_r_pref, in_masses, in_coords, in_star_rng,
+                              in_sfr_rng, in_xray_rng, offsets, out_masses, out_coords,
+                              out_star_rng, out_sfr_rng, out_xray_rng, nullptr, local_buf0,
+                              local_buf1, kLocalCap);
+}
+
+__global__ void sampler_prog_big_emit_kernel(int n_big, const uint64_t *big_indices,
+                                             SamplerKernelParams p, uint64_t seed,
+                                             double m_to_r_pref, const float *in_masses,
+                                             const float *in_coords, const float *in_star_rng,
+                                             const float *in_sfr_rng, const float *in_xray_rng,
+                                             const uint64_t *offsets, float *big_buf0,
+                                             float *big_buf1, float *out_masses, float *out_coords,
+                                             float *out_star_rng, float *out_sfr_rng,
+                                             float *out_xray_rng, int *overflow_flag) {
+    int b = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    if (b >= n_big) {
+        return;
+    }
+    size_t idx = (size_t)big_indices[b];
+    float *b0 = big_buf0 + (size_t)b * (size_t)kBigCap;
+    float *b1 = big_buf1 ? (big_buf1 + (size_t)b * (size_t)kBigCap) : nullptr;
+    prog_emit_single_halo_dev(idx, p, seed, m_to_r_pref, in_masses, in_coords, in_star_rng,
+                              in_sfr_rng, in_xray_rng, offsets, out_masses, out_coords,
+                              out_star_rng, out_sfr_rng, out_xray_rng, overflow_flag, b0, b1,
+                              kBigCap);
 }
 
 /* ==================== Block Prefix Scan Utilities ==================== */
@@ -1337,7 +1270,8 @@ void free_sampler_kernel_params(SamplerKernelParams *p, cudaStream_t stream) {
     p21_free_dev_table(&p->j_split_1d, stream);
 }
 
-void omp_static_bounds(size_t n, int t, int n_threads, size_t *start_out, size_t *end_out) {
+__device__ static inline void dev_omp_static_bounds(size_t n, int t, int n_threads, size_t *start_out,
+                                                  size_t *end_out) {
     size_t base = n / (size_t)n_threads;
     size_t rem = n % (size_t)n_threads;
     size_t ut = (size_t)t;
@@ -1345,6 +1279,39 @@ void omp_static_bounds(size_t n, int t, int n_threads, size_t *start_out, size_t
     size_t len = base + (ut < rem ? 1ULL : 0ULL);
     *start_out = s;
     *end_out = s + len;
+}
+
+__global__ void gather_omp_thread_counts_kernel(int from_grid, int n_threads, uint64_t total_sampled,
+                                                size_t nhalo_in, size_t n_work, size_t stride_cells,
+                                                size_t n_offsets, const uint64_t *d_offsets,
+                                                uint64_t *out_counts) {
+    int t = (int)(blockIdx.x * blockDim.x + threadIdx.x);
+    if (t >= n_threads) {
+        return;
+    }
+    uint64_t cnt = 0;
+    if (from_grid) {
+        size_t ls = 0, le = 0, xs = 0, xe = 0;
+        dev_omp_static_bounds(nhalo_in, t, n_threads, &ls, &le);
+        dev_omp_static_bounds(n_work, t, n_threads, &xs, &xe);
+        cnt = (uint64_t)(le - ls);
+        if (xe > xs) {
+            size_t c_start = xs * stride_cells;
+            size_t c_end = xe * stride_cells;
+            uint64_t off_s = d_offsets[c_start];
+            uint64_t off_e = (c_end < n_offsets) ? d_offsets[c_end] : total_sampled;
+            cnt += (off_e - off_s);
+        }
+    } else {
+        size_t s = 0, e = 0;
+        dev_omp_static_bounds(n_work, t, n_threads, &s, &e);
+        if (e > s) {
+            uint64_t off_s = d_offsets[s];
+            uint64_t off_e = (e < n_offsets) ? d_offsets[e] : total_sampled;
+            cnt = off_e - off_s;
+        }
+    }
+    out_counts[t] = cnt;
 }
 
 void zero_halo_catalog_tail(HaloCatalog *hc, size_t start_idx, size_t buf_size) {
@@ -1584,31 +1551,28 @@ extern "C" int p21_cuda_sample_halo_grids(unsigned long long int seed, double re
     uint64_t total_halos = (uint64_t)nhalo_in + n_sampled;
     bool any_overflow = (total_halos > buf_size);
 
-    for (int t = 0; t < n_threads; ++t) {
-        size_t ls, le, xs, xe;
-        omp_static_bounds(nhalo_in, t, n_threads, &ls, &le);
-        omp_static_bounds(lo_nx, t, n_threads, &xs, &xe);
-        uint64_t cnt = (uint64_t)(le - ls);
-        if (xe > xs) {
-            size_t c_start = xs * lo_nx * lo_nz;
-            size_t c_end = xe * lo_nx * lo_nz;
-            uint64_t off_s = 0, off_e = 0;
-            ok = ok && P21_CUDA_OK(cudaMemcpyAsync(&off_s, d_offsets + c_start, sizeof(uint64_t),
-                                                   cudaMemcpyDeviceToHost, stream));
-            if (c_end < n_cells) {
-                ok = ok && P21_CUDA_OK(cudaMemcpyAsync(&off_e, d_offsets + c_end, sizeof(uint64_t),
-                                                       cudaMemcpyDeviceToHost, stream));
-            } else {
-                off_e = n_sampled;
+    uint64_t *d_tcounts = (uint64_t *)p21_cuda_pool_alloc((size_t)n_threads * sizeof(uint64_t), stream);
+    std::vector<uint64_t> h_tcounts((size_t)n_threads, 0ULL);
+    if (!d_tcounts) {
+        ok = false;
+    } else {
+        int g = (n_threads + kBlockThreads - 1) / kBlockThreads;
+        gather_omp_thread_counts_kernel<<<g, kBlockThreads, 0, stream>>>(
+            1, n_threads, n_sampled, (size_t)nhalo_in, lo_nx, (size_t)lo_nx * lo_nz, n_cells,
+            d_offsets, d_tcounts);
+        ok = P21_CUDA_OK(cudaGetLastError()) &&
+             P21_CUDA_OK(cudaMemcpyAsync(h_tcounts.data(), d_tcounts,
+                                         (size_t)n_threads * sizeof(uint64_t),
+                                         cudaMemcpyDeviceToHost, stream)) &&
+             P21_CUDA_OK(cudaStreamSynchronize(stream));
+        p21_cuda_pool_free(d_tcounts, stream);
+    }
+    if (ok) {
+        for (int t = 0; t < n_threads; ++t) {
+            thread_counts_out[t] = (unsigned long long int)h_tcounts[(size_t)t];
+            if (h_tcounts[(size_t)t] > arraysize_local) {
+                any_overflow = true;
             }
-            if (ok) {
-                ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
-                cnt += (off_e - off_s);
-            }
-        }
-        thread_counts_out[t] = (unsigned long long int)cnt;
-        if (cnt > arraysize_local) {
-            any_overflow = true;
         }
     }
 
@@ -1760,34 +1724,64 @@ extern "C" int p21_cuda_sample_halo_progenitors(unsigned long long int seed, dou
 
     uint64_t *d_counts = (uint64_t *)p21_cuda_pool_alloc(nhalo_in * sizeof(uint64_t), stream);
     uint64_t *d_offsets = (uint64_t *)p21_cuda_pool_alloc(nhalo_in * sizeof(uint64_t), stream);
-    int *d_flags = (int *)p21_cuda_pool_alloc(2 * sizeof(int), stream);
+    int *d_flags = (int *)p21_cuda_pool_alloc(3 * sizeof(int), stream);
+    uint64_t *d_big_indices =
+        (uint64_t *)p21_cuda_pool_alloc((size_t)kMaxBigHalos * sizeof(uint64_t), stream);
 
     bool ok = d_in_m && d_in_c && d_in_sr && d_in_sfrr && d_in_xr && d_counts && d_offsets &&
-              d_flags && P21_CUDA_OK(cudaMemsetAsync(d_flags, 0, 2 * sizeof(int), stream));
+              d_flags && d_big_indices &&
+              P21_CUDA_OK(cudaMemsetAsync(d_flags, 0, 3 * sizeof(int), stream));
 
-    int h_flags[2] = {0, 0};
+    int h_flags[3] = {0, 0, 0};
+    int h_n_big = 0;
+    float *d_big_buf0 = nullptr;
+    float *d_big_buf1 = nullptr;
     uint64_t total_halos = 0;
     if (ok) {
         int blocks = (int)((nhalo_in + kBlockThreads - 1) / kBlockThreads);
         sampler_prog_count_kernel<<<blocks, kBlockThreads, 0, stream>>>(
-            nhalo_in, skp, (uint64_t)seed, d_in_m, d_counts, d_flags, d_flags + 1);
+            nhalo_in, skp, (uint64_t)seed, d_in_m, d_counts, d_flags, d_flags + 1, d_big_indices,
+            d_flags + 2);
         ok = P21_CUDA_OK(cudaGetLastError()) &&
-             P21_CUDA_OK(cudaMemcpyAsync(h_flags, d_flags, 2 * sizeof(int), cudaMemcpyDeviceToHost,
+             P21_CUDA_OK(cudaMemcpyAsync(h_flags, d_flags, 3 * sizeof(int), cudaMemcpyDeviceToHost,
                                          stream)) &&
              P21_CUDA_OK(cudaStreamSynchronize(stream));
     }
     if (ok && h_flags[1] != 0) {
+        p21_cuda_pool_free(d_big_indices, stream);
         p21_cuda_pool_free(d_counts, stream);
         p21_cuda_pool_free(d_offsets, stream);
         p21_cuda_pool_free(d_flags, stream);
         free_sampler_kernel_params(&skp, stream);
         return ValueError;
     }
+    if (ok && h_flags[0] == 0 && h_flags[2] > 0) {
+        h_n_big = h_flags[2];
+        size_t big_bytes = (size_t)h_n_big * (size_t)kBigCap * sizeof(float);
+        d_big_buf0 = (float *)p21_cuda_pool_alloc(big_bytes, stream);
+        d_big_buf1 =
+            (method == SAMPLE_BINARY_SPLIT) ? (float *)p21_cuda_pool_alloc(big_bytes, stream) : nullptr;
+        if (!d_big_buf0 || (method == SAMPLE_BINARY_SPLIT && !d_big_buf1)) {
+            ok = false;
+        } else {
+            int big_blocks = (h_n_big + kBlockThreads - 1) / kBlockThreads;
+            sampler_prog_big_count_kernel<<<big_blocks, kBlockThreads, 0, stream>>>(
+                h_n_big, d_big_indices, skp, (uint64_t)seed, d_in_m, d_big_buf0, d_big_buf1,
+                d_counts, d_flags);
+            ok = P21_CUDA_OK(cudaGetLastError()) &&
+                 P21_CUDA_OK(cudaMemcpyAsync(h_flags, d_flags, sizeof(int),
+                                             cudaMemcpyDeviceToHost, stream)) &&
+                 P21_CUDA_OK(cudaStreamSynchronize(stream));
+        }
+    }
     if (ok && h_flags[0] == 0) {
         ok = exclusive_scan_u64(nhalo_in, d_counts, d_offsets, &total_halos, stream);
     }
 
     if (!ok || h_flags[0] != 0) {
+        p21_cuda_pool_free(d_big_buf0, stream);
+        p21_cuda_pool_free(d_big_buf1, stream);
+        p21_cuda_pool_free(d_big_indices, stream);
         p21_cuda_pool_free(d_counts, stream);
         p21_cuda_pool_free(d_offsets, stream);
         p21_cuda_pool_free(d_flags, stream);
@@ -1796,32 +1790,34 @@ extern "C" int p21_cuda_sample_halo_progenitors(unsigned long long int seed, dou
     }
 
     bool any_overflow = (total_halos > buf_size);
-    for (int t = 0; t < n_threads; ++t) {
-        size_t s, e;
-        omp_static_bounds(nhalo_in, t, n_threads, &s, &e);
-        uint64_t cnt = 0;
-        if (e > s) {
-            uint64_t off_s = 0, off_e = 0;
-            ok = ok && P21_CUDA_OK(cudaMemcpyAsync(&off_s, d_offsets + s, sizeof(uint64_t),
-                                                   cudaMemcpyDeviceToHost, stream));
-            if (e < nhalo_in) {
-                ok = ok && P21_CUDA_OK(cudaMemcpyAsync(&off_e, d_offsets + e, sizeof(uint64_t),
-                                                       cudaMemcpyDeviceToHost, stream));
-            } else {
-                off_e = total_halos;
+    uint64_t *d_tcounts = (uint64_t *)p21_cuda_pool_alloc((size_t)n_threads * sizeof(uint64_t), stream);
+    std::vector<uint64_t> h_tcounts((size_t)n_threads, 0ULL);
+    if (!d_tcounts) {
+        ok = false;
+    } else {
+        int g = (n_threads + kBlockThreads - 1) / kBlockThreads;
+        gather_omp_thread_counts_kernel<<<g, kBlockThreads, 0, stream>>>(
+            0, n_threads, total_halos, 0ULL, nhalo_in, 1ULL, nhalo_in, d_offsets, d_tcounts);
+        ok = P21_CUDA_OK(cudaGetLastError()) &&
+             P21_CUDA_OK(cudaMemcpyAsync(h_tcounts.data(), d_tcounts,
+                                         (size_t)n_threads * sizeof(uint64_t),
+                                         cudaMemcpyDeviceToHost, stream)) &&
+             P21_CUDA_OK(cudaStreamSynchronize(stream));
+        p21_cuda_pool_free(d_tcounts, stream);
+    }
+    if (ok) {
+        for (int t = 0; t < n_threads; ++t) {
+            thread_counts_out[t] = (unsigned long long int)h_tcounts[(size_t)t];
+            if (h_tcounts[(size_t)t] > arraysize_local) {
+                any_overflow = true;
             }
-            if (ok) {
-                ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
-                cnt = off_e - off_s;
-            }
-        }
-        thread_counts_out[t] = (unsigned long long int)cnt;
-        if (cnt > arraysize_local) {
-            any_overflow = true;
         }
     }
 
     if (!ok) {
+        p21_cuda_pool_free(d_big_buf0, stream);
+        p21_cuda_pool_free(d_big_buf1, stream);
+        p21_cuda_pool_free(d_big_indices, stream);
         p21_cuda_pool_free(d_counts, stream);
         p21_cuda_pool_free(d_offsets, stream);
         p21_cuda_pool_free(d_flags, stream);
@@ -1831,6 +1827,9 @@ extern "C" int p21_cuda_sample_halo_progenitors(unsigned long long int seed, dou
 
     if (any_overflow) {
         *overflow_out = 1;
+        p21_cuda_pool_free(d_big_buf0, stream);
+        p21_cuda_pool_free(d_big_buf1, stream);
+        p21_cuda_pool_free(d_big_indices, stream);
         p21_cuda_pool_free(d_counts, stream);
         p21_cuda_pool_free(d_offsets, stream);
         p21_cuda_pool_free(d_flags, stream);
@@ -1841,6 +1840,9 @@ extern "C" int p21_cuda_sample_halo_progenitors(unsigned long long int seed, dou
     if (total_halos == 0) {
         halofield_out->n_halos = 0;
         zero_halo_catalog_tail(halofield_out, 0, buf_size);
+        p21_cuda_pool_free(d_big_buf0, stream);
+        p21_cuda_pool_free(d_big_buf1, stream);
+        p21_cuda_pool_free(d_big_indices, stream);
         p21_cuda_pool_free(d_counts, stream);
         p21_cuda_pool_free(d_offsets, stream);
         p21_cuda_pool_free(d_flags, stream);
@@ -1870,12 +1872,25 @@ extern "C" int p21_cuda_sample_halo_progenitors(unsigned long long int seed, dou
         sampler_prog_emit_kernel<<<blocks, kBlockThreads, 0, stream>>>(
             nhalo_in, skp, (uint64_t)seed, m_to_r_pref, d_in_m, d_in_c, d_in_sr, d_in_sfrr,
             d_in_xr, d_offsets, d_out_m, d_out_c, d_out_sr, d_out_sfrr, d_out_xr, d_flags);
-        ok = P21_CUDA_OK(cudaGetLastError()) &&
-             P21_CUDA_OK(cudaMemcpyAsync(h_flags, d_flags, sizeof(int), cudaMemcpyDeviceToHost,
-                                         stream)) &&
-             P21_CUDA_OK(cudaStreamSynchronize(stream));
+        ok = P21_CUDA_OK(cudaGetLastError());
+        if (ok && h_n_big > 0) {
+            int big_blocks = (h_n_big + kBlockThreads - 1) / kBlockThreads;
+            sampler_prog_big_emit_kernel<<<big_blocks, kBlockThreads, 0, stream>>>(
+                h_n_big, d_big_indices, skp, (uint64_t)seed, m_to_r_pref, d_in_m, d_in_c, d_in_sr,
+                d_in_sfrr, d_in_xr, d_offsets, d_big_buf0, d_big_buf1, d_out_m, d_out_c, d_out_sr,
+                d_out_sfrr, d_out_xr, d_flags);
+            ok = P21_CUDA_OK(cudaGetLastError());
+        }
+        if (ok) {
+            ok = P21_CUDA_OK(cudaMemcpyAsync(h_flags, d_flags, sizeof(int), cudaMemcpyDeviceToHost,
+                                             stream)) &&
+                 P21_CUDA_OK(cudaStreamSynchronize(stream));
+        }
     }
 
+    p21_cuda_pool_free(d_big_buf0, stream);
+    p21_cuda_pool_free(d_big_buf1, stream);
+    p21_cuda_pool_free(d_big_indices, stream);
     p21_cuda_pool_free(d_counts, stream);
     p21_cuda_pool_free(d_offsets, stream);
     p21_cuda_pool_free(d_flags, stream);

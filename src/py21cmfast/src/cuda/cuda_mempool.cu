@@ -1,7 +1,12 @@
 #include <algorithm>
 #include <mutex>
+#include <stdlib.h>
 #include <string.h>
+#include <thread>
+#include <tuple>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "cuda_common.cuh"
 
@@ -24,23 +29,24 @@ std::unordered_map<const void *, RegistryEntry> g_registry;
 size_t g_registry_bytes = 0;
 uint64_t g_lru_counter = 0;
 
-static inline uint64_t splitmix64(uint64_t x) {
+constexpr size_t kHashChunkBytes = 16384ULL;
+constexpr size_t kGpuHashThresholdBytes = 1ULL << 20;
+
+__host__ __device__ static inline uint64_t splitmix64(uint64_t x) {
     x += 0x9e3779b97f4a7c15ULL;
     x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
     x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
     return x ^ (x >> 31);
 }
 
-static inline uint64_t read_u64_unaligned(const uint8_t *p) {
+__host__ __device__ static inline uint64_t read_u64_unaligned(const uint8_t *p) {
     uint64_t v;
     memcpy(&v, p, sizeof(v));
     return v;
 }
 
-/* Full-buffer 4-lane fingerprint to prevent stale-cache and ABA collisions. */
-uint64_t p21_hash_host_bytes(const void *ptr, size_t nbytes) {
-    const uint8_t *p = (const uint8_t *)ptr;
-    uint64_t h0 = 0x243f6a8885a308d3ULL ^ (uint64_t)nbytes;
+__host__ __device__ uint64_t p21_hash_chunk(const uint8_t *p, size_t nbytes, uint64_t chunk_idx) {
+    uint64_t h0 = 0x243f6a8885a308d3ULL ^ (uint64_t)nbytes ^ chunk_idx;
     uint64_t h1 = 0x13198a2e03707344ULL ^ (uint64_t)nbytes;
     uint64_t h2 = 0xa4093822299f31d0ULL;
     uint64_t h3 = 0x082efa98ec4e6c89ULL;
@@ -65,14 +71,114 @@ uint64_t p21_hash_host_bytes(const void *ptr, size_t nbytes) {
     return splitmix64(h0 ^ ((h1 << 17) | (h1 >> 47)) ^ h2 ^ ((h3 << 31) | (h3 >> 33)));
 }
 
+uint64_t fold_chunk_hashes(const uint64_t *chunks, size_t n_chunks, size_t total_nbytes) {
+    uint64_t acc = splitmix64((uint64_t)total_nbytes);
+    for (size_t c = 0; c < n_chunks; ++c) {
+        acc = splitmix64(acc ^ chunks[c]);
+    }
+    return acc;
+}
+
+__global__ void hash_chunks_device_kernel(const uint8_t *data, size_t nbytes, size_t n_chunks,
+                                          uint64_t *chunk_hashes) {
+    size_t c = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    if (c >= n_chunks) {
+        return;
+    }
+    size_t off = c * kHashChunkBytes;
+    size_t len = nbytes - off;
+    if (len > kHashChunkBytes) {
+        len = kHashChunkBytes;
+    }
+    chunk_hashes[c] = p21_hash_chunk(data + off, len, (uint64_t)c);
+}
+
+/* Deterministic parallel chunk-tree fingerprint matching GPU chunk hashing bit-for-bit. */
+uint64_t p21_hash_host_bytes(const void *ptr, size_t nbytes) {
+    const uint8_t *p = (const uint8_t *)ptr;
+    size_t n_chunks = (nbytes + kHashChunkBytes - 1) / kHashChunkBytes;
+    if (n_chunks == 0) {
+        return splitmix64(0ULL);
+    }
+    if (nbytes < kGpuHashThresholdBytes || n_chunks <= 8) {
+        std::vector<uint64_t> chunks(n_chunks);
+        for (size_t c = 0; c < n_chunks; ++c) {
+            size_t off = c * kHashChunkBytes;
+            size_t len = std::min(kHashChunkBytes, nbytes - off);
+            chunks[c] = p21_hash_chunk(p + off, len, (uint64_t)c);
+        }
+        return fold_chunk_hashes(chunks.data(), n_chunks, nbytes);
+    }
+
+    unsigned int nw = std::thread::hardware_concurrency();
+    if (nw == 0u) nw = 4u;
+    if (nw > 8u) nw = 8u;
+    if ((size_t)nw > n_chunks) nw = (unsigned int)n_chunks;
+
+    std::vector<uint64_t> chunks(n_chunks);
+    std::vector<std::thread> workers;
+    workers.reserve(nw);
+    for (unsigned int w = 0; w < nw; ++w) {
+        size_t c_start = (n_chunks * (size_t)w) / (size_t)nw;
+        size_t c_end = (n_chunks * (size_t)(w + 1)) / (size_t)nw;
+        workers.emplace_back([p, nbytes, c_start, c_end, &chunks]() {
+            for (size_t c = c_start; c < c_end; ++c) {
+                size_t off = c * kHashChunkBytes;
+                size_t len = std::min(kHashChunkBytes, nbytes - off);
+                chunks[c] = p21_hash_chunk(p + off, len, (uint64_t)c);
+            }
+        });
+    }
+    for (std::thread &th : workers) {
+        th.join();
+    }
+    return fold_chunk_hashes(chunks.data(), n_chunks, nbytes);
+}
+
+bool p21_hash_device_bytes(const void *d_ptr, size_t nbytes, cudaStream_t stream,
+                           uint64_t *hash_out) {
+    if (!d_ptr || !hash_out || nbytes == 0) {
+        return false;
+    }
+    size_t n_chunks = (nbytes + kHashChunkBytes - 1) / kHashChunkBytes;
+    uint64_t *d_chunks = (uint64_t *)p21_cuda_pool_alloc(n_chunks * sizeof(uint64_t), stream);
+    if (!d_chunks) {
+        return false;
+    }
+    constexpr int kTpb = 256;
+    int blocks = (int)((n_chunks + kTpb - 1) / kTpb);
+    hash_chunks_device_kernel<<<blocks, kTpb, 0, stream>>>((const uint8_t *)d_ptr, nbytes,
+                                                            n_chunks, d_chunks);
+    std::vector<uint64_t> h_chunks(n_chunks);
+    bool ok = P21_CUDA_OK(cudaGetLastError()) &&
+              P21_CUDA_OK(cudaMemcpyAsync(h_chunks.data(), d_chunks, n_chunks * sizeof(uint64_t),
+                                          cudaMemcpyDeviceToHost, stream)) &&
+              P21_CUDA_OK(cudaStreamSynchronize(stream));
+    p21_cuda_pool_free(d_chunks, stream);
+    if (!ok) {
+        return false;
+    }
+    *hash_out = fold_chunk_hashes(h_chunks.data(), n_chunks, nbytes);
+    return true;
+}
+
 size_t registry_budget_bytes(void) {
     size_t total = p21_cuda_total_mem_bytes();
     if (total == 0) {
         return 1024ULL << 20;
     }
-    size_t half = total / 2;
-    size_t four_gib = 4ULL << 30;
-    return std::min(half, four_gib);
+    const char *env_mb = getenv("P21_CUDA_REGISTRY_MB");
+    if (env_mb && *env_mb) {
+        char *end = nullptr;
+        unsigned long long mb = strtoull(env_mb, &end, 10);
+        if (end != env_mb && *end == '\0' && mb > 0ULL) {
+            return std::min<size_t>((size_t)mb << 20, (size_t)(((unsigned long long)total * 3ULL) / 4ULL));
+        }
+    }
+    if (total > (size_t)(12ULL << 30)) {
+        return std::min<size_t>(total / 2, total - (size_t)(6ULL << 30));
+    }
+    return total / 2;
 }
 
 void evict_lru_locked(size_t incoming_bytes, const void *keep_host_ptr, cudaStream_t stream) {
@@ -127,26 +233,82 @@ void p21_cuda_pool_init(int device_id) {
 #endif
 }
 
+bool reclaim_stale_registry_for_oom(size_t target_bytes, cudaStream_t stream) {
+    std::vector<void *> freed_ptrs;
+    size_t freed_bytes = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_reg_mu);
+        if (g_registry.empty()) {
+            return false;
+        }
+        /* Keep recently touched entries (within last 16 accesses) so active kernel inputs remain valid. */
+        uint64_t safe_cutoff = (g_lru_counter > 16ULL) ? (g_lru_counter - 16ULL) : 0ULL;
+        std::vector<std::pair<uint64_t, const void *>> candidates;
+        candidates.reserve(g_registry.size());
+        for (const auto &kv : g_registry) {
+            if (kv.second.lru_tick <= safe_cutoff) {
+                candidates.push_back({kv.second.lru_tick, kv.first});
+            }
+        }
+        std::sort(candidates.begin(), candidates.end(),
+                  [](const auto &a, const auto &b) { return a.first < b.first; });
+        for (const auto &cand : candidates) {
+            auto it = g_registry.find(cand.second);
+            if (it == g_registry.end()) {
+                continue;
+            }
+            freed_ptrs.push_back(it->second.d_ptr);
+            freed_bytes += it->second.nbytes;
+            g_registry_bytes -= it->second.nbytes;
+            g_registry.erase(it);
+            p21_cuda_stats_mut()->registry_invalidations++;
+            if (freed_bytes >= target_bytes) {
+                break;
+            }
+        }
+    }
+    for (void *p : freed_ptrs) {
+        p21_cuda_pool_free(p, stream);
+    }
+    p21_cuda_pool_trim();
+    return !freed_ptrs.empty();
+}
+
 void *p21_cuda_pool_alloc(size_t nbytes, cudaStream_t stream) {
     size_t bytes = nbytes > 0 ? nbytes : 256;
-    void *ptr = nullptr;
-    cudaError_t err;
+    auto try_alloc = [&]() -> std::pair<void *, cudaError_t> {
+        void *p = nullptr;
+        cudaError_t e;
 #if defined(CUDART_VERSION) && CUDART_VERSION >= 11020
-    if (g_pool_supported && g_mem_pool != nullptr && stream != nullptr) {
-        err = cudaMallocFromPoolAsync(&ptr, bytes, g_mem_pool, stream);
-    } else if (stream != nullptr) {
-        err = cudaMallocAsync(&ptr, bytes, stream);
+        if (g_pool_supported && g_mem_pool != nullptr && stream != nullptr) {
+            e = cudaMallocFromPoolAsync(&p, bytes, g_mem_pool, stream);
+        } else if (stream != nullptr) {
+            e = cudaMallocAsync(&p, bytes, stream);
+            if (e != cudaSuccess) {
+                cudaGetLastError();
+                e = cudaMalloc(&p, bytes);
+            }
+        } else {
+            e = cudaMalloc(&p, bytes);
+        }
+#else
+        e = cudaMalloc(&p, bytes);
+#endif
+        return {p, e};
+    };
+
+    auto [ptr, err] = try_alloc();
+    if (err != cudaSuccess) {
+        cudaGetLastError();
+        p21_cuda_pool_trim();
+        std::tie(ptr, err) = try_alloc();
         if (err != cudaSuccess) {
             cudaGetLastError();
-            err = cudaMalloc(&ptr, bytes);
+            if (reclaim_stale_registry_for_oom(bytes, stream)) {
+                std::tie(ptr, err) = try_alloc();
+            }
         }
-    } else {
-        err = cudaMalloc(&ptr, bytes);
     }
-#else
-    (void)stream;
-    err = cudaMalloc(&ptr, bytes);
-#endif
     if (!P21_CUDA_OK(err)) {
         return nullptr;
     }
@@ -239,7 +401,10 @@ bool p21_cuda_registry_put_copy(const void *host_ptr, const void *d_src, size_t 
         return false;
     }
     /* Compute hash after the stream finishes D2H copy so host_ptr matches device data. */
-    uint64_t hash = p21_hash_host_bytes(host_ptr, nbytes);
+    uint64_t hash = 0ULL;
+    if (nbytes < kGpuHashThresholdBytes || !p21_hash_device_bytes(d_src, nbytes, stream, &hash)) {
+        hash = p21_hash_host_bytes(host_ptr, nbytes);
+    }
 
     void *d_cached = nullptr;
     {
@@ -299,7 +464,10 @@ bool p21_cuda_registry_put_owned(const void *host_ptr, void *d_buf, size_t nbyte
         return false;
     }
     /* Caller guarantees host_ptr already reflects completed D2H contents. */
-    uint64_t hash = p21_hash_host_bytes(host_ptr, nbytes);
+    uint64_t hash = 0ULL;
+    if (nbytes < kGpuHashThresholdBytes || !p21_hash_device_bytes(d_buf, nbytes, stream, &hash)) {
+        hash = p21_hash_host_bytes(host_ptr, nbytes);
+    }
 
     std::lock_guard<std::mutex> lock(g_reg_mu);
     auto existing = g_registry.find(host_ptr);

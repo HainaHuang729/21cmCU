@@ -721,6 +721,18 @@ void initialise_GL(double lnM_Min, double lnM_Max) {
     GL_limit[1] = lnM_Max;
 }
 
+int p21_get_gl_quadrature(double *lnM_min_out, double *lnM_max_out, const double **xi_out,
+                          const double **wi_out) {
+    if (GL_limit[0] >= GL_limit[1]) {
+        return 0;
+    }
+    if (lnM_min_out) *lnM_min_out = GL_limit[0];
+    if (lnM_max_out) *lnM_max_out = GL_limit[1];
+    if (xi_out) *xi_out = &xi_GL[1];
+    if (wi_out) *wi_out = &wi_GL[1];
+    return NGL_INT;
+}
+
 // actually perform the GL integration
 // NOTE: that the lnM limits are not used
 double IntegratedNdM_GL(double lnM_lo, double lnM_hi, struct parameters_gsl_MF_integrals params,

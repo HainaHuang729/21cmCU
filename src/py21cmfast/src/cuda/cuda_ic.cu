@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "cuda_common.cuh"
+#include "cuda_philox.cuh"
 #include "cuda_rng.cuh"
 
 namespace {
@@ -226,6 +227,37 @@ __global__ void fill_ic_modes_slice_kernel(cufftComplex *box, const double *gaus
 
     size_t out_idx = ((size_t)n_x * ny + (size_t)n_y) * hz + (size_t)n_z;
     box[out_idx] = make_float2((float)(amp * a), (float)(amp * b));
+}
+
+__global__ void fill_ic_modes_fast_kernel(cufftComplex *box, uint64_t seed, int nx, int ny, int nz,
+                                          double box_len_x, double box_len_y, double box_len_z,
+                                          double volume, CosmoKernelParams params) {
+    int hz = nz / 2 + 1;
+    size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_modes = (size_t)nx * ny * hz;
+    if (idx >= total_modes) {
+        return;
+    }
+
+    int n_z = (int)(idx % hz);
+    size_t q = idx / hz;
+    int n_y = (int)(q % ny);
+    int n_x = (int)(q / ny);
+
+    double kx = p21_index_to_k(n_x, box_len_x, nx);
+    double ky = p21_index_to_k(n_y, box_len_y, ny);
+    double kz = p21_index_to_k(n_z, box_len_z, nz);
+    double k_mag = sqrt(kx * kx + ky * ky + kz * kz);
+    double p = dev_power_in_k(k_mag, params);
+    double amp = sqrt(volume * p / 2.0);
+
+    P21PhiloxRng rng;
+    rng.init(seed, (uint64_t)idx, 0x49U);
+    double a = 0.0;
+    double b = 0.0;
+    rng.ugaussian_pair(&a, &b);
+
+    box[idx] = make_float2((float)(amp * a), (float)(amp * b));
 }
 
 __global__ void enforce_real_planes_general_kernel(cufftComplex *modes, int nx, int ny, int nz) {
@@ -585,39 +617,47 @@ extern "C" int p21_cuda_compute_initial_conditions(unsigned long long int random
                  p21_cuda_fft_r2c(d_real_work, d_kspace_saved, nx, ny, nz, false, stream);
         }
     } else if (ok) {
-        std::vector<uint32_t> seeds((size_t)n_threads);
-        if (!p21_cuda_seed_rng_threads(random_seed, n_threads, seeds.data(), stream)) {
-            ok = false;
-        }
-        int max_slice_x = (nx + n_threads - 1) / n_threads;
-        size_t max_slice_modes = (size_t)max_slice_x * ny * (nz / 2 + 1);
-        d_gauss = (double *)p21_cuda_pool_alloc(max_slice_modes * 2 * sizeof(double), stream);
-        if (!d_gauss) {
-            ok = false;
-        }
-
-        for (int t = 0; ok && t < n_threads; ++t) {
-            int q = nx / n_threads;
-            int rem = nx % n_threads;
-            int first = t * q + (t < rem ? t : rem);
-            int count_x = q + (t < rem ? 1 : 0);
-            if (count_x <= 0) {
-                continue;
-            }
-            size_t slice_modes = (size_t)count_x * ny * (nz / 2 + 1);
-            if (!p21_cuda_fill_ugaussian_thread(t % 5, seeds[(size_t)t], d_gauss, slice_modes * 2,
-                                                stream)) {
-                ok = false;
-                break;
-            }
-            int g = (int)((slice_modes + tpb - 1) / tpb);
-            fill_ic_modes_slice_kernel<<<g, tpb, 0, stream>>>(
-                d_kspace_saved, d_gauss, first, count_x, ny, nz, box_len_x, box_len_y, box_len_z,
-                volume, cosmo_params);
+        if (p21_cuda_get_fast_ic() != 0) {
+            int fg = (int)((hi_k_pixels + tpb - 1) / tpb);
+            fill_ic_modes_fast_kernel<<<fg, tpb, 0, stream>>>(
+                d_kspace_saved, (uint64_t)random_seed, nx, ny, nz, box_len_x, box_len_y,
+                box_len_z, volume, cosmo_params);
             ok = P21_CUDA_OK(cudaGetLastError());
+        } else {
+            std::vector<uint32_t> seeds((size_t)n_threads);
+            if (!p21_cuda_seed_rng_threads(random_seed, n_threads, seeds.data(), stream)) {
+                ok = false;
+            }
+            int max_slice_x = (nx + n_threads - 1) / n_threads;
+            size_t max_slice_modes = (size_t)max_slice_x * ny * (nz / 2 + 1);
+            d_gauss = (double *)p21_cuda_pool_alloc(max_slice_modes * 2 * sizeof(double), stream);
+            if (!d_gauss) {
+                ok = false;
+            }
+
+            for (int t = 0; ok && t < n_threads; ++t) {
+                int q = nx / n_threads;
+                int rem = nx % n_threads;
+                int first = t * q + (t < rem ? t : rem);
+                int count_x = q + (t < rem ? 1 : 0);
+                if (count_x <= 0) {
+                    continue;
+                }
+                size_t slice_modes = (size_t)count_x * ny * (nz / 2 + 1);
+                if (!p21_cuda_fill_ugaussian_thread(t % 5, seeds[(size_t)t], d_gauss,
+                                                    slice_modes * 2, stream)) {
+                    ok = false;
+                    break;
+                }
+                int g = (int)((slice_modes + tpb - 1) / tpb);
+                fill_ic_modes_slice_kernel<<<g, tpb, 0, stream>>>(
+                    d_kspace_saved, d_gauss, first, count_x, ny, nz, box_len_x, box_len_y,
+                    box_len_z, volume, cosmo_params);
+                ok = P21_CUDA_OK(cudaGetLastError());
+            }
+            p21_cuda_pool_free(d_gauss, stream);
+            d_gauss = nullptr;
         }
-        p21_cuda_pool_free(d_gauss, stream);
-        d_gauss = nullptr;
 
         if (ok) {
             size_t plane_items = (size_t)2 * nx * ny;

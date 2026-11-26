@@ -128,6 +128,32 @@ void initialize_sfrd_unconditional_tables(int Nbin, float zmin, float zmax, Scal
             (LOG10_MTURN_MCG_MAX - LOG10_MTURN_MCG_MIN) / ((double)NMTURN - 1.);
     }
 
+#ifdef USE_CUDA
+    if (p21_cuda_get_enabled() &&
+        uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES) &&
+        source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL)) {
+        double z_vals[Nbin], growthf_vals[Nbin], lnMmin_vals[Nbin];
+        double mturn_hom_vals[Nbin], a_thresh_vals[Nbin], sfr_ts_vals[Nbin];
+        for (i = 0; i < Nbin; i++) {
+            double zv = SFRD_z_table_acg.x_min + i * SFRD_z_table_acg.x_width;
+            ScalingConstants sc_z = evolve_scaling_constants_to_redshift(zv, sc, false);
+            z_vals[i] = zv;
+            growthf_vals[i] = sc_z.growth_factor;
+            lnMmin_vals[i] = log(minimum_source_mass(zv, true));
+            mturn_hom_vals[i] = sc_z.mturn_acg_homogeneous;
+            a_thresh_vals[i] = sc_z.atomic_cooling_threshold;
+            sfr_ts_vals[i] = sc_z.sfr_timescale;
+        }
+        if (p21_cuda_fill_uncond_emissivity_tables(
+                1, Nbin, z_vals, growthf_vals, lnMmin_vals, lnMmax, mturn_hom_vals, a_thresh_vals,
+                sfr_ts_vals, astro_options_global->USE_MCGS ? 1 : 0, NMTURN, LOG10_MTURN_MCG_MIN,
+                LOG10_MTURN_MCG_MAX, sc, SFRD_z_table_acg.y_arr,
+                astro_options_global->USE_MCGS ? SFRD_z_table_mcg.z_arr : NULL) == 0) {
+            return;
+        }
+    }
+#endif
+
 #pragma omp parallel private(i, j) num_threads(simulation_options_global -> N_THREADS)
     {
         ScalingConstants sc_z;
@@ -197,6 +223,32 @@ void initialize_nion_unconditional_tables(int Nbin, float zmin, float zmax, Scal
         Nion_z_table_mcg.y_width =
             (LOG10_MTURN_MCG_MAX - LOG10_MTURN_MCG_MIN) / ((double)NMTURN - 1.);
     }
+
+#ifdef USE_CUDA
+    if (p21_cuda_get_enabled() &&
+        uses_hmf_interpolation(matter_options_global->USE_INTERPOLATION_TABLES) &&
+        source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL)) {
+        double z_vals[Nbin], growthf_vals[Nbin], lnMmin_vals[Nbin];
+        double mturn_hom_vals[Nbin], a_thresh_vals[Nbin], sfr_ts_vals[Nbin];
+        for (i = 0; i < Nbin; i++) {
+            double zv = Nion_z_table_acg.x_min + i * Nion_z_table_acg.x_width;
+            ScalingConstants sc_z = evolve_scaling_constants_to_redshift(zv, sc, false);
+            z_vals[i] = zv;
+            growthf_vals[i] = sc_z.growth_factor;
+            lnMmin_vals[i] = log(minimum_source_mass(zv, true));
+            mturn_hom_vals[i] = sc_z.mturn_acg_homogeneous;
+            a_thresh_vals[i] = sc_z.atomic_cooling_threshold;
+            sfr_ts_vals[i] = sc_z.sfr_timescale;
+        }
+        if (p21_cuda_fill_uncond_emissivity_tables(
+                0, Nbin, z_vals, growthf_vals, lnMmin_vals, lnMmax, mturn_hom_vals, a_thresh_vals,
+                sfr_ts_vals, astro_options_global->USE_MCGS ? 1 : 0, NMTURN, LOG10_MTURN_MCG_MIN,
+                LOG10_MTURN_MCG_MAX, sc, Nion_z_table_acg.y_arr,
+                astro_options_global->USE_MCGS ? Nion_z_table_mcg.z_arr : NULL) == 0) {
+            return;
+        }
+    }
+#endif
 
 #pragma omp parallel private(i, j) num_threads(simulation_options_global -> N_THREADS)
     {
@@ -386,6 +438,26 @@ void initialize_nion_conditional_tables(double z, double min_density, double max
             min_density + (float)i / ((float)NDELTA - 1.) * (max_density - min_density);
     }
 
+#ifdef USE_CUDA
+    if (p21_cuda_fill_cond_emissivity_tables(
+            0, z, growthf, lnMmin, lnMmax, lnM_condition, sigma2, NDELTA, min_density, max_density,
+            NMTURN,
+            (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+             source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL))
+                ? 1
+                : 0,
+            LOG10_MTURN_ACG_MIN, LOG10_MTURN_ACG_MAX, astro_options_global->USE_MCGS ? 1 : 0,
+            LOG10_MTURN_MCG_MIN, LOG10_MTURN_MCG_MAX, sc,
+            table_acg_1d ? table_acg_1d->y_arr : NULL,
+            (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+             source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL))
+                ? table_acg_2d->z_arr
+                : NULL,
+            astro_options_global->USE_MCGS ? table_mcg_2d->z_arr : NULL) == 0) {
+        return;
+    }
+#endif
+
 #pragma omp parallel private(i, j) num_threads(simulation_options_global -> N_THREADS)
     {
 #pragma omp for
@@ -505,6 +577,26 @@ void initialize_sfrd_conditional_tables(double z, double min_density, double max
         overdense_table[i] =
             min_density + (float)i / ((float)NDELTA - 1.) * (max_density - min_density);
     }
+
+#ifdef USE_CUDA
+    if (p21_cuda_fill_cond_emissivity_tables(
+            1, z, growthf, lnMmin, lnMmax, lnM_condition, sigma2, NDELTA, min_density, max_density,
+            NMTURN,
+            (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+             source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL))
+                ? 1
+                : 0,
+            LOG10_MTURN_ACG_MIN, LOG10_MTURN_ACG_MAX, astro_options_global->USE_MCGS ? 1 : 0,
+            LOG10_MTURN_MCG_MIN, LOG10_MTURN_MCG_MAX, sc,
+            SFRD_conditional_table1D_acg.allocated ? SFRD_conditional_table1D_acg.y_arr : NULL,
+            (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK &&
+             source_model_is_mass_dependent(matter_options_global->SOURCE_MODEL))
+                ? SFRD_conditional_table2D_acg.z_arr
+                : NULL,
+            astro_options_global->USE_MCGS ? SFRD_conditional_table2D_mcg.z_arr : NULL) == 0) {
+        return;
+    }
+#endif
 
 #pragma omp parallel private(i, j) num_threads(simulation_options_global -> N_THREADS)
     {
@@ -632,6 +724,21 @@ void initialize_xray_emissivity_conditional_tables(double redshift, double min_d
         overdense_table[i] =
             min_density + (float)i / ((float)NDELTA - 1.) * (max_density - min_density);
     }
+
+#ifdef USE_CUDA
+    if (p21_cuda_fill_cond_emissivity_tables(
+            2, redshift, growthf, lnMmin, lnMmax, lnM_condition, sigma2, NDELTA, min_density,
+            max_density, NMTURN, astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK ? 1 : 0,
+            LOG10_MTURN_ACG_MIN, LOG10_MTURN_ACG_MAX, astro_options_global->USE_MCGS ? 1 : 0,
+            LOG10_MTURN_MCG_MIN, LOG10_MTURN_MCG_MAX, sc,
+            Xray_conditional_table1D_acg.allocated ? Xray_conditional_table1D_acg.y_arr : NULL,
+            astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK
+                ? Xray_conditional_table2D_acg.z_arr
+                : NULL,
+            astro_options_global->USE_MCGS ? Xray_conditional_table2D_mcg.z_arr : NULL) == 0) {
+        return;
+    }
+#endif
 
 #pragma omp parallel private(i, j) num_threads(simulation_options_global -> N_THREADS)
     {

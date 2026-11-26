@@ -210,6 +210,21 @@ int p21_cuda_sample_halo_progenitors(unsigned long long int seed, double z_in, d
                                      const P21HaloSamplingParams *hsp, int *overflow_out,
                                      unsigned long long int *thread_counts_out);
 
+int p21_cuda_fill_cond_emissivity_tables(int kind, double redshift, double growthf, double lnM_min,
+                                         double lnM_max, double lnM_cond, double sigma_cond,
+                                         int n_delta, double min_dens, double max_dens,
+                                         int n_mturn, int do_acg_2d, double acg_l10_min,
+                                         double acg_l10_max, int do_mcg_2d, double mcg_l10_min,
+                                         double mcg_l10_max, const ScalingConstants *sc,
+                                         float *acg_1d_out, float **acg_2d_out,
+                                         float **mcg_2d_out);
+
+int p21_cuda_fill_uncond_emissivity_tables(
+    int kind, int n_z, const double *z_vals, const double *growthf_vals, const double *lnMmin_vals,
+    double lnMmax, const double *mturn_acg_hom_vals, const double *atomic_thresh_vals,
+    const double *sfr_timescale_vals, int do_mcg, int n_mturn, double mcg_l10_min,
+    double mcg_l10_max, const ScalingConstants *sc, double *acg_1d_out, double **mcg_2d_out);
+
 #ifdef __cplusplus
 }
 #endif

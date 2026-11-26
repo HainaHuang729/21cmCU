@@ -20,6 +20,8 @@
 
 /* HMF Integrals */
 void initialise_GL(double lnM_Min, double lnM_Max);
+int p21_get_gl_quadrature(double *lnM_min_out, double *lnM_max_out, const double **xi_out,
+                          const double **wi_out);
 
 double sfrd_unconditional_acg(double z, double lnM_Min, double lnM_Max, double mturn_acg,
                               ScalingConstants *sc);
