@@ -762,6 +762,39 @@ int p21_cuda_device_copy_to_host_f32(unsigned long long d_ptr, float *h_out, siz
     return -1;
 }
 
+int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny, int nz,
+                                 double lx, double ly, double lz, int los_axis,
+                                 double sigma_perp_mpc, double channel_dr_mpc, int channel_mode,
+                                 int apply_uv_mask, double k_perp_min, double k_perp_max,
+                                 int apply_wedge, double wedge_slope, double wedge_buffer_mpc,
+                                 int add_noise, int n_noise_table, double noise_kperp_max,
+                                 const float *h_sigma_re_table, unsigned long long seed) {
+    (void)h_in;
+    (void)h_out;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)lx;
+    (void)ly;
+    (void)lz;
+    (void)los_axis;
+    (void)sigma_perp_mpc;
+    (void)channel_dr_mpc;
+    (void)channel_mode;
+    (void)apply_uv_mask;
+    (void)k_perp_min;
+    (void)k_perp_max;
+    (void)apply_wedge;
+    (void)wedge_slope;
+    (void)wedge_buffer_mpc;
+    (void)add_noise;
+    (void)n_noise_table;
+    (void)noise_kperp_max;
+    (void)h_sigma_re_table;
+    (void)seed;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

@@ -122,6 +122,27 @@
 
 ---
 
+## Completed Directions (O → Q → S, `v0.7.0-dev`)
+
+### Direction O (`8300144`) — GPU-Native Observables & Non-Gaussian Statistics
+- **GPU Foreground Wedge & Thermal Noise (`cuda_analysis.cu`, `src/py21cmcu/observables.py`, `batch.py`)**: `p21_cuda_wedge_filter_3d` (cuFFT 3D R2C/C2R + `DeviceFieldRegistry` across `los_axis` ∈ {0, 1, 2}, **23.86×** at `256³`) and `p21_cuda_add_thermal_noise_3d` (Philox Gaussian noise, **10.71×** at `256³`).
+- **One-Point Non-Gaussian Moments & PDF**: `p21_cuda_field_moments_and_pdf` + `field_moments_and_pdf` (**26.43×** at `256³`, histogram diff `0`), plus cross/2D lightcone chunk PS (`lightcone_chunk_power_spectra_2d`).
+
+### Direction Q (`8300144`) — Zero-Copy CUDA Interop & `sbi` / `21CMMC` Inference
+- **Zero-Copy Device Export (`cuda_mempool.cu`, `src/py21cmcu/interop.py`)**: `CudaFieldView` implementing pure-`ctypes` `__dlpack__`, `__dlpack_device__`, `__cuda_array_interface__`, and `to_torch` (`0.527 ms` with `registry_h2d_bytes = 0` under `lazy_d2h=True`).
+- **Inference Primitives (`src/py21cmcu/inference.py`)**: `Likelihood21cm` and `SBISimulator` (with `tests/native/test_21cmcu_phase7_oq.py` & `examples/04_dlpack_and_sbi_inference.py`).
+
+### Direction S — Radio Interferometer Mock Observation & Sensitivity Forecast Suite
+- **Single-Pass GPU Mock Observation (`cuda_analysis.cu`, `src/py21cmcu/instrument.py`)**: `p21_cuda_mock_observation_3d` & `mock_observation_3d` combining UV coverage cuts, PSF Gaussian smoothing, LOS boxcar/Gaussian channel response, horizon/FoV foreground wedge exclusion, and $P_N(k_\perp, z)$-weighted Hermitian Philox thermal noise.
+- **Telescope Presets & Forecasts**: `InterferometerConfig`, `INSTRUMENT_PRESETS` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`), `baseline_density_uv` (analytic + explicit `antenna_xy_m`), `thermal_noise_power_spectrum`, `forecast_power_spectrum_error`, and `forecast_power_spectrum_2d_error` (`tests/native/test_21cmcu_phase8_instrument.py`, `examples/05_interferometer_mock_and_forecast.py`).
+
+---
+
 ## Future Roadmap
 
-- **Multi-node / 4+ GPU NVLink Scaling**: extend `cuda_mgpu.cu` (`>= 4× 24 GB` GPUs for in-VRAM `2048³` 2LPT) and optional NCCL all-to-all collective backend for NVLink/NVSwitch nodes.
+- **Direction P — Large-Scale Multi-GPU EoR & Sub-160 GiB `2048³` 2LPT Streaming**: Multi-GPU `1024³` full EoR evolution and memory-bounded `<160 GiB` `2048³` 2LPT streaming IC on multi-GPU nodes.
+- **Direction R — Persistent Multi-GPU cuFFT Plan Cache & `BatchPool`**: Per-GPU cached cuFFT handles across Y-slab sub-transforms plus persistent worker pool (`BatchPool`) amortizing CFFI/CUDA/CLASS setup across 10k+ SBI draws.
+- **Higher-Order Non-Gaussian & Morphological Topology (Phase 9)**: GPU FFT fast 3D Bispectrum $B(k_1, k_2, k_3)$, GPU ray-traced ionized Bubble Size Distribution (MFP BSD), and 3D Minkowski Functionals ($V_0, V_1, V_2, V_3$).
+- **Fisher Matrix Forecaster & Multi-Probe Cross-Correlations**: Common-Random-Number (CRN) low-variance Fisher matrix forecaster (`21cm` PS + mock observables) and GPU CIC halo/galaxy gridding for `21cm × galaxy` cross-power $r(k)$ & cross-bispectrum.
+- **Visualization & Diagnostics (`py21cmcu.viz`)**: One-click publication plotting utilities for lightcone slices, global spin/ionization history, 2D cylindrical PS / wedge windows, BSD/PDF curves, and sensitivity contours.
+- **Multi-node / 4+ GPU NVLink Scaling**: Extend `cuda_mgpu.cu` (`>= 4× 24 GB` GPUs for in-VRAM `2048³` 2LPT) and optional NCCL all-to-all collective backend for NVLink/NVSwitch nodes.

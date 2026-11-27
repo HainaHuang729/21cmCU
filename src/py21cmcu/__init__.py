@@ -24,6 +24,16 @@ from .analysis import (
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
 from .doctor import doctor
 from .inference import Likelihood21cm, SBISimulator
+from .instrument import (
+    INSTRUMENT_PRESETS,
+    InterferometerConfig,
+    baseline_density_uv,
+    forecast_power_spectrum_2d_error,
+    forecast_power_spectrum_error,
+    get_instrument_preset,
+    mock_observation_3d,
+    thermal_noise_power_spectrum,
+)
 from .interop import CudaFieldView, lightcone_to_cuda_views, to_cuda_view, to_torch
 from .io import save_lightcone
 from .observables import (
@@ -130,10 +140,13 @@ __all__ = [
     "BatchTask",
     "CudaFieldView",
     "CudaMode",
+    "INSTRUMENT_PRESETS",
+    "InterferometerConfig",
     "Likelihood21cm",
     "SBISimulator",
     "add_thermal_noise_3d",
     "apply_wedge_filter_3d",
+    "baseline_density_uv",
     "cleanup_cuda",
     "clear_class_cache",
     "cuda_available",
@@ -142,14 +155,18 @@ __all__ = [
     "cuda_stats",
     "doctor",
     "field_moments_and_pdf",
+    "forecast_power_spectrum_2d_error",
+    "forecast_power_spectrum_error",
     "generate_sobol_parameter_grid",
     "get_cuda_devices",
     "get_cuda_mode",
+    "get_instrument_preset",
     "horizon_slope",
     "horizon_wedge_mask",
     "lightcone_chunk_power_spectra",
     "lightcone_chunk_power_spectra_2d",
     "lightcone_to_cuda_views",
+    "mock_observation_3d",
     "power_spectrum_1d",
     "power_spectrum_2d",
     "reset_cuda_stats",
@@ -158,6 +175,7 @@ __all__ = [
     "save_lightcone",
     "set_cuda_devices",
     "set_cuda_mode",
+    "thermal_noise_power_spectrum",
     "to_cuda_view",
     "to_torch",
     "use_mode",

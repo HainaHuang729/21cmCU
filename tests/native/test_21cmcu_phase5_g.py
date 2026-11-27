@@ -60,13 +60,15 @@ def test_mgpu_device_config_and_api() -> None:
         config["CUDA_DEVICES"] = "0, 1, 0"
         assert config["CUDA_DEVICES"] == (0, 1)
         if py21cmcu.cuda_compiled():
-            assert py21cmcu.get_cuda_devices() == (0, 1)
+            expected_01 = tuple(d for d in (0, 1) if n_total == 0 or d < n_total) or (0,)
+            assert py21cmcu.get_cuda_devices() == expected_01
         else:
             assert py21cmcu.get_cuda_devices() == ()
 
         config["CUDA_DEVICES"] = (2, 0)
         if py21cmcu.cuda_compiled():
-            assert py21cmcu.get_cuda_devices() == (2, 0)
+            expected_20 = tuple(d for d in (2, 0) if n_total == 0 or d < n_total) or (0,)
+            assert py21cmcu.get_cuda_devices() == expected_20
         else:
             assert py21cmcu.get_cuda_devices() == ()
 

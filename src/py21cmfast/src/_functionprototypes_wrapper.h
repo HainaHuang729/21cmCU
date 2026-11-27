@@ -244,4 +244,11 @@ int p21_cuda_export_device_f32(const float *h_ptr, size_t n_elems, unsigned long
                                int *device_id_out);
 void p21_cuda_free_exported_device_ptr(unsigned long long d_ptr);
 int p21_cuda_device_copy_to_host_f32(unsigned long long d_ptr, float *h_out, size_t n_elems);
+int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny, int nz,
+                                 double lx, double ly, double lz, int los_axis,
+                                 double sigma_perp_mpc, double channel_dr_mpc, int channel_mode,
+                                 int apply_uv_mask, double k_perp_min, double k_perp_max,
+                                 int apply_wedge, double wedge_slope, double wedge_buffer_mpc,
+                                 int add_noise, int n_noise_table, double noise_kperp_max,
+                                 const float *h_sigma_re_table, unsigned long long seed);
 /*-----------------------*/

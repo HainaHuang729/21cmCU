@@ -1956,4 +1956,212 @@ int p21_cuda_field_moments_and_pdf(const float *h_in, size_t n_elems, int n_bins
     return 0;
 }
 
+__global__ void interferometer_mock_kernel(cufftComplex *d_freq, int nx, int ny, int nz, double lx,
+                                           double ly, double lz, int los_axis,
+                                           double sigma_perp_mpc, double channel_dr_mpc,
+                                           int channel_mode, int apply_uv_mask, double k_perp_min,
+                                           double k_perp_max, int apply_wedge, double wedge_slope,
+                                           double wedge_buffer_mpc, int add_noise,
+                                           int n_noise_table, double noise_kperp_max,
+                                           const float *d_sigma_table, unsigned long long seed,
+                                           float inv_n_tot) {
+    size_t hz = (size_t)(nz / 2 + 1);
+    size_t n_freq = (size_t)nx * (size_t)ny * hz;
+    size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    size_t ny_hz = (size_t)ny * hz;
+    bool even_z = (nz % 2) == 0;
+
+    for (size_t idx = tid; idx < n_freq; idx += stride) {
+        int ix = (int)(idx / ny_hz);
+        size_t rem = idx - (size_t)ix * ny_hz;
+        int iy = (int)(rem / hz);
+        int iz = (int)(rem - (size_t)iy * hz);
+
+        double kx = p21_index_to_k(ix, lx, nx);
+        double ky = p21_index_to_k(iy, ly, ny);
+        double kz = (double)iz * (2.0 * M_PI / lz);
+
+        double k_para = 0.0;
+        double k_perp = 0.0;
+        if (los_axis == 0) {
+            k_para = fabs(kx);
+            k_perp = sqrt(ky * ky + kz * kz);
+        } else if (los_axis == 1) {
+            k_para = fabs(ky);
+            k_perp = sqrt(kx * kx + kz * kz);
+        } else {
+            k_para = fabs(kz);
+            k_perp = sqrt(kx * kx + ky * ky);
+        }
+
+        if (apply_uv_mask && (k_perp < k_perp_min || k_perp > k_perp_max)) {
+            d_freq[idx].x = 0.0f;
+            d_freq[idx].y = 0.0f;
+            continue;
+        }
+        if (apply_wedge && k_para < wedge_slope * k_perp + wedge_buffer_mpc) {
+            d_freq[idx].x = 0.0f;
+            d_freq[idx].y = 0.0f;
+            continue;
+        }
+
+        double resp = 1.0;
+        if (sigma_perp_mpc > 0.0) {
+            double arg_p = k_perp * sigma_perp_mpc;
+            resp *= exp(-0.5 * arg_p * arg_p);
+        }
+        if (channel_dr_mpc > 0.0 && channel_mode != 0 && k_para > 0.0) {
+            if (channel_mode == 1) {
+                double x = 0.5 * k_para * channel_dr_mpc;
+                resp *= (x > 1e-8) ? (sin(x) / x) : 1.0;
+            } else {
+                double arg_z = k_para * channel_dr_mpc;
+                resp *= exp(-0.5 * arg_z * arg_z);
+            }
+        }
+
+        double re = (double)d_freq[idx].x * resp;
+        double im = (double)d_freq[idx].y * resp;
+
+        if (add_noise && d_sigma_table && n_noise_table >= 2 && noise_kperp_max > 0.0) {
+            double u_idx = (k_perp / noise_kperp_max) * (double)(n_noise_table - 1);
+            if (u_idx < 0.0) {
+                u_idx = 0.0;
+            } else if (u_idx > (double)(n_noise_table - 1)) {
+                u_idx = (double)(n_noise_table - 1);
+            }
+            int i0 = (int)floor(u_idx);
+            int i1 = (i0 + 1 < n_noise_table) ? (i0 + 1) : i0;
+            double frac = u_idx - (double)i0;
+            double sigma_re =
+                (1.0 - frac) * (double)d_sigma_table[i0] + frac * (double)d_sigma_table[i1];
+
+            if (sigma_re > 0.0) {
+                if (iz == 0 || (even_z && iz == nz / 2)) {
+                    int ix_c = (ix == 0) ? 0 : (nx - ix);
+                    int iy_c = (iy == 0) ? 0 : (ny - iy);
+                    size_t p = (size_t)ix * (size_t)ny + (size_t)iy;
+                    size_t pc = (size_t)ix_c * (size_t)ny + (size_t)iy_c;
+                    uint32_t sub = (iz == 0) ? 1U : 2U;
+                    if (p == pc) {
+                        if (!(iz == 0 && ix == 0 && iy == 0)) {
+                            P21PhiloxRng rng;
+                            rng.init((uint64_t)seed, (uint64_t)p, sub);
+                            double z0 = 0.0;
+                            double z1 = 0.0;
+                            rng.ugaussian_pair(&z0, &z1);
+                            re += sqrt(2.0) * sigma_re * z0;
+                            im = 0.0;
+                        }
+                    } else if (p < pc) {
+                        P21PhiloxRng rng;
+                        rng.init((uint64_t)seed, (uint64_t)p, sub);
+                        double z0 = 0.0;
+                        double z1 = 0.0;
+                        rng.ugaussian_pair(&z0, &z1);
+                        re += sigma_re * z0;
+                        im += sigma_re * z1;
+                    } else {
+                        P21PhiloxRng rng;
+                        rng.init((uint64_t)seed, (uint64_t)pc, sub);
+                        double z0 = 0.0;
+                        double z1 = 0.0;
+                        rng.ugaussian_pair(&z0, &z1);
+                        re += sigma_re * z0;
+                        im -= sigma_re * z1;
+                    }
+                } else {
+                    P21PhiloxRng rng;
+                    rng.init((uint64_t)seed, (uint64_t)idx, 0U);
+                    double z0 = 0.0;
+                    double z1 = 0.0;
+                    rng.ugaussian_pair(&z0, &z1);
+                    re += sigma_re * z0;
+                    im += sigma_re * z1;
+                }
+            }
+        }
+
+        d_freq[idx].x = (float)(re * (double)inv_n_tot);
+        d_freq[idx].y = (float)(im * (double)inv_n_tot);
+    }
+}
+
+int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny, int nz,
+                                 double lx, double ly, double lz, int los_axis,
+                                 double sigma_perp_mpc, double channel_dr_mpc, int channel_mode,
+                                 int apply_uv_mask, double k_perp_min, double k_perp_max,
+                                 int apply_wedge, double wedge_slope, double wedge_buffer_mpc,
+                                 int add_noise, int n_noise_table, double noise_kperp_max,
+                                 const float *h_sigma_re_table, unsigned long long seed) {
+    if (!h_in || !h_out || nx <= 0 || ny <= 0 || nz <= 0 || lx <= 0.0 || ly <= 0.0 ||
+        lz <= 0.0 || los_axis < 0 || los_axis > 2) {
+        return -1;
+    }
+    if (!p21_cuda_ensure_init()) {
+        return -1;
+    }
+
+    cudaStream_t stream = p21_cuda_stream();
+    size_t n_tot = (size_t)nx * (size_t)ny * (size_t)nz;
+    size_t box_bytes = n_tot * sizeof(float);
+    size_t hz = (size_t)(nz / 2 + 1);
+    size_t n_freq = (size_t)nx * (size_t)ny * hz;
+    bool use_noise = (add_noise != 0 && h_sigma_re_table != nullptr && n_noise_table >= 2 &&
+                      noise_kperp_max > 0.0);
+
+    DeviceFloatView v_in = acquire_float_view(h_in, box_bytes, stream);
+    cufftComplex *d_freq =
+        (cufftComplex *)p21_cuda_pool_alloc(n_freq * sizeof(cufftComplex), stream);
+    float *d_out = (float *)p21_cuda_pool_alloc(box_bytes, stream);
+    float *d_sigma_table =
+        use_noise ? (float *)p21_cuda_pool_alloc((size_t)n_noise_table * sizeof(float), stream)
+                  : nullptr;
+
+    auto cleanup = [&]() {
+        p21_cuda_pool_free(d_sigma_table, stream);
+        p21_cuda_pool_free(d_out, stream);
+        p21_cuda_pool_free(d_freq, stream);
+        release_float_view(v_in, stream);
+    };
+
+    if (!v_in.d_ptr || !d_freq || !d_out || (use_noise && !d_sigma_table)) {
+        cleanup();
+        return -1;
+    }
+    if (use_noise &&
+        !P21_CUDA_OK(cudaMemcpyAsync(d_sigma_table, h_sigma_re_table,
+                                     (size_t)n_noise_table * sizeof(float), cudaMemcpyHostToDevice,
+                                     stream))) {
+        cleanup();
+        return -1;
+    }
+    if (!p21_cuda_fft_r2c(v_in.d_ptr, d_freq, nx, ny, nz, false, stream)) {
+        cleanup();
+        return -1;
+    }
+
+    constexpr int kTpb = 256;
+    int blocks = compute_grid_blocks(n_freq, kTpb);
+    float inv_n = (float)(1.0 / (double)n_tot);
+    interferometer_mock_kernel<<<blocks, kTpb, 0, stream>>>(
+        d_freq, nx, ny, nz, lx, ly, lz, los_axis, sigma_perp_mpc, channel_dr_mpc, channel_mode,
+        apply_uv_mask, k_perp_min, k_perp_max, apply_wedge, wedge_slope, wedge_buffer_mpc,
+        use_noise ? 1 : 0, n_noise_table, noise_kperp_max, d_sigma_table, seed, inv_n);
+
+    bool ok = P21_CUDA_OK(cudaGetLastError()) &&
+              p21_cuda_fft_c2r(d_freq, d_out, nx, ny, nz, false, stream) &&
+              P21_CUDA_OK(cudaMemcpyAsync(h_out, d_out, box_bytes, cudaMemcpyDeviceToHost, stream)) &&
+              P21_CUDA_OK(cudaStreamSynchronize(stream));
+    if (ok) {
+        p21_cuda_stats_add_d2h(box_bytes);
+        if (box_bytes <= p21_cuda_registry_max_entry_bytes()) {
+            p21_cuda_registry_put_copy(h_out, d_out, box_bytes, stream);
+        }
+    }
+    cleanup();
+    return ok ? 0 : -1;
+}
+
 }  // extern "C"
