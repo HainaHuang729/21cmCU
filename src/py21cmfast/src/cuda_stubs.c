@@ -432,62 +432,6 @@ int p21_cuda_sample_halo_grids(unsigned long long int seed, double redshift, flo
     return -1;
 }
 
-int p21_cuda_fill_cond_emissivity_tables(int kind, double redshift, double growthf, double lnM_min,
-                                         double lnM_max, double lnM_cond, double sigma_cond,
-                                         int n_delta, double min_dens, double max_dens,
-                                         int n_mturn, int do_acg_2d, double acg_l10_min,
-                                         double acg_l10_max, int do_mcg_2d, double mcg_l10_min,
-                                         double mcg_l10_max, const ScalingConstants *sc,
-                                         float *acg_1d_out, float **acg_2d_out,
-                                         float **mcg_2d_out) {
-    (void)kind;
-    (void)redshift;
-    (void)growthf;
-    (void)lnM_min;
-    (void)lnM_max;
-    (void)lnM_cond;
-    (void)sigma_cond;
-    (void)n_delta;
-    (void)min_dens;
-    (void)max_dens;
-    (void)n_mturn;
-    (void)do_acg_2d;
-    (void)acg_l10_min;
-    (void)acg_l10_max;
-    (void)do_mcg_2d;
-    (void)mcg_l10_min;
-    (void)mcg_l10_max;
-    (void)sc;
-    (void)acg_1d_out;
-    (void)acg_2d_out;
-    (void)mcg_2d_out;
-    return -1;
-}
-
-int p21_cuda_fill_uncond_emissivity_tables(
-    int kind, int n_z, const double *z_vals, const double *growthf_vals, const double *lnMmin_vals,
-    double lnMmax, const double *mturn_acg_hom_vals, const double *atomic_thresh_vals,
-    const double *sfr_timescale_vals, int do_mcg, int n_mturn, double mcg_l10_min,
-    double mcg_l10_max, const ScalingConstants *sc, double *acg_1d_out, double **mcg_2d_out) {
-    (void)kind;
-    (void)n_z;
-    (void)z_vals;
-    (void)growthf_vals;
-    (void)lnMmin_vals;
-    (void)lnMmax;
-    (void)mturn_acg_hom_vals;
-    (void)atomic_thresh_vals;
-    (void)sfr_timescale_vals;
-    (void)do_mcg;
-    (void)n_mturn;
-    (void)mcg_l10_min;
-    (void)mcg_l10_max;
-    (void)sc;
-    (void)acg_1d_out;
-    (void)mcg_2d_out;
-    return -1;
-}
-
 int p21_cuda_sample_halo_progenitors(unsigned long long int seed, double z_in, double z_out,
                                      HaloCatalog *halofield_in, HaloCatalog *halofield_out,
                                      const P21HaloSamplingParams *hsp, int *overflow_out,
