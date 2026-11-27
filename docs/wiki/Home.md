@@ -34,6 +34,7 @@ All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native s
 | [Interferometer Mock & Forecast](Interferometer-Mock-and-Forecast.md) | `SKA1-Low`/`HERA-350`/`MWA-II`/`LOFAR`, single-pass GPU mock observations, 1D/2D SNR forecasts |
 | [Lightcone Optimization & 3D Viz](Lightcone-Optimization-and-3D-Viz.md) | One-line `quick_lightcone`, zero-D2H lightcones, `to_torch` DLPack, and offline WebGL2 3D viewer |
 | [CLI & API Reference](CLI-and-API-Reference.md) | `21cmcu` subcommands, `P21_*` environment variables, and `py21cmcu` exports |
+| [Upstream & CPU Optimization](Upstream-Comparison-and-CPU-Optimization.md) | Upstream 21cmFAST v4 roadmap, CPU fallbacks, CPU optimization plan, & accuracy summary |
 | [Architecture Overview](Architecture-Overview.md) | Native CFFI CUDA engine layout, Philox RNG, 64-bit indexing, and engine fixes |
 | [Troubleshooting & FAQ](Troubleshooting-and-FAQ.md) | Common HPC build issues, v4 `_ACG` naming, `Z_HEAT_MAX`, and OOM tuning |
 

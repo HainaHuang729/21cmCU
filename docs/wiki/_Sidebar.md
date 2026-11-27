@@ -16,4 +16,5 @@
 
 **Reference**
 - [CLI & API Reference](CLI-and-API-Reference.md)
+- [Upstream & CPU Optimization](Upstream-Comparison-and-CPU-Optimization.md)
 - [Architecture Overview](Architecture-Overview.md)

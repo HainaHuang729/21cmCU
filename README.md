@@ -8,11 +8,33 @@
 [![CPU CI](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml/badge.svg)](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml)
 ![Native GPU Tests](https://img.shields.io/badge/GPU%20tests-168%2B%20verified-brightgreen)
 
-[Quickstart](#5-minute-quickstart) · [Wiki](docs/wiki/Home.md) · [User Guide](docs/USER_GUIDE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Methods Paper](docs/paper/21cmcu_paper.md) · [Examples](examples/)
+[Visual Showcase](#visual-showcase) · [Quickstart](#5-minute-quickstart) · [Wiki](docs/wiki/Home.md) · [User Guide](docs/USER_GUIDE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Upstream & CPU Opt](docs/UPSTREAM_AND_OPTIMIZATION.md) · [Methods Paper](docs/paper/21cmcu_paper.md) · [Examples](examples/)
 
 ---
 
 **21cmCU** embeds custom CUDA kernels, cuFFT pipelines, device-resident field caching, GPU HDF5 compression, and multi-GPU slab domain decomposition directly inside the `c_21cmfast` CFFI shared library, with full `py21cmcu` / `py21cmfast` v4 API and CLI compatibility. It accelerates both high-throughput simulation-based inference (SBI) ensembles and out-of-single-GPU multi-billion-voxel boxes (`1536³–2048³`).
+
+---
+
+## Visual Showcase
+
+<p align="center">
+  <img src="docs/figures/lightcone_showcase.png" alt="21cmCU 21cm Brightness Temperature and Neutral Fraction Lightcone + Global History + 3D Cutaway" width="100%"/>
+</p>
+
+*Panoramic `L-INTEGRAL + Ts + RSD` 21cm brightness temperature & neutral hydrogen fraction lightcone (`256 Mpc`, $z = 6.3\text{–}17.5$), global Cosmic Dawn absorption & reionization history, and 3D EoR volume cutaway at $z = 7.56$ ($\langle x_{\mathrm{HI}} \rangle = 0.47$).*
+
+<p align="center">
+  <img src="docs/figures/interferometer_mock_showcase.png" alt="21cmCU SKA1-Low and HERA-350 1000h Mock Observations, 2D Wedge Power Spectrum, and 1D Forecast" width="100%"/>
+</p>
+
+*Single-pass interferometer mock pipeline (`py21cmcu.instrument`): true 21cm fluctuations at $z = 7.56$ vs `SKA1-Low` (1D `SNR = 27.8`) & `HERA-350` (1D `SNR = 5.7`) 1000 h mocks (UV coverage, PSF, channel width, horizon wedge, $P_N$ thermal noise), 2D cylindrical $P(k_\perp, k_\parallel)$, and 1D $\Delta^2_{21}(k)$ sensitivity forecast.*
+
+<p align="center">
+  <img src="docs/figures/v070_observables_and_calibration.png" alt="21cmCU v0.7.0 GPU Observables Speedups and 6-Seed strict vs fast Calibration" width="100%"/>
+</p>
+
+*Verified `v0.7.0` RTX 4090 observables/mock speedups (`71.65×–71.88×` on `256³` mocks, `23.86×–26.43×` on wedge/PDF kernels, `-21.9%` zero-D2H lightcone wall time) alongside 6-seed `strict` vs `fast` statistical calibration parity.*
 
 ---
 
@@ -77,12 +99,11 @@ Verify your GPU runtime, PCIe/NVLink topology, libraries, and grid sizing limits
 import py21cmcu as p21
 
 # One-line GPU lightcone + SKA1-Low mock + offline interactive 3D WebGL2 HTML viewer:
-res = p21.quick_lightcone(
-    dim=128, hii_dim=64, box_len=128.0,
-    redshifts=(7.5, 11.5), instrument="SKA1-Low", obs_hours=1000.0,
-    html_out="lightcone_3d.html",
+lc = p21.quick_lightcone(
+    z_min=7.5, z_max=11.5, box_len=128.0, dim=128, hii_dim=64,
+    instrument="SKA1-Low", html_3d_path="lightcone_3d.html",
 )
-ps1 = p21.power_spectrum_1d(res.lightcone.brightness_temp[:, :, :64], box_length=128.0, n_bins=12, remove_mean=True)
+ps1 = p21.power_spectrum_1d(lc.lightcones["brightness_temp"][:, :, :64], box_length=128.0, n_bins=12, remove_mean=True)
 
 # Or full InputParameters control with zero-D2H GPU residency:
 inputs = p21.InputParameters(
@@ -160,6 +181,7 @@ P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny 
 | [Wiki (`docs/wiki/Home.md`)](docs/wiki/Home.md) | Browsable topic pages covering install, quickstart, modes, multi-GPU, SBI, API/CLI, and FAQ |
 | [User Guide (`docs/USER_GUIDE.md`)](docs/USER_GUIDE.md) | End-to-end guide for builds, containers, workflows, and CLI flags |
 | [Benchmarks (`docs/BENCHMARKS.md`)](docs/BENCHMARKS.md) | Full single-GPU, multi-GPU `v0.5.0 → v0.6.0`, residency, and `DeviceLZF` tables & figures |
+| [Upstream & CPU Opt (`docs/UPSTREAM_AND_OPTIMIZATION.md`)](docs/UPSTREAM_AND_OPTIMIZATION.md) | Upstream 21cmFAST v4 roadmap, CPU fallbacks, CPU optimization plan, & accuracy summary |
 | [Methods Paper (`docs/paper/21cmcu_paper.md`)](docs/paper/21cmcu_paper.md) | Standalone technical report ([LaTeX](docs/paper/21cmcu_paper.tex) & [BibTeX](docs/paper/refs.bib)) |
 | [Calibration (`docs/CALIBRATION.md`)](docs/CALIBRATION.md) | `strict` vs `fast` numerical & 6-seed statistical parity validation |
 | [Roadmap (`docs/ROADMAP.md`)](docs/ROADMAP.md) & [Changelog (`CHANGELOG.md`)](CHANGELOG.md) | Architecture notes, release history, and verification record (`168/168` GPU tests) |
@@ -169,6 +191,7 @@ Reproduce benchmarks and figures anytime via:
 ```bash
 21cmcu bench --suite all,mgpu --json benchmarks/results_rtx4090_v060.json
 python benchmarks/plot_benchmarks.py --json benchmarks/results_rtx4090_v060.json --out-dir docs/figures
+python benchmarks/generate_showcase_figures.py --out-dir docs/figures
 ```
 
 ---
