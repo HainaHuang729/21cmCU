@@ -23,7 +23,7 @@ from .analysis import (
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
 from .io import save_lightcone
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 CudaMode = Literal["strict", "fast"]
 

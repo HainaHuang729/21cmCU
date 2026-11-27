@@ -2,6 +2,12 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
+## [0.5.0] — 2026-11-27 (Direction G + Full Benchmarks & Figures)
+### Added
+- **Direction G (`9ec08a4`)**: Native multi-GPU 1D Y-slab domain decomposition (`cuda_mgpu.cu`/`.cuh`) for 3D R2C/C2R FFTs, `compute_initial_conditions` (`ZELDOVICH` + hybrid host-accumulated `2LPT`), and `power_spectrum_1d` / `power_spectrum_2d` with `CUDA_DEVICES` / `P21_CUDA_DEVICES` configuration, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `use_mode(..., devices=...)`, and `mgpu_fft_runs` / `mgpu_ic_runs` stats (`12/12` tests passing in `tests/native/test_21cmcu_phase5_g.py` across `2×` and `3× RTX 4090`).
+- **Full Benchmark Sweep & Visualization (`docs/BENCHMARKS.md`, `benchmarks/plot_benchmarks.py`, `docs/figures/*.png`)**: measured on node `b1` (16 CPU threads vs `1×–3× RTX 4090`) into `benchmarks/results_rtx4090_v050.json`, demonstrating `492.74×` on `apply_rsds`, `82.05×` on `RectilinearLightconer`, `20.65×` on `AngularLightconer`, `12.36×` on 3z `L-INTEGRAL+TS`, `1.83×` HDF5 write speedup with `DeviceLZF`, `-21.7%` D2H with `CUDA_LAZY_D2H`, `1536³` (`46.131 s` Zel'dovich) & `1792³` (`98.095 s` Zel'dovich) native multi-GPU IC on `3× RTX 4090`, and `10,502.0 tasks/h` multi-GPU `run_batch`.
+- **Full `v0.5.0` native GPU suite**: **`162/162`** passing tests (`-k "not speed"` across all 11 native test suites on `3× RTX 4090`).
+
 ## [0.4.0] — 2026-11-26 (Directions H, I & J)
 ### Added
 - **Direction H (`ec27d60`)**: In-memory + atomic `.npz` disk caching for `CLASS` `CosmoTables` (`17.1857 s` cold → `0.002208 s` memory **`7,783×`** / `0.0028 s` disk **`6,214×`**, `py21cmcu.clear_class_cache()`), `AngularLightconer` `run_classy` caching, and native CUDA `p21_cuda_angular_slice` / `p21_cuda_angular_los_velocity` (`0.0934 s` GPU vs `0.1644 s` CPU on `64 × 128³` `order=1` slices — **`1.76×`**; `6/6` tests passing in `tests/native/test_21cmcu_phase4_h.py`).

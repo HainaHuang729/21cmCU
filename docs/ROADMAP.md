@@ -92,7 +92,15 @@
 
 ---
 
+## Completed Direction G (`v0.5.0`) — Native Multi-GPU 1D Slab Domain Decomposition
+
+- **Multi-GPU Device Management (`cuda_runtime.cu`, `_cfg.py`, `py21cmcu`)**: added `CUDA_DEVICES` / `P21_CUDA_DEVICES`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `use_mode(..., devices=...)`, and `mgpu_fft_runs` / `mgpu_ic_runs` runtime counters.
+- **Y-Slab Distributed 3D FFT & IC (`cuda_mgpu.cu`, `cuda_ic.cu`, `cuda_analysis.cu`)**: implemented striped 2D R2C/C2R + adaptive P2P/host-staged X-to-Y transpose + 1D C2C transforms without external MPI dependencies, native multi-GPU `compute_initial_conditions` (`ZELDOVICH` + hybrid host-accumulated `2LPT`), and multi-GPU `power_spectrum_1d` / `power_spectrum_2d`.
+  - Verified on `2×` & `3× RTX 4090` (`tests/native/test_21cmcu_phase5_g.py`, **`12/12 passed`**): native `1536³` (`46.131 s` Zel'dovich / `201.302 s` 2LPT) and `1792³` (`98.095 s` Zel'dovich / `365.663 s` 2LPT) beyond 24 GB single-card limits, graceful host fallback at `2048³` on 3 GPUs, and **`10,502.0 tasks/h`** multi-GPU `run_batch`.
+- **Benchmark Suite & Publication Figures ([`docs/BENCHMARKS.md`](BENCHMARKS.md))**: complete CPU-16T vs `1×–3× RTX 4090` sweep (`benchmarks/results_rtx4090_v050.json`), visualization script (`benchmarks/plot_benchmarks.py`), and **`162/162` passing tests** (`-k "not speed"` across all 11 native suites).
+
+---
+
 ## Future Roadmap
 
-### Direction G — Multi-GPU Domain Decomposition
-- Distributed 2D slab cuFFT / MPI across multiple GPUs for `>= 2048³` grids beyond single-card VRAM limits.
+- **Multi-node / 4+ GPU NVLink Scaling**: extend `cuda_mgpu.cu` (`>= 4× 24 GB` GPUs for in-VRAM `2048³` 2LPT) and optional NCCL all-to-all collective backend for NVLink/NVSwitch nodes.
