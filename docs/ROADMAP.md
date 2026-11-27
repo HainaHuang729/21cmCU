@@ -1,6 +1,6 @@
 # 21cmCU Roadmap & Milestone Record
 
-**21cmCU** is a standalone native C/CUDA + cuFFT 21cm cosmological simulation engine derived from the `21cmFAST-GPU` fork (21cmFAST v4.3.2 semantics) with full `py21cmcu` / `py21cmfast` API and CLI compatibility and zero runtime CuPy dependency.
+**21cmCU** is a standalone native C/CUDA + cuFFT 21cm cosmological simulation engine derived from the `21cmFAST-GPU` fork (21cmFAST v4 semantics) with full `py21cmcu` / `py21cmfast` API and CLI compatibility and zero runtime CuPy dependency.
 
 ## Core Architecture
 
@@ -18,7 +18,7 @@
 ### Phase 0 (`f3285f4`) — Engine Unification & Upstream Bug Fixes
 - Branded standalone package as **`21cmCU`** (`py21cmcu` / `21cmcu` CLI) alongside full `py21cmfast` namespace compatibility.
 - Preserved legacy CuPy v4 adapter and v3 CUDA sources under tag `archive-cupy-v4`.
-- Fixed upstream v4.3.2 blockers:
+- Engine stability fixes:
   - Photon-conservation calibration redshift/neutral-fraction length alignment (`photoncons.py`).
   - Safe null-output guard in Sheth–Tormen `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`).
   - Separate previous-redshift 1D ACG ionizing-efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True` (`interp_tables.c` / `cuda_ionization.cu`).

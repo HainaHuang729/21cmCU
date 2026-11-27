@@ -12,7 +12,7 @@
 
 ---
 
-**21cmCU** embeds custom CUDA kernels, cuFFT pipelines, device-resident field caching, GPU HDF5 compression, and multi-GPU slab domain decomposition directly inside the `c_21cmfast` CFFI shared library. Built on **21cmFAST v4.3.2** semantics with full `py21cmcu` / `py21cmfast` API and CLI compatibility, it accelerates both high-throughput simulation-based inference (SBI) ensembles and out-of-single-GPU multi-billion-voxel boxes (`1536³–2048³`).
+**21cmCU** embeds custom CUDA kernels, cuFFT pipelines, device-resident field caching, GPU HDF5 compression, and multi-GPU slab domain decomposition directly inside the `c_21cmfast` CFFI shared library, with full `py21cmcu` / `py21cmfast` v4 API and CLI compatibility. It accelerates both high-throughput simulation-based inference (SBI) ensembles and out-of-single-GPU multi-billion-voxel boxes (`1536³–2048³`).
 
 ---
 
@@ -119,7 +119,7 @@ P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny 
 - **Multi-GPU Slab Domain Decomposition & Single-Slab `2048³`**: distributed Y-slab 3D cuFFT (`cuda_mgpu.cu`) with 64 MiB pinned portable host-bounce buffers, `std::thread` sub-tiled transposes, zero-`h_tmp_ab` 2LPT streaming, and single-work-slab streaming (`P21_CUDA_MGPU_SINGLE_SLAB`). Scales natively in-VRAM to `2048³` (`8.590 B` voxels) Zel'dovich IC on `3× RTX 4090` (`58.467 s`), and delivers `1.94×–3.52×` speedups on `1536³`/`1792³` over `v0.5.0`.
 - **GPU Residency (`CUDA_LAZY_D2H`), `DeviceLZF` HDF5 & `CLASS` Caching**: opt-in GPU intermediate retention (`use_mode(..., lazy_d2h=True)` / `P21_CUDA_LAZY_D2H=1`) cuts `512/256` 3z D2H traffic by `21.7%`; `save_lightcone(..., compression="device-lzf")` compresses chunks on-GPU into standard HDF5 LZF (`476.3 MB/s` vs `259.6 MB/s` CPU LZF); persistent `CosmoTables` memory/disk caching eliminates repeated `CLASS` startup latency (`0.634 s → 0.311 ms` memory / `2.7 ms` disk).
 - **Lightcone RSDs, Power Spectra & End-to-End SBI Pipeline**: fused GPU `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds`, `RectilinearLightconer` & `AngularLightconer` kernels, cuFFT 1D/2D power spectra, scrambled Sobol parameter sampling (`generate_sobol_parameter_grid`), Fourier horizon wedge filtering (`apply_wedge_filter_3d`), deterministic thermal noise (`add_thermal_noise_3d`), and resumable HDF5-checkpointed `run_batch`.
-- **Standalone Bug Fixes Over Upstream 21cmFAST v4.3.2**: aligned photon-conservation redshift/neutral-fraction array lengths (`photoncons.py`), null-output safety guard in `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`), and separated previous-redshift 1D ACG efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True`.
+- **Engine Stability & Physics Fixes**: aligned photon-conservation redshift/neutral-fraction array lengths (`photoncons.py`), null-output safety guard in `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`), and separated previous-redshift 1D ACG efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True`.
 
 ---
 
@@ -158,5 +158,5 @@ python benchmarks/plot_benchmarks.py --json benchmarks/results_rtx4090_v060.json
 
 ## Legacy Archive & License
 
-- Previous CuPy v4.3.2 adapter (`v4/`) and legacy v3 CUDA sources (`lightcone/`, `gpu/`) were removed from `main` in `v0.4.0` and remain preserved under git tag `archive-cupy-v4`.
+- Previous CuPy adapter (`v4/`) and legacy v3 CUDA sources (`lightcone/`, `gpu/`) were removed from `main` in `v0.4.0` and remain preserved under git tag `archive-cupy-v4`.
 - Upstream 21cmFAST license: [LICENSE.upstream](LICENSE.upstream).

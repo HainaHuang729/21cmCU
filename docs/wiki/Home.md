@@ -1,6 +1,6 @@
 # Welcome to the 21cmCU Wiki
 
-**21cmCU** (`py21cmcu` `v0.6.0`) is a native **C/CUDA + cuFFT** cosmological 21cm simulation engine built on **21cmFAST v4.3.2** semantics with full API/CLI compatibility and **zero CuPy or Numba runtime dependency**.
+**21cmCU** (`py21cmcu` `v0.6.0`) is a native **C/CUDA + cuFFT** cosmological 21cm simulation engine with full **21cmFAST v4** API/CLI compatibility and **zero CuPy or Numba runtime dependency**.
 
 ## Headline Performance (`v0.6.0` on NVIDIA RTX 4090 vs 16-Core CPU)
 
@@ -29,7 +29,7 @@ All **`168/168`** native GPU tests (`-k "not speed"` across 12 native suites) pa
 | [Residency & I/O](Residency-and-IO.md) | `CUDA_LAZY_D2H`, `DeviceFieldRegistry`, `DeviceLZF` HDF5, and `CLASS` table cache |
 | [SBI & Batch Pipeline](SBI-and-Batch-Pipeline.md) | Horizon wedge, thermal noise, Sobol sampling, and resumable `run_batch` |
 | [CLI & API Reference](CLI-and-API-Reference.md) | `21cmcu` subcommands, `P21_*` environment variables, and `py21cmcu` exports |
-| [Architecture Overview](Architecture-Overview.md) | Native CFFI CUDA engine layout, Philox RNG, 64-bit indexing, and v4.3.2 fixes |
+| [Architecture Overview](Architecture-Overview.md) | Native CFFI CUDA engine layout, Philox RNG, 64-bit indexing, and engine fixes |
 | [Troubleshooting & FAQ](Troubleshooting-and-FAQ.md) | Common HPC build issues, v4 `_ACG` naming, `Z_HEAT_MAX`, and OOM tuning |
 
 ---

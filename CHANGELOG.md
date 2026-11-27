@@ -52,5 +52,5 @@ All notable milestones in **21cmCU** are documented in this file.
 ### Added
 - **`f3285f4`**: Created standalone **21cmCU** engine (`py21cmcu` / `21cmcu`) on top of native C/CUDA + cuFFT inside `c_21cmfast` (zero CuPy runtime dependency).
 - Exposed dual execution modes `strict` (CPU-matched parity) and `fast` (statistically equivalent throughput mode).
-- Fixed upstream v4.3.2 bugs in `photoncons.py`, `hmf.c` (`st_taylor_factor` null guard), and `interp_tables.c` / `cuda_ionization.cu` (`Nion_conditional_table1D_acg_prev`).
+- Fixed engine stability bugs in `photoncons.py`, `hmf.c` (`st_taylor_factor` null guard), and `interp_tables.c` / `cuda_ionization.cu` (`Nion_conditional_table1D_acg_prev`).
 - Archived legacy CuPy v4 adapter and v3 CUDA paths at tag `archive-cupy-v4`.

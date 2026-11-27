@@ -21,7 +21,7 @@ Instead of dispatching PyTorch/CuPy arrays across Python bindings, 21cmCU compil
 
 ---
 
-## Standalone Bug Fixes Over Upstream 21cmFAST v4.3.2
+## Engine Stability & Physics Fixes
 
 1. **Photon-conservation calibration arrays (`photoncons.py`)**: aligned redshift and neutral-fraction lengths across `compute_fesc_calibrations` / spline construction.
 2. **`st_taylor_factor` null guard (`hmf.c`)**: safe guard for optional null outputs when `SAMPLE_METHOD="PARTITION"`.
