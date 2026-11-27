@@ -252,4 +252,11 @@ int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny
                                  int add_noise, int n_noise_table, double noise_kperp_max,
                                  const float *h_sigma_re_table, unsigned long long seed);
 int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out);
+void p21_dft_clear_plan_cache(void);
+void p21_dft_get_cache_stats(unsigned long long *hits_out, unsigned long long *misses_out,
+                             int *entries_out);
+int p21_cpu_rsds_shift_f32(const float *f_in, const double *d_in, int n_los, int nz,
+                           int n_rsd_subcells, int periodic, int disp_prescaled, float *f_out);
+int p21_cpu_rsds_shift_f64(const double *f_in, const double *d_in, int n_los, int nz,
+                           int n_rsd_subcells, int periodic, int disp_prescaled, double *f_out);
 /*-----------------------*/

@@ -30,8 +30,8 @@ All primary simulation stages run natively on GPU (`InitialConditions`, `Perturb
 
 ## 3. CPU Backend (`C / OpenMP / FFTW3f`) Optimization Opportunities
 
-1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`)**: Reuse `(kind, dim, dim_los, n_threads)` plans via `fftwf_execute_dft_*` instead of creating/destroying plans every radius in `IonisationBox.c`.
-2. **Native C/OpenMP `apply_rsds` (`src/py21cmfast/rsds.py`)**: Port the column-parallel CIC displacement kernel out of Python/`RegularGridInterpolator` (`37.65 s` at `128×128×512`) into C/OpenMP.
+1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — Implemented (`max_abs = 0.0`)**: 32-entry thread-safe LRU cache keyed by `(is_c2r, use_wisdom, dim, dim_los, n_threads, align64)` using `fftwf_execute_dft_*` (`P21_FFTW_PLAN_CACHE=1`). Verified **`589` hits / `9` misses** and bit-exact `max_abs = 0.0` across all 25 `OutputStruct` arrays on `256/128` 16T Coeval (`19.4612 s → 19.3780 s`).
+2. **Native C/OpenMP `apply_rsds` (`src/py21cmfast/src/rsds_cpu.c`, `src/py21cmfast/rsds.py`) — Implemented (`395.26×`, `max_abs = 0.0`)**: Column-parallel OpenMP kernel compiled with `#pragma STDC FP_CONTRACT OFF` and `no-fast-math` (`P21_CPU_RSDS_NATIVE=1`). Accelerates `128×128×512` 16-core CPU `apply_rsds` from **`38.2230 s` → `0.0967 s`** (**`395.26×`**) with zero per-pixel error (`max_abs = 0.0`).
 3. **SIMD + OpenMP Fusion (`build_cffi.py`, `IonisationBox.c`)**: Optional `-march=native`, `#pragma omp simd`, loop fusion, and NUMA first-touch initialization.
 4. **Fast Host RNG & `k^2 R^2` Filtering (`rng.c`, `filtering.c`)**: Host Philox/`xoshiro256++` RNG and avoiding inner-loop `sqrtf` calls.
 5. **Scratch-Buffer Reuse**: Persist `fftwf_malloc` buffers across filter radii to eliminate repeated kernel page faults.
@@ -42,4 +42,4 @@ All primary simulation stages run natively on GPU (`InitialConditions`, `Perturb
 
 - **`strict` mode**: `rel_rms ~ 1e-4` on `384³/128³` lightcones, **`< 0.02%`** max 3D $P(k)$ difference over $k \in [0.1, 1.0]\ \mathrm{Mpc}^{-1}$, and exact PDF `hist_diff = 0`.
 - **`fast` mode (6-seed ensembles on RTX 4090)**: $|\Delta \bar{x}_{\mathrm{HI}}| \le 0.00147$, $|\Delta \bar{T}_b| \le 0.3719\ \mathrm{mK}$, and 1D/2D power spectrum median $|\Delta|/\text{SEM} \in [0.68, 1.11]$ (pure cosmic variance).
-- **Speedups (`1×–3× RTX 4090` vs `16T CPU`)**: `apply_rsds` **`492.74×`**, Rectilinear Lightcone **`82.05×`**, `SKA1-Low / HERA-350` 3D Mocks **`71.65× / 71.88×`**, 1-Pt Moments/Wedge **`26.43× / 23.86×`**, `AngularLightconer` **`20.65×`**, 3z `L-INTEGRAL+TS` Coeval **`12.36×`**, Zero-D2H Lightcone **`-21.9%` wall time**, `2048³` Zel'dovich IC **`58.467 s`** (**`3.71×`**), `run_batch` up to **`9,782.0 tasks/h`**.
+- **Speedups (`1×–3× RTX 4090` vs `16T CPU`, plus native CPU RSDS)**: Native C/OpenMP `apply_rsds` **`395.26×` CPU speedup** (`38.2230 s → 0.0967 s`, `max_abs = 0.0`), Rectilinear Lightcone **`82.05×`**, `SKA1-Low / HERA-350` 3D Mocks **`71.65× / 71.88×`**, 1-Pt Moments/Wedge **`26.43× / 23.86×`**, `AngularLightconer` **`20.65×`**, 3z `L-INTEGRAL+TS` Coeval **`12.36×`**, Zero-D2H Lightcone **`-21.9%` wall time**, `2048³` Zel'dovich IC **`58.467 s`** (**`3.71×`**), `run_batch` up to **`9,782.0 tasks/h`**.

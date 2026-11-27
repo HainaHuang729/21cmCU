@@ -1,5 +1,6 @@
 """Module for accounting redshift space distortions."""
 
+import os
 from collections.abc import Sequence
 
 import numpy as np
@@ -21,6 +22,68 @@ def _rsd_cuda_ready() -> bool:
         and lib.p21_cuda_is_compiled()
         and lib.p21_cuda_is_available()
     )
+
+
+def _rsd_cpu_native_ready() -> bool:
+    return (
+        os.environ.get("P21_CPU_RSDS_NATIVE", "1") != "0"
+        and hasattr(lib, "p21_cpu_rsds_shift_f32")
+        and hasattr(lib, "p21_cpu_rsds_shift_f64")
+    )
+
+
+def _run_cpu_rsds_native(
+    f_los_nz: np.ndarray,
+    d_los_nz: np.ndarray,
+    n_rsd_subcells: int,
+    periodic: bool,
+) -> np.ndarray | None:
+    if (
+        f_los_nz.ndim != 2
+        or f_los_nz.shape != d_los_nz.shape
+        or n_rsd_subcells < 1
+        or f_los_nz.dtype not in (np.float32, np.float64)
+    ):
+        return None
+    n_los, nz = f_los_nz.shape
+    if n_los <= 0 or nz <= 0:
+        return None
+
+    disp_arr = np.asarray(d_los_nz)
+    if disp_arr.dtype == np.float32:
+        d64 = np.ascontiguousarray(disp_arr * n_rsd_subcells, dtype=np.float64)
+        disp_prescaled = 1
+    else:
+        d64 = np.ascontiguousarray(disp_arr, dtype=np.float64)
+        disp_prescaled = 0
+
+    if f_los_nz.dtype == np.float32:
+        f_contig = np.ascontiguousarray(f_los_nz, dtype=np.float32)
+        out = np.empty((n_los, nz), dtype=np.float32)
+        rc = lib.p21_cpu_rsds_shift_f32(
+            ffi.cast("const float *", ffi.from_buffer(f_contig)),
+            ffi.cast("const double *", ffi.from_buffer(d64)),
+            int(n_los),
+            int(nz),
+            int(n_rsd_subcells),
+            int(bool(periodic)),
+            int(disp_prescaled),
+            ffi.cast("float *", ffi.from_buffer(out)),
+        )
+    else:
+        f_contig = np.ascontiguousarray(f_los_nz, dtype=np.float64)
+        out = np.empty((n_los, nz), dtype=np.float64)
+        rc = lib.p21_cpu_rsds_shift_f64(
+            ffi.cast("const double *", ffi.from_buffer(f_contig)),
+            ffi.cast("const double *", ffi.from_buffer(d64)),
+            int(n_los),
+            int(nz),
+            int(n_rsd_subcells),
+            int(bool(periodic)),
+            int(disp_prescaled),
+            ffi.cast("double *", ffi.from_buffer(out)),
+        )
+    return out if rc == 0 else None
 
 
 def include_dvdr_in_tau21(
@@ -236,6 +299,24 @@ def apply_rsds(
         if rc == 0:
             return out32.reshape(field.shape)
 
+    if (
+        _rsd_cpu_native_ready()
+        and field.ndim in (2, 3)
+        and field.shape[-1] >= 1
+        and n_rsd_subcells >= 1
+        and field.dtype in (np.float32, np.float64)
+    ):
+        nz = field.shape[-1]
+        n_los = (field.shape[0] * field.shape[1]) if field.ndim == 3 else field.shape[0]
+        out = _run_cpu_rsds_native(
+            field.reshape((n_los, nz)),
+            np.asarray(los_displacement.value).reshape((n_los, nz)),
+            int(n_rsd_subcells),
+            bool(periodic),
+        )
+        if out is not None:
+            return out.reshape(field.shape)
+
     # We transform rectilinear lightcone to be an angular-like lightcone
     field_dimensions = len(field.shape)
     if field_dimensions == 3:
@@ -318,6 +399,21 @@ def rsds_shift(
         )
         if rc == 0:
             return np.ascontiguousarray(out32.T)
+
+    if (
+        _rsd_cpu_native_ready()
+        and field.ndim == 2
+        and n_rsd_subcells >= 1
+        and field.dtype in (np.float32, np.float64)
+    ):
+        out = _run_cpu_rsds_native(
+            field.T,
+            np.asarray(los_displacement).T,
+            int(n_rsd_subcells),
+            bool(periodic),
+        )
+        if out is not None:
+            return np.ascontiguousarray(out.T)
 
     ang_coords = np.arange(field.shape[1])
 

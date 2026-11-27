@@ -40,4 +40,5 @@ jobs:
             tests/native/test_21cmcu_phase6_lm.py \
             tests/native/test_21cmcu_phase7_oq.py \
             tests/native/test_21cmcu_phase8_instrument.py \
-            tests/native/test_21cmcu_phase9_lightcone_viz.py
+            tests/native/test_21cmcu_phase9_lightcone_viz.py \
+            tests/native/test_21cmcu_phase10_cpu_opt.py

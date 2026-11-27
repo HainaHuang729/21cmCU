@@ -3,8 +3,11 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <gsl/gsl_rng.h>
+#include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "Constants.h"
 #include "InputParameters.h"
@@ -15,6 +18,63 @@
 #include "indexing.h"
 #include "logger.h"
 
+#define P21_FFTW_PLAN_CACHE_CAP 32
+
+typedef struct {
+    bool valid;
+    bool is_c2r;
+    bool use_wisdom;
+    int dim;
+    int dim_los;
+    int n_threads;
+    int align64;
+    uint64_t lru_tick;
+    fftwf_plan plan;
+} P21FftwPlanCacheEntry;
+
+static P21FftwPlanCacheEntry g_fftw_plan_cache[P21_FFTW_PLAN_CACHE_CAP];
+static uint64_t g_fftw_cache_tick = 0;
+static uint64_t g_fftw_cache_hits = 0;
+static uint64_t g_fftw_cache_misses = 0;
+static pthread_mutex_t g_fftw_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static bool fftw_plan_cache_enabled(void) {
+    const char *env = getenv("P21_FFTW_PLAN_CACHE");
+    if (env != NULL && strcmp(env, "0") == 0) {
+        return false;
+    }
+    return true;
+}
+
+void p21_dft_clear_plan_cache(void) {
+    pthread_mutex_lock(&g_fftw_cache_mutex);
+    for (int i = 0; i < P21_FFTW_PLAN_CACHE_CAP; i++) {
+        if (g_fftw_plan_cache[i].valid && g_fftw_plan_cache[i].plan != NULL) {
+            fftwf_destroy_plan(g_fftw_plan_cache[i].plan);
+        }
+        memset(&g_fftw_plan_cache[i], 0, sizeof(g_fftw_plan_cache[i]));
+    }
+    g_fftw_cache_tick = 0;
+    g_fftw_cache_hits = 0;
+    g_fftw_cache_misses = 0;
+    pthread_mutex_unlock(&g_fftw_cache_mutex);
+}
+
+void p21_dft_get_cache_stats(unsigned long long *hits_out, unsigned long long *misses_out,
+                             int *entries_out) {
+    pthread_mutex_lock(&g_fftw_cache_mutex);
+    if (hits_out != NULL) *hits_out = (unsigned long long)g_fftw_cache_hits;
+    if (misses_out != NULL) *misses_out = (unsigned long long)g_fftw_cache_misses;
+    if (entries_out != NULL) {
+        int count = 0;
+        for (int i = 0; i < P21_FFTW_PLAN_CACHE_CAP; i++) {
+            if (g_fftw_plan_cache[i].valid) count++;
+        }
+        *entries_out = count;
+    }
+    pthread_mutex_unlock(&g_fftw_cache_mutex);
+}
+
 // FFTW stores the number of threads in each plan at planning time, so this must be called
 // before every plan is created. fftwf_init_threads() is idempotent, and calling it here also
 // guards against an earlier clean_fftw() having reset the threading state.
@@ -23,44 +83,104 @@ static void set_fftw_threads(int n_threads) {
     fftwf_plan_with_nthreads(n_threads);
 }
 
-int dft_c2r_cube(bool use_wisdom, int dim, int dim_los, int n_threads, fftwf_complex *box) {
+static int execute_dft_cube(bool is_c2r, bool use_wisdom, int dim, int dim_los, int n_threads,
+                            fftwf_complex *box) {
     // The wisdom is loaded into memory by CreateFFTWWisdoms() when the inputs are broadcast,
     // and kept there until clean_fftw(), so there's no need to import it here.
     unsigned flag = use_wisdom ? FFTW_WISDOM_ONLY : FFTW_ESTIMATE;
-    fftwf_plan plan;
+    fftwf_plan plan = NULL;
 
-    set_fftw_threads(n_threads);
-    plan = fftwf_plan_dft_c2r_3d(dim, dim, dim_los, (fftwf_complex *)box, (float *)box, flag);
-    if (plan == NULL && flag == FFTW_WISDOM_ONLY) {
-        // There was no matching wisdom in memory (e.g. CreateFFTWWisdoms() wasn't called
-        // since the last clean_fftw()), so FFTW_WISDOM_ONLY failed. This is thrown to the
-        // caller's Try, rather than caught here, so that it isn't ignored.
-        LOG_ERROR("No FFTW wisdom for c2r DIM=%d DIM_LOS=%d NTHREADS=%d.", dim, dim_los, n_threads);
-        Throw(ValueError);
+    // FFTW new-array plan reuse is bit-exact only when both creation and execution pointers
+    // have identical SIMD alignment modulo 64 bytes (covers SSE2/AVX2/AVX-512).
+    const int align64 = (int)((uintptr_t)box & 63ULL);
+    bool can_cache = fftw_plan_cache_enabled() && ((align64 & 15) == 0);
+    if (!can_cache) {
+        set_fftw_threads(n_threads);
+        plan = is_c2r
+                   ? fftwf_plan_dft_c2r_3d(dim, dim, dim_los, (fftwf_complex *)box, (float *)box,
+                                           flag)
+                   : fftwf_plan_dft_r2c_3d(dim, dim, dim_los, (float *)box, (fftwf_complex *)box,
+                                           flag);
+        if (plan == NULL && flag == FFTW_WISDOM_ONLY) {
+            LOG_ERROR("No FFTW wisdom for %s DIM=%d DIM_LOS=%d NTHREADS=%d.",
+                      is_c2r ? "c2r" : "r2c", dim, dim_los, n_threads);
+            Throw(ValueError);
+        }
+        fftwf_execute(plan);
+        fftwf_destroy_plan(plan);
+        return 0;
     }
-    fftwf_execute(plan);
-    fftwf_destroy_plan(plan);
-    return (0);
+
+    pthread_mutex_lock(&g_fftw_cache_mutex);
+    int hit_idx = -1;
+    int free_idx = -1;
+    int lru_idx = 0;
+    uint64_t lru_min = UINT64_MAX;
+    for (int i = 0; i < P21_FFTW_PLAN_CACHE_CAP; i++) {
+        P21FftwPlanCacheEntry *e = &g_fftw_plan_cache[i];
+        if (!e->valid) {
+            if (free_idx < 0) free_idx = i;
+            continue;
+        }
+        if (e->is_c2r == is_c2r && e->use_wisdom == use_wisdom && e->dim == dim &&
+            e->dim_los == dim_los && e->n_threads == n_threads && e->align64 == align64) {
+            hit_idx = i;
+            break;
+        }
+        if (e->lru_tick < lru_min) {
+            lru_min = e->lru_tick;
+            lru_idx = i;
+        }
+    }
+
+    if (hit_idx >= 0) {
+        g_fftw_cache_hits++;
+        g_fftw_plan_cache[hit_idx].lru_tick = ++g_fftw_cache_tick;
+        plan = g_fftw_plan_cache[hit_idx].plan;
+    } else {
+        g_fftw_cache_misses++;
+        set_fftw_threads(n_threads);
+        plan = is_c2r
+                   ? fftwf_plan_dft_c2r_3d(dim, dim, dim_los, (fftwf_complex *)box, (float *)box,
+                                           flag)
+                   : fftwf_plan_dft_r2c_3d(dim, dim, dim_los, (float *)box, (fftwf_complex *)box,
+                                           flag);
+        if (plan == NULL && flag == FFTW_WISDOM_ONLY) {
+            pthread_mutex_unlock(&g_fftw_cache_mutex);
+            LOG_ERROR("No FFTW wisdom for %s DIM=%d DIM_LOS=%d NTHREADS=%d.",
+                      is_c2r ? "c2r" : "r2c", dim, dim_los, n_threads);
+            Throw(ValueError);
+        }
+        int slot = (free_idx >= 0) ? free_idx : lru_idx;
+        if (g_fftw_plan_cache[slot].valid && g_fftw_plan_cache[slot].plan != NULL) {
+            fftwf_destroy_plan(g_fftw_plan_cache[slot].plan);
+        }
+        g_fftw_plan_cache[slot].valid = (plan != NULL);
+        g_fftw_plan_cache[slot].is_c2r = is_c2r;
+        g_fftw_plan_cache[slot].use_wisdom = use_wisdom;
+        g_fftw_plan_cache[slot].dim = dim;
+        g_fftw_plan_cache[slot].dim_los = dim_los;
+        g_fftw_plan_cache[slot].n_threads = n_threads;
+        g_fftw_plan_cache[slot].align64 = align64;
+        g_fftw_plan_cache[slot].lru_tick = ++g_fftw_cache_tick;
+        g_fftw_plan_cache[slot].plan = plan;
+    }
+
+    if (is_c2r) {
+        fftwf_execute_dft_c2r(plan, (fftwf_complex *)box, (float *)box);
+    } else {
+        fftwf_execute_dft_r2c(plan, (float *)box, (fftwf_complex *)box);
+    }
+    pthread_mutex_unlock(&g_fftw_cache_mutex);
+    return 0;
+}
+
+int dft_c2r_cube(bool use_wisdom, int dim, int dim_los, int n_threads, fftwf_complex *box) {
+    return execute_dft_cube(true, use_wisdom, dim, dim_los, n_threads, box);
 }
 
 int dft_r2c_cube(bool use_wisdom, int dim, int dim_los, int n_threads, fftwf_complex *box) {
-    // The wisdom is loaded into memory by CreateFFTWWisdoms() when the inputs are broadcast,
-    // and kept there until clean_fftw(), so there's no need to import it here.
-    unsigned flag = use_wisdom ? FFTW_WISDOM_ONLY : FFTW_ESTIMATE;
-    fftwf_plan plan;
-
-    set_fftw_threads(n_threads);
-    plan = fftwf_plan_dft_r2c_3d(dim, dim, dim_los, (float *)box, (fftwf_complex *)box, flag);
-    if (plan == NULL && flag == FFTW_WISDOM_ONLY) {
-        // There was no matching wisdom in memory (e.g. CreateFFTWWisdoms() wasn't called
-        // since the last clean_fftw()), so FFTW_WISDOM_ONLY failed. This is thrown to the
-        // caller's Try, rather than caught here, so that it isn't ignored.
-        LOG_ERROR("No FFTW wisdom for r2c DIM=%d DIM_LOS=%d NTHREADS=%d.", dim, dim_los, n_threads);
-        Throw(ValueError);
-    }
-    fftwf_execute(plan);
-    fftwf_destroy_plan(plan);
-    return (0);
+    return execute_dft_cube(false, use_wisdom, dim, dim_los, n_threads, box);
 }
 
 int CreateFFTWWisdoms() {
@@ -125,6 +245,7 @@ int CreateFFTWWisdoms() {
         // deallocate
         fftwf_free(HIRES_box);
         fftwf_free(LOWRES_box);
+        p21_dft_clear_plan_cache();
 
     }  // End of Try{}
 
@@ -139,6 +260,7 @@ int CreateFFTWWisdoms() {
 // calls (the plans themselves are still created and destroyed in every FFT).
 // There must not be any FFTW plans alive when this is called.
 void clean_fftw() {
+    p21_dft_clear_plan_cache();
     fftwf_cleanup_threads();
     fftwf_cleanup();
 }

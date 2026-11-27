@@ -39,14 +39,16 @@ The table below lists every remaining path that stays on CPU or triggers an auto
 
 ## 3. CPU Backend (`C / OpenMP / FFTW3f`) Optimization Roadmap
 
-Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling identifies **5 high-leverage CPU improvements**:
+Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling identifies **5 high-leverage CPU improvements** (items #1 and #2 are now **implemented & bit-exact verified**):
 
-1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — High Impact, Low Risk**
-   - Currently, every call to `dft_r2c_cube` and `dft_c2r_cube` invokes `fftwf_plan_dft_*` → `fftwf_execute` → `fftwf_destroy_plan`. Because `IonisationBox.c` filters across ~20–40 excursion-set radii per redshift, hundreds of identical-shape plans are repeatedly constructed and torn down.
-   - **Optimization**: Cache `(kind, dim, dim_los, n_threads)` FFTW plans in a bounded LRU and invoke `fftwf_execute_dft_r2c(plan, ...)` / `fftwf_execute_dft_c2r(plan, ...)` (safe on `fftwf_malloc`-aligned 16/32-byte buffers).
-2. **Native C/OpenMP `apply_rsds` Kernel (`src/py21cmfast/rsds.py`) — Eliminates Largest Single-Node CPU Bottleneck**
-   - At `128 × 128 × 512`, `apply_rsds` dominates CPU lightcone runtime (`37.65 s` out of `248.77 s` due to Python `RegularGridInterpolator` + `cosmotile` CIC).
-   - **Optimization**: Port the column-parallel quadratic-velocity + sub-cell CIC kernel from `cuda_analysis.cu` to C/OpenMP in `c_21cmfast`, yielding an estimated `>10×` pure-CPU lightcone RSD speedup.
+1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — Implemented (`max_abs = 0.0`)**
+   - Previously, every call to `dft_r2c_cube` and `dft_c2r_cube` invoked `fftwf_plan_dft_*` → `fftwf_execute` → `fftwf_destroy_plan`. Because `IonisationBox.c` filters across ~20–40 excursion-set radii per redshift, hundreds of identical-shape plans were repeatedly constructed and torn down.
+   - **Implementation (`P21_FFTW_PLAN_CACHE=1`, default)**: Caches up to `32` plans keyed by `(is_c2r, use_wisdom, dim, dim_los, n_threads, align64)` under a mutex lock, executes via `fftwf_execute_dft_c2r` / `fftwf_execute_dft_r2c`, and tears down cached plans cleanly in `clean_fftw()` and `CreateFFTWWisdoms()`.
+   - **Verified on 16-Core CPU (`256/128` `L-INTEGRAL + TS` Coeval, `Z_HEAT_MAX=12`, `node=(13,10,8)`)**: **`589` hits / `9` misses (`9` entries)**, `19.4612 s → 19.3780 s`, with **strict bit-exact `max_abs = 0.0`** across all **25** non-null `OutputStruct` arrays.
+2. **Native C/OpenMP `apply_rsds` / `rsds_shift` Kernel (`src/py21cmfast/src/rsds_cpu.c`, `src/py21cmfast/rsds.py`) — Implemented (`395.26×`, `max_abs = 0.0`)**
+   - At `128 × 128 × 512`, Python `RegularGridInterpolator` + `cosmotile` CIC dominated CPU lightcone runtime (`38.2230 s`).
+   - **Implementation (`P21_CPU_RSDS_NATIVE=1`, default)**: Added column-parallel OpenMP kernels `p21_cpu_rsds_shift_f32` and `p21_cpu_rsds_shift_f64` compiled with strict FP guards (`#pragma STDC FP_CONTRACT OFF` and `no-fast-math` / `fp-contract=off`) to match `float32`/`float64` SciPy linear interpolation + CIC summation order bit-for-bit across `periodic=False/True` and arbitrary `nz` / `n_rsd_subcells >= 1`.
+   - **Verified on 16-Core CPU (`128 × 128 × 512`, `float32`, `n_rsd_subcells=4`, `periodic=False`)**: **`38.2230 s → 0.0967 s` (`395.26×` speedup, `max_abs = 0.0`)**, eliminating the CPU lightcone RSD bottleneck (`0.0967 s` 16T CPU vs `0.0764 s` `1× RTX 4090`).
 3. **Architecture-Specific SIMD & OpenMP Region Fusion (`build_cffi.py`, `IonisationBox.c`, `EmissivityFields.c`)**
    - `build_cffi.py` compiles with `-Ofast`; adding opt-in `-march=native` (`P21_CPU_NATIVE=1`) unlocks AVX2 / AVX-512 / Apple NEON vectorization, while fusing back-to-back short `#pragma omp parallel` loops and applying NUMA first-touch initialization improves 16–64 core scaling.
 4. **Fast Counter-Based Host RNG & `k^2 R^2` Filter Simplification (`rng.c`, `filtering.c`)**
@@ -76,7 +78,7 @@ Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling
 
 | Workload | Grid | CPU 16T | `21cmCU` GPU (`fast`) | Speedup / Savings |
 | --- | --- | ---: | ---: | ---: |
-| `apply_rsds` | `128×128×512` | `37.646 s` | `0.0764 s` (`1× 4090`) | **`492.74×`** |
+| `apply_rsds` | `128×128×512` | `0.0967 s` (native C/OpenMP; `38.2230 s` Python) | `0.0764 s` (`1× 4090`) | **`395.26×` CPU speedup** (`max_abs = 0.0`) |
 | Rectilinear Lightcone (`+ dvdr + RSD`) | `256/128`, `z=6.5–11` | `248.773 s` | `3.032 s` (`1× 4090`) | **`82.05×`** |
 | `SKA1-Low / HERA-350` 3D Mock | `256³` | `1.651 s / 1.616 s` | `23.04 ms / 22.48 ms` | **`71.65× / 71.88×`** |
 | 1-Pt Moments+PDF / Horizon Wedge | `256³` | — | Single-pass GPU | **`26.43× / 23.86×`** |
