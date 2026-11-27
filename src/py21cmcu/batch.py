@@ -36,6 +36,11 @@ class BatchTask:
     ps_2d_n_kpara: int = 10
     lightcone_chunk_depth: int | None = None
     extra_ps_kwargs: dict[str, Any] = field(default_factory=dict)
+    wedge_filter: bool = False
+    wedge_buffer: float = 0.0
+    noise_sigma_mk: float | None = None
+    lightcone_out_path: str | None = None
+    lightcone_compression: str = "device-lzf"
 
 
 @dataclass(slots=True)
@@ -114,7 +119,24 @@ def _execute_single_task(
                 ps1_list = []
                 ps2_list = []
                 for c in coevals:
-                    tb = c.brightness_temp
+                    tb = np.asarray(c.brightness_temp, dtype=np.float32)
+                    if task.noise_sigma_mk is not None:
+                        tb = py21cmcu.add_thermal_noise_3d(
+                            tb,
+                            box_len,
+                            sigma_mk=task.noise_sigma_mk,
+                            redshift=float(c.redshift),
+                            seed=int(inputs.random_seed) * 31 + int(round(float(c.redshift) * 100)),
+                        )
+                    if task.wedge_filter:
+                        tb = py21cmcu.apply_wedge_filter_3d(
+                            tb,
+                            box_len,
+                            float(c.redshift),
+                            buffer_h_mpc=task.wedge_buffer,
+                            cosmo=inputs.cosmo_params.cosmo,
+                            use_cuda=use_cuda,
+                        )
                     ps1 = py21cmcu.power_spectrum_1d(
                         tb,
                         box_len,
@@ -190,29 +212,85 @@ def _execute_single_task(
                     if task.apply_rsds and "brightness_temp_with_rsds" in lc.lightcones
                     else "brightness_temp"
                 )
-                chunk_res = py21cmcu.lightcone_chunk_power_spectra(
-                    lc,
-                    quantity=ps_qty,
-                    chunk_depth=task.lightcone_chunk_depth,
-                    n_bins=task.ps_n_bins,
-                    use_cuda=use_cuda,
-                    **task.extra_ps_kwargs,
-                )
-                ps_1d = {
-                    "redshifts": chunk_res["chunk_redshifts"],
-                    "spectra": chunk_res["chunks"],
-                }
+                if task.lightcone_out_path is not None:
+                    py21cmcu.save_lightcone(
+                        lc.lightcones,
+                        task.lightcone_out_path,
+                        compression=task.lightcone_compression,
+                    )
+
+                lc_arr = np.asarray(lc.lightcones[ps_qty], dtype=np.float32)
+                cell = float(inputs.simulation_options.cell_size.value)
+                lx = lc_arr.shape[0] * cell
+                ly = lc_arr.shape[1] * cell
+                mean_z = float(np.mean(lc.lightcone_redshifts))
+                if task.noise_sigma_mk is not None:
+                    lc_arr = py21cmcu.add_thermal_noise_3d(
+                        lc_arr,
+                        (lx, ly, lc_arr.shape[2] * cell),
+                        sigma_mk=task.noise_sigma_mk,
+                        redshift=mean_z,
+                        seed=int(inputs.random_seed) * 31 + 7,
+                    )
+                if task.wedge_filter:
+                    lc_arr = py21cmcu.apply_wedge_filter_3d(
+                        lc_arr,
+                        (lx, ly, lc_arr.shape[2] * cell),
+                        mean_z,
+                        los_axis=2,
+                        buffer_h_mpc=task.wedge_buffer,
+                        cosmo=inputs.cosmo_params.cosmo,
+                        use_cuda=use_cuda,
+                    )
+
+                if task.noise_sigma_mk is None and not task.wedge_filter:
+                    chunk_res = py21cmcu.lightcone_chunk_power_spectra(
+                        lc,
+                        quantity=ps_qty,
+                        chunk_depth=task.lightcone_chunk_depth,
+                        n_bins=task.ps_n_bins,
+                        use_cuda=use_cuda,
+                        **task.extra_ps_kwargs,
+                    )
+                    ps_1d = {
+                        "redshifts": chunk_res["chunk_redshifts"],
+                        "spectra": chunk_res["chunks"],
+                    }
+                else:
+                    nz_tot = lc_arr.shape[2]
+                    depth = (
+                        int(task.lightcone_chunk_depth)
+                        if task.lightcone_chunk_depth is not None
+                        else max(1, nz_tot // 6)
+                    )
+                    chunk_z = []
+                    chunk_specs = []
+                    lc_redshifts = np.asarray(lc.lightcone_redshifts, dtype=np.float64)
+                    for z0 in range(0, nz_tot, depth):
+                        z1 = min(nz_tot, z0 + depth)
+                        if z1 - z0 < 4:
+                            continue
+                        sub = np.ascontiguousarray(lc_arr[:, :, z0:z1])
+                        chunk_z.append(float(np.mean(lc_redshifts[z0:z1])))
+                        chunk_specs.append(
+                            py21cmcu.power_spectrum_1d(
+                                sub,
+                                (lx, ly, (z1 - z0) * cell),
+                                n_bins=task.ps_n_bins,
+                                use_cuda=use_cuda,
+                                **task.extra_ps_kwargs,
+                            )
+                        )
+                    ps_1d = {
+                        "redshifts": np.asarray(chunk_z, dtype=np.float64),
+                        "spectra": chunk_specs,
+                    }
+
                 ps_2d = None
                 if task.compute_ps_2d:
-                    lc_arr = np.asarray(lc.lightcones[ps_qty], dtype=np.float32)
-                    cell = float(inputs.simulation_options.cell_size.value)
-                    lx = lc_arr.shape[0] * cell
-                    ly = lc_arr.shape[1] * cell
                     lz = lc_arr.shape[2] * cell
                     ps_2d = {
-                        "redshifts": np.array(
-                            [float(np.mean(lc.lightcone_redshifts))], dtype=np.float64
-                        ),
+                        "redshifts": np.array([mean_z], dtype=np.float64),
                         "spectra": [
                             py21cmcu.power_spectrum_2d(
                                 lc_arr,
@@ -327,6 +405,57 @@ def save_batch_h5(path: str | Path, results: Sequence[BatchResult]) -> None:
                         sg.create_dataset(k, data=v)
 
 
+def _load_batch_h5(path: Path) -> dict[str, BatchResult]:
+    """Load completed BatchResult entries from a summary HDF5 checkpoint."""
+    loaded: dict[str, BatchResult] = {}
+    if not path.exists():
+        return loaded
+    with h5py.File(path, "r") as fl:
+        if "tasks" not in fl:
+            return loaded
+        tgrp = fl["tasks"]
+        for tid in tgrp:
+            tg = tgrp[tid]
+            ok = bool(tg.attrs.get("ok", False))
+            if not ok:
+                continue
+            ps_1d: dict[str, Any] = {}
+            if "ps_1d" in tg:
+                p1g = tg["ps_1d"]
+                specs = []
+                i = 0
+                while f"z_{i}" in p1g:
+                    sg = p1g[f"z_{i}"]
+                    specs.append({k: sg[k][:] for k in sg})
+                    i += 1
+                ps_1d = {"redshifts": p1g["redshifts"][:], "spectra": specs}
+            ps_2d: dict[str, Any] | None = None
+            if "ps_2d" in tg:
+                p2g = tg["ps_2d"]
+                specs2 = []
+                i = 0
+                while f"z_{i}" in p2g:
+                    sg = p2g[f"z_{i}"]
+                    specs2.append({k: sg[k][:] for k in sg})
+                    i += 1
+                ps_2d = {"redshifts": p2g["redshifts"][:], "spectra": specs2}
+            loaded[tid] = BatchResult(
+                task_id=str(tid),
+                ok=True,
+                error=None,
+                wall_s=float(tg.attrs.get("wall_s", 0.0)),
+                device_id=int(tg.attrs.get("device_id", 0)),
+                redshifts=tg["redshifts"][:],
+                global_xH=tg["global_xH"][:],
+                global_Tb=tg["global_Tb"][:],
+                global_Ts=tg["global_Ts"][:] if "global_Ts" in tg else None,
+                ps_1d=ps_1d,
+                ps_2d=ps_2d,
+                cuda_stats={},
+            )
+    return loaded
+
+
 def run_batch(
     tasks: Sequence[BatchTask],
     *,
@@ -334,22 +463,30 @@ def run_batch(
     workers_per_gpu: int = 1,
     threads_per_worker: int | None = None,
     output_h5: str | Path | None = None,
+    checkpoint_h5: str | Path | None = None,
+    resume: bool = False,
     use_cuda: bool = True,
     in_process: bool | None = None,
 ) -> list[BatchResult]:
     """Execute a sequence of BatchTasks concurrently across one or more GPUs."""
-    if not tasks:
+    ckpt = Path(checkpoint_h5) if checkpoint_h5 is not None else (Path(output_h5) if output_h5 is not None else None)
+    prior: dict[str, BatchResult] = _load_batch_h5(ckpt) if (resume and ckpt is not None) else {}
+    pending_indices = [idx for idx, t in enumerate(tasks) if t.task_id not in prior]
+
+    if not pending_indices:
+        ordered = [prior[t.task_id] for t in tasks]
         if output_h5 is not None:
-            save_batch_h5(output_h5, [])
-        return []
+            save_batch_h5(output_h5, ordered)
+        return ordered
     if workers_per_gpu < 1:
         raise ValueError(f"workers_per_gpu must be >= 1, got {workers_per_gpu}")
     if not devices:
         devices = (0,)
 
+    pending_tasks = [tasks[idx] for idx in pending_indices]
     worker_devices = [int(d) for d in devices for _ in range(workers_per_gpu)]
     run_inline = (
-        (len(worker_devices) == 1 and len(tasks) <= 1)
+        (len(worker_devices) == 1 and len(pending_tasks) <= 1)
         if in_process is None
         else bool(in_process)
     )
@@ -358,14 +495,14 @@ def run_batch(
         import py21cmcu
 
         try:
-            ordered = [
+            ran = [
                 _execute_single_task(
                     t,
                     device_id=worker_devices[0],
                     use_cuda=use_cuda,
                     threads_per_worker=threads_per_worker,
                 )
-                for t in tasks
+                for t in pending_tasks
             ]
         finally:
             py21cmcu.cleanup_cuda()
@@ -373,8 +510,8 @@ def run_batch(
         ctx = mp.get_context("spawn")
         task_q = ctx.Queue()
         res_q = ctx.Queue()
-        for idx, t in enumerate(tasks):
-            task_q.put((idx, t))
+        for local_idx, t in enumerate(pending_tasks):
+            task_q.put((local_idx, t))
         for _ in worker_devices:
             task_q.put(None)
 
@@ -388,15 +525,24 @@ def run_batch(
         for p in procs:
             p.start()
 
-        slots: list[BatchResult | None] = [None] * len(tasks)
-        for _ in range(len(tasks)):
-            idx, res = res_q.get()
-            slots[idx] = res
+        slots: list[BatchResult | None] = [None] * len(pending_tasks)
+        for _ in range(len(pending_tasks)):
+            local_idx, res = res_q.get()
+            slots[local_idx] = res
 
         for p in procs:
             p.join()
-        ordered = [r for r in slots if r is not None]
+        ran = [r for r in slots if r is not None]
 
-    if output_h5 is not None:
+    by_id = dict(prior)
+    for res in ran:
+        by_id[res.task_id] = res
+    ordered = [by_id[t.task_id] for t in tasks]
+
+    if checkpoint_h5 is not None:
+        save_batch_h5(checkpoint_h5, ordered)
+    if output_h5 is not None and Path(output_h5) != ckpt:
+        save_batch_h5(output_h5, ordered)
+    elif output_h5 is not None and checkpoint_h5 is None:
         save_batch_h5(output_h5, ordered)
     return ordered
