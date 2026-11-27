@@ -2,11 +2,11 @@
 
 **Native C/CUDA + cuFFT 21cm Cosmological Simulation Engine for 21cmFAST v4 — Zero CuPy or Numba Dependency**
 
-![Version](https://img.shields.io/badge/version-0.6.0-blue)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12-blue)
 ![CUDA](https://img.shields.io/badge/CUDA-12%2B-green)
 [![CPU CI](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml/badge.svg)](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml)
-![Native GPU Tests](https://img.shields.io/badge/GPU%20tests-168%2F168%20passing-brightgreen)
+![Native GPU Tests](https://img.shields.io/badge/GPU%20tests-168%2B%20verified-brightgreen)
 
 [Quickstart](#5-minute-quickstart) · [Wiki](docs/wiki/Home.md) · [User Guide](docs/USER_GUIDE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Methods Paper](docs/paper/21cmcu_paper.md) · [Examples](examples/)
 
@@ -16,19 +16,22 @@
 
 ---
 
-## Performance Highlights (`v0.6.0` on NVIDIA RTX 4090 vs 16-Core CPU)
+## Performance Highlights (`v0.6.0–v0.7.0` on NVIDIA RTX 4090 vs 16-Core CPU)
 
-All timings were measured directly on node `b1` (64-core CPU host with `N_THREADS=16` vs `1×–3× RTX 4090`, CUDA 12.6, `sm_89`) into [benchmarks/results_rtx4090_v060.json](benchmarks/results_rtx4090_v060.json):
+All timings were measured directly on `b1`/`b6` GPU nodes (`N_THREADS=16` CPU vs `1×–3× RTX 4090`, CUDA 12.6, `sm_89`):
 
 | Workload | Grid / Setup | CPU (16T) | `21cmCU` GPU (`fast`) | Speedup |
 | --- | --- | ---: | ---: | ---: |
 | `apply_rsds` | `128 × 128 × 512` | `37.6455 s` | `0.0764 s` (`1× 4090`) | **`492.74×`** |
 | Rectilinear Lightcone (`+ dvdr + RSD`) | `256 / 128`, `z=6.5–11` | `248.773 s` | `3.032 s` (`1× 4090`) | **`82.05×`** |
+| `SKA1-Low / HERA-350` 3D Mock Obs | `256³` single-pass FFT+noise | `1.651 s / 1.616 s` | `23.04 ms / 22.48 ms` | **`71.65× / 71.88×`** |
+| 1-Point Moments+PDF / Wedge Filter | `256³` | — | `26.43× / 23.86×` vs CPU | **`26.43× / 23.86×`** |
 | `AngularLightconer` (`+ dvdr + RSD`) | `256 / 128`, `z=7.8–9.8` | `97.018 s` | `4.698 s` (`1× 4090`) | **`20.65×`** |
 | Coeval 3z (`L-INTEGRAL + TS`) | `512 / 256`, `z=12,10,8` | `55.079 s` | `4.456 s` (`1× 4090`) | **`12.36×`** |
 | EoR Coeval (`E-INTEGRAL`) | `768³`, `z=7.0` | `110.209 s` | `16.435 s` (`1× 4090`) | **`6.71×`** |
 | `DeviceLZF` HDF5 Write | `256 × 256 × 512` (`256 MB`) | `259.6 MB/s` (`h5py`) | **`476.3 MB/s`** (`1× 4090`) | **`1.83×`** |
 | `CUDA_LAZY_D2H` Residency | `512 / 256` 3z coeval | `4.477 s` / `7,114 MB` | **`3.904 s` / `5,570 MB`** | **`-12.8%` time / `-21.7%` D2H** |
+| Zero-D2H Lightcone (`lazy_d2h=True`) | `256 / 128`, 12z `L-INTEGRAL` | `1.496 s` (`lazy_d2h=False`) | **`1.169 s`** (`1× 4090`) | **`-21.9%` time / `-8.5%` D2H** |
 | **`2048³` (`8.590 B` voxels) Zel'dovich IC** | `3× RTX 4090` (native VRAM) | `216.665 s` (`v0.5.0` host) | **`58.467 s`** (`64.282 s` w/ PF+PS) | **`3.71×`** |
 | SBI Concurrent Ensemble (`run_batch`) | `16 × 192/96`, `2× RTX 4090` | — | `5.888 s` (**`9,782.0 tasks/h`**) | **`1.41×` vs 1 GPU** |
 
@@ -54,8 +57,8 @@ cd 21cmCU
 ./scripts/install.sh
 
 # Option B: Docker
-docker build -f docker/Dockerfile -t 21cmcu:0.6.0 .
-docker run --rm --gpus all 21cmcu:0.6.0 doctor
+docker build -f docker/Dockerfile -t 21cmcu:0.7.0 .
+docker run --rm --gpus all 21cmcu:0.7.0 doctor
 
 # Option C: Apptainer / Singularity (Slurm clusters)
 apptainer build 21cmcu.sif docker/21cmcu.def
@@ -73,6 +76,15 @@ Verify your GPU runtime, PCIe/NVLink topology, libraries, and grid sizing limits
 ```python
 import py21cmcu as p21
 
+# One-line GPU lightcone + SKA1-Low mock + offline interactive 3D WebGL2 HTML viewer:
+res = p21.quick_lightcone(
+    dim=128, hii_dim=64, box_len=128.0,
+    redshifts=(7.5, 11.5), instrument="SKA1-Low", obs_hours=1000.0,
+    html_out="lightcone_3d.html",
+)
+ps1 = p21.power_spectrum_1d(res.lightcone.brightness_temp[:, :, :64], box_length=128.0, n_bins=12, remove_mean=True)
+
+# Or full InputParameters control with zero-D2H GPU residency:
 inputs = p21.InputParameters(
     random_seed=42,
     node_redshifts=[8.0, 9.5, 11.0, 12.5],  # > Z_HEAT_MAX when USE_TS_FLUCT=True
@@ -87,7 +99,7 @@ inputs = p21.InputParameters(
 
 with p21.use_mode("fast", lazy_d2h=True):
     coeval = p21.run_coeval(inputs=inputs, out_redshifts=[8.0], write=False)[0]
-    ps1 = p21.power_spectrum_1d(coeval.brightness_temp, box_length=128.0, n_bins=12, remove_mean=True)
+    torch_tb = p21.to_torch(coeval.brightness_temp_struct)  # zero-copy DLPack GPU tensor
 ```
 
 ### 3. CLI & Runnable Examples (`examples/`)
@@ -121,14 +133,16 @@ P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny 
   - `fast`: parallel Philox IC RNG, GPU chunk-tree hashing, and `--use_fast_math` kernels calibrated over 6 random seeds ([docs/CALIBRATION.md](docs/CALIBRATION.md): $|\Delta \langle x_{\mathrm{HI}} \rangle| \le 0.00147$, $|\Delta \langle \delta T_b \rangle| \le 0.3719\ \mathrm{mK}$, median $|\Delta P|/\text{SEM} = 0.68\text{–}1.11$).
 - **Multi-GPU Slab Domain Decomposition & Single-Slab `2048³`**: distributed Y-slab 3D cuFFT (`cuda_mgpu.cu`) with 64 MiB pinned portable host-bounce buffers, `std::thread` sub-tiled transposes, zero-`h_tmp_ab` 2LPT streaming, and single-work-slab streaming (`P21_CUDA_MGPU_SINGLE_SLAB`). Scales natively in-VRAM to `2048³` (`8.590 B` voxels) Zel'dovich IC on `3× RTX 4090` (`58.467 s`), and delivers `1.94×–3.52×` speedups on `1536³`/`1792³` over `v0.5.0`.
 - **GPU Residency (`CUDA_LAZY_D2H`), `DeviceLZF` HDF5 & `CLASS` Caching**: opt-in GPU intermediate retention (`use_mode(..., lazy_d2h=True)` / `P21_CUDA_LAZY_D2H=1`) cuts `512/256` 3z D2H traffic by `21.7%`; `save_lightcone(..., compression="device-lzf")` compresses chunks on-GPU into standard HDF5 LZF (`476.3 MB/s` vs `259.6 MB/s` CPU LZF); persistent `CosmoTables` memory/disk caching eliminates repeated `CLASS` startup latency (`0.634 s → 0.311 ms` memory / `2.7 ms` disk).
-- **Lightcone RSDs, Power Spectra & End-to-End SBI Pipeline**: fused GPU `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds`, `RectilinearLightconer` & `AngularLightconer` kernels, cuFFT 1D/2D power spectra, scrambled Sobol parameter sampling (`generate_sobol_parameter_grid`), Fourier horizon wedge filtering (`apply_wedge_filter_3d`), deterministic thermal noise (`add_thermal_noise_3d`), and resumable HDF5-checkpointed `run_batch`.
+- **Lightcone RSDs, Power Spectra & End-to-End SBI Pipeline**: fused GPU `include_dvdr_in_tau21`, `rsds_shift` / `apply_rsds`, `RectilinearLightconer` & `AngularLightconer` kernels, cuFFT 1D/2D power spectra, scrambled Sobol parameter sampling (`generate_sobol_parameter_grid`), GPU Fourier horizon wedge filtering (`apply_wedge_filter_3d`), Philox thermal noise (`add_thermal_noise_3d`), single-pass non-Gaussian moments & PDF (`field_moments_and_pdf`), and resumable HDF5-checkpointed `run_batch`.
+- **Interferometer Mocks, Forecasts & Zero-Copy PyTorch Interop (`v0.7.0`, `82` CUDA APIs)**: single-pass GPU `mock_observation_3d` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`) with analytic or `antenna_xy_m` UV density & exact $\Omega_p \Omega_{\mathrm{eff}}$ thermal noise `P_N(k_\perp, z)`, 1D/2D SNR forecasters (`forecast_power_spectrum_error`), plus pure-`ctypes` `__dlpack__` / `__cuda_array_interface__` (`CudaFieldView`, `to_torch`), `Likelihood21cm`, and `SBISimulator`.
+- **Zero-D2H Lightcones, One-Line API & Offline 3D Visualization (`v0.7.0`)**: GPU global mean reduction (`p21_cuda_field_mean_f32`), zero-D2H rectilinear slicing (`-21.9%` runtime on `256/128` `L-INTEGRAL`), $O(1)$-memory `stream_perturbed_fields=True`, `quick_coeval` / `quick_lightcone` (with causal-free `parallel_redshifts=True`), and standalone WebGL2 3D raymarching HTML viewers (`py21cmcu.viz`).
 - **Engine Stability & Physics Fixes**: aligned photon-conservation redshift/neutral-fraction array lengths (`photoncons.py`), null-output safety guard in `st_taylor_factor` for `SAMPLE_METHOD="PARTITION"` (`hmf.c`), and separated previous-redshift 1D ACG efficiency table (`Nion_conditional_table1D_acg_prev`) for `E-INTEGRAL` + `USE_MCGS=True`.
 
 ---
 
 ## Hardware Sizing Guide (24 GB Class GPUs)
 
-| Workload | Min GPUs | VRAM / GPU | Host RAM | Verified `v0.6.0` Runtime |
+| Workload | Min GPUs | VRAM / GPU | Host RAM | Verified Runtime (`RTX 4090`) |
 | --- | :---: | --- | --- | --- |
 | `512³ -> 256³` Coeval (`L-INTEGRAL + TS`, 3z) | 1 | ~5 GB | 8 GB | `4.46 s` (`12.36×` vs 16T CPU) |
 | `768³` EoR Coeval | 1 | ~19 GB | 16 GB | `16.44 s` (`6.71×` vs 16T CPU) |

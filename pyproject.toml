@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "21cmCU"
-version = "0.6.0"
+version = "0.7.0"
 description = "21cmCU: Native C/CUDA + cuFFT 21cm cosmological simulation engine"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -52,8 +52,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "v4"]
-markers = ["gpu: requires a usable CUDA device and CuPy"]
+pythonpath = ["src"]
+markers = ["gpu: requires a usable CUDA device"]
 
 [tool.ruff]
 line-length = 88

@@ -122,32 +122,50 @@
 
 ---
 
-## Completed Directions (O → Q → S, `v0.7.0-dev`)
+## Completed Directions (O → Q → S & Phase 9, `v0.7.0`)
 
 ### Direction O (`8300144`) — GPU-Native Observables & Non-Gaussian Statistics
-- **GPU Foreground Wedge & Thermal Noise (`cuda_analysis.cu`, `src/py21cmcu/observables.py`, `batch.py`)**: `p21_cuda_wedge_filter_3d` (cuFFT 3D R2C/C2R + `DeviceFieldRegistry` across `los_axis` ∈ {0, 1, 2}, **23.86×** at `256³`) and `p21_cuda_add_thermal_noise_3d` (Philox Gaussian noise, **10.71×** at `256³`).
-- **One-Point Non-Gaussian Moments & PDF**: `p21_cuda_field_moments_and_pdf` + `field_moments_and_pdf` (**26.43×** at `256³`, histogram diff `0`), plus cross/2D lightcone chunk PS (`lightcone_chunk_power_spectra_2d`).
+- **GPU Foreground Wedge & Thermal Noise (`cuda_analysis.cu`, `src/py21cmcu/observables.py`, `batch.py`)**: `p21_cuda_wedge_filter_3d` (cuFFT 3D R2C/C2R + `DeviceFieldRegistry` across `los_axis` ∈ {0, 1, 2}, **`23.86×`** at `256³`) and `p21_cuda_add_thermal_noise_3d` (Philox Gaussian noise, **`10.71×`** at `256³`).
+- **One-Point Non-Gaussian Moments & PDF**: `p21_cuda_field_moments_and_pdf` + `field_moments_and_pdf` (**`26.43×`** at `256³`, histogram diff `0`), plus cross/2D lightcone chunk PS (`lightcone_chunk_power_spectra_2d`).
 
 ### Direction Q (`8300144`) — Zero-Copy CUDA Interop & `sbi` / `21CMMC` Inference
-- **Zero-Copy Device Export (`cuda_mempool.cu`, `src/py21cmcu/interop.py`)**: `CudaFieldView` implementing pure-`ctypes` `__dlpack__`, `__dlpack_device__`, `__cuda_array_interface__`, and `to_torch` (`0.527 ms` with `registry_h2d_bytes = 0` under `lazy_d2h=True`).
-- **Inference Primitives (`src/py21cmcu/inference.py`)**: `Likelihood21cm` and `SBISimulator` (with `tests/native/test_21cmcu_phase7_oq.py` & `examples/04_dlpack_and_sbi_inference.py`).
+- **Zero-Copy Device Export (`cuda_mempool.cu`, `src/py21cmcu/interop.py`)**: `CudaFieldView` implementing pure-`ctypes` `__dlpack__`, `__dlpack_device__`, `__cuda_array_interface__`, and `to_torch` (`0.527 ms` with `registry_h2d_bytes = 0` under `lazy_d2h=True`; verified live zero-copy pointer sharing on PyTorch `2.5.1+cu121` RTX 4090).
+- **Inference Primitives (`src/py21cmcu/inference.py`)**: `Likelihood21cm` and `SBISimulator` (with `tests/native/test_21cmcu_phase7_oq.py` `7/7 passed` & `examples/04_dlpack_and_sbi_inference.py`).
 
-### Direction S — Radio Interferometer Mock Observation & Sensitivity Forecast Suite
-- **Single-Pass GPU Mock Observation (`cuda_analysis.cu`, `src/py21cmcu/instrument.py`)**: `p21_cuda_mock_observation_3d` & `mock_observation_3d` combining UV coverage cuts, PSF Gaussian smoothing, LOS boxcar/Gaussian channel response, horizon/FoV foreground wedge exclusion, and $P_N(k_\perp, z)$-weighted Hermitian Philox thermal noise.
-- **Telescope Presets & Forecasts**: `InterferometerConfig`, `INSTRUMENT_PRESETS` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`), `baseline_density_uv` (analytic + explicit `antenna_xy_m`), `thermal_noise_power_spectrum`, `forecast_power_spectrum_error`, and `forecast_power_spectrum_2d_error` (`tests/native/test_21cmcu_phase8_instrument.py`, `examples/05_interferometer_mock_and_forecast.py`).
+### Direction S (`4720a37`) — Radio Interferometer Mock Observation & Sensitivity Forecast Suite
+- **Single-Pass GPU Mock Observation (`cuda_analysis.cu`, `src/py21cmcu/instrument.py`)**: `p21_cuda_mock_observation_3d` & `mock_observation_3d` combining UV coverage cuts, PSF Gaussian smoothing, LOS boxcar/Gaussian channel response, horizon/FoV foreground wedge exclusion, and $P_N(k_\perp, z)$-weighted Hermitian Philox thermal noise (**`71.65×`** on `SKA1-Low` `23.04 ms` vs `1650.48 ms` CPU and **`71.88×`** on `HERA-350` `22.48 ms` vs `1615.87 ms` CPU at `256³`).
+- **Telescope Presets & Forecasts**: `InterferometerConfig`, `INSTRUMENT_PRESETS` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`), `baseline_density_uv` (analytic + explicit `antenna_xy_m`), exact $\Omega_p \Omega_{\mathrm{eff}}$ `thermal_noise_power_spectrum`, `forecast_power_spectrum_error`, and `forecast_power_spectrum_2d_error` (`tests/native/test_21cmcu_phase8_instrument.py` `7/7 passed`, `examples/05_interferometer_mock_and_forecast.py`).
 
-### Phase 9 — Lightcone Pipeline Optimization, `quick_lightcone`, & Interactive 3D Visualization
-- **Zero-D2H Lightcone Means & Streaming (`cuda_analysis.cu`, `coeval.py`, `lightcone.py`, `lightconers.py`)**: `p21_cuda_field_mean_f32` + `_get_coeval_array_no_sync` evaluate `global_quantities` and rectilinear slices directly on GPU-resident `device_only` arrays under `lazy_d2h=True`; `stream_perturbed_fields=True` computes `PerturbedField` on demand inside `_redshift_loop_generator` to cut peak memory to $O(1)$.
-- **One-Line API & Multi-GPU Redshift-Parallel Lightcones (`src/py21cmcu/shortcuts.py`)**: `quick_coeval` and `quick_lightcone` (with `parallel_redshifts=True` for history-independent EoR runs, integrated telescope mock, and HTML export).
-- **Offline Interactive 3D WebGL2 & 2D Plotting (`src/py21cmcu/viz.py`)**: `export_volume_3d_html`, `export_lightcone_3d_html`, `plot_lightcone_summary`, `plot_coeval_slices`, and `plot_mock_comparison` (`tests/native/test_21cmcu_phase9_lightcone_viz.py`, `examples/06_quick_lightcone_and_3d_viz.py`, plus full GitHub Wiki sync).
+### Phase 9 (`e35f58c`) — Lightcone Pipeline Optimization, `quick_lightcone`, & Interactive 3D Visualization
+- **Zero-D2H Lightcone Means & Streaming (`cuda_analysis.cu`, `coeval.py`, `lightcone.py`, `lightconers.py`)**: 82nd CUDA API `p21_cuda_field_mean_f32` + `_get_coeval_array_no_sync` evaluate `global_quantities` and rectilinear slices directly on GPU-resident `device_only` arrays under `lazy_d2h=True` (`256/128` 12-node `L-INTEGRAL` lightcone **`1.496 s → 1.169 s`**, **`-21.9%`** wall time, **`-8.5%`** D2H); `stream_perturbed_fields=True` computes `PerturbedField` on demand inside `_redshift_loop_generator` to cut peak memory to $O(1)$.
+- **One-Line API & Multi-GPU Redshift-Parallel Lightcones (`src/py21cmcu/shortcuts.py`)**: `quick_coeval` and `quick_lightcone` (with `parallel_redshifts=True` for causal-free EoR runs, integrated telescope mock, and HTML export).
+- **Offline Interactive 3D WebGL2 & 2D Plotting (`src/py21cmcu/viz.py`)**: `export_volume_3d_html`, `export_lightcone_3d_html`, `plot_lightcone_summary`, `plot_coeval_slices`, and `plot_mock_comparison` (`tests/native/test_21cmcu_phase9_lightcone_viz.py` `7/7 passed`, `examples/06_quick_lightcone_and_3d_viz.py`, plus full GitHub Wiki sync).
 
 ---
 
 ## Future Roadmap
 
-- **Direction P — Large-Scale Multi-GPU EoR & Sub-160 GiB `2048³` 2LPT Streaming**: Multi-GPU `1024³` full EoR evolution and memory-bounded `<160 GiB` `2048³` 2LPT streaming IC on multi-GPU nodes.
-- **Direction R — Persistent Multi-GPU cuFFT Plan Cache & `BatchPool`**: Per-GPU cached cuFFT handles across Y-slab sub-transforms plus persistent worker pool (`BatchPool`) amortizing CFFI/CUDA/CLASS setup across 10k+ SBI draws.
-- **Higher-Order Non-Gaussian & Morphological Topology (Phase 9)**: GPU FFT fast 3D Bispectrum $B(k_1, k_2, k_3)$, GPU ray-traced ionized Bubble Size Distribution (MFP BSD), and 3D Minkowski Functionals ($V_0, V_1, V_2, V_3$).
-- **Fisher Matrix Forecaster & Multi-Probe Cross-Correlations**: Common-Random-Number (CRN) low-variance Fisher matrix forecaster (`21cm` PS + mock observables) and GPU CIC halo/galaxy gridding for `21cm × galaxy` cross-power $r(k)$ & cross-bispectrum.
-- **Visualization & Diagnostics (`py21cmcu.viz`)**: One-click publication plotting utilities for lightcone slices, global spin/ionization history, 2D cylindrical PS / wedge windows, BSD/PDF curves, and sensitivity contours.
-- **Multi-node / 4+ GPU NVLink Scaling**: Extend `cuda_mgpu.cu` (`>= 4× 24 GB` GPUs for in-VRAM `2048³` 2LPT) and optional NCCL all-to-all collective backend for NVLink/NVSwitch nodes.
+### Release `v0.8.0` — Extreme-Scale Multi-GPU & Persistent Throughput (Directions P & R)
+- **Direction P — Large-Scale Multi-GPU EoR & Sub-160 GiB `2048³` 2LPT Streaming**:
+  - **Targets**: `src/py21cmfast/src/cuda_mgpu.cu`, `cuda_ic.cu`, `cuda_ionization.cu`, `cuda_radiation.cu`.
+  - **Scope**: Extend distributed Y-slab decomposition to multi-GPU `1024³` full EoR evolution (`IonizedBox` / `TsBox`) and slab-streamed `<160 GiB` host-RAM `2048³` 2LPT IC on `3×–4× 24 GB` GPUs.
+  - **Acceptance Criteria**: Numerical parity vs single-GPU/CPU at `256³` and `512³`, plus verified native `1024³` EoR & `2048³` 2LPT execution within 24 GB-per-GPU VRAM.
+- **Direction R — Persistent Multi-GPU cuFFT Plan Cache & `BatchPool`**:
+  - **Targets**: `src/py21cmfast/src/cuda_mgpu.cu`, `src/py21cmcu/batch.py`.
+  - **Scope**: Add per-GPU persistent cuFFT handle caching across Y-slab sub-transforms and introduce a warm persistent `BatchPool` worker pool amortizing CFFI/CUDA/CLASS initialization across `10k+` SBI draws.
+  - **Acceptance Criteria**: `≥1.5×` throughput gain on repeated small-box SBI sweeps (`64³–128³`) with bounded constant host/GPU memory across `10k` tasks.
+
+### Release `v0.9.0` — Higher-Order Non-Gaussian Science & Multi-Probe Inference (Phases 10 & 11)
+- **Phase 10 — Higher-Order Non-Gaussian & Morphological Topology**:
+  - **Targets**: `src/py21cmfast/src/cuda_analysis.cu`, `src/py21cmcu/observables.py`, `src/py21cmcu/analysis.py`.
+  - **Scope**: Implement GPU FFT fast 3D Bispectrum $B(k_1, k_2, k_3)$ (`equilateral`/`squeezed`/`folded` templates), GPU ray-traced Mean-Free-Path ionized Bubble Size Distribution (MFP BSD), and 3D Minkowski Functionals ($V_0, V_1, V_2, V_3$).
+  - **Acceptance Criteria**: Exact numerical agreement with reference CPU estimators and `≥20×` speedup at `256³`.
+- **Phase 11 — CRN Fisher Matrix Forecaster & Multi-Probe Cross-Correlations**:
+  - **Targets**: `src/py21cmcu/inference.py`, `src/py21cmcu/observables.py`, `src/py21cmcu/viz.py`.
+  - **Scope**: Common-Random-Number (CRN) low-variance Fisher matrix forecaster (`21cm` 1D/2D PS + interferometer mocks + `viz` sensitivity contour plots) and GPU CIC halo/galaxy gridding for `21cm × galaxy` cross-power $r(k)$ & kSZ proxy cross-correlations.
+  - **Acceptance Criteria**: Step-size convergence test for CRN derivatives and an end-to-end SKA1-Low + galaxy survey forecast example.
+
+### Release `v1.0.0` — Ecosystem Packaging, Multi-Node NCCL & Methods Paper Finalization
+- **Packaging & CI Matrix**: Prebuilt CUDA 12 manylinux wheels / Conda build recipes, automated tag-triggered GitHub release workflow, and expanded CPU/GPU CI matrix.
+- **Multi-Node / NVLink Scaling**: Optional NCCL all-to-all collective backend in `cuda_mgpu.cu` for `4×–8×` NVLink/NVSwitch nodes (`2048³–4096³` grids).
+- **Methods Paper & Reproducibility**: Finalize [`docs/paper/21cmcu_paper.tex`](paper/21cmcu_paper.tex) with `v0.7.0–v0.9.0` observables/interferometer/SBI benchmarks, Zenodo archival DOI, and frozen reproduction scripts.

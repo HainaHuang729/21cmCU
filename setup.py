@@ -9,7 +9,7 @@ THISDIR = Path(__file__).parent.resolve()
 
 setup(
     name="21cmCU",
-    version="0.2.0",
+    version="0.7.0",
     license="MIT license",
     description="Native CUDA/cuFFT 21cm cosmological simulation engine",
     long_description=(THISDIR / "README.md").read_text(encoding="utf8"),

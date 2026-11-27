@@ -53,7 +53,7 @@ from .viz import (
     plot_mock_comparison,
 )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 CudaMode = Literal["strict", "fast"]
 

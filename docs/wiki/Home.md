@@ -1,20 +1,23 @@
 # Welcome to the 21cmCU Wiki
 
-**21cmCU** (`py21cmcu` `v0.6.0`) is a native **C/CUDA + cuFFT** cosmological 21cm simulation engine with full **21cmFAST v4** API/CLI compatibility and **zero CuPy or Numba runtime dependency**.
+**21cmCU** (`py21cmcu` `v0.7.0`) is a native **C/CUDA + cuFFT** cosmological 21cm simulation engine with full **21cmFAST v4** API/CLI compatibility and **zero CuPy or Numba runtime dependency**.
 
-## Headline Performance (`v0.6.0` on NVIDIA RTX 4090 vs 16-Core CPU)
+## Headline Performance (`v0.6.0–v0.7.0` on NVIDIA RTX 4090 vs 16-Core CPU)
 
-| Workload | CPU 16T | `21cmCU v0.6.0` GPU (`fast`) | Speedup |
+| Workload | CPU 16T | `21cmCU v0.7.0` GPU (`fast`) | Speedup |
 | --- | ---: | ---: | ---: |
 | `apply_rsds` (`128 × 128 × 512`) | `37.6455 s` | `0.0764 s` (`1× 4090`) | **`492.74×`** |
 | Rectilinear Lightcone (`256/128`, `z=6.5–11`, RSD+dvdr) | `248.773 s` | `3.032 s` (`1× 4090`) | **`82.05×`** |
+| `SKA1-Low / HERA-350` 3D Mock (`256³`) | `1.651 s / 1.616 s` | `23.04 ms / 22.48 ms` | **`71.65× / 71.88×`** |
+| 1-Point Moments+PDF / Wedge Filter (`256³`) | — | `26.43× / 23.86×` vs CPU | **`26.43× / 23.86×`** |
 | `AngularLightconer` (`256/128`, `z=7.8–9.8`, RSD+dvdr) | `97.018 s` | `4.698 s` (`1× 4090`) | **`20.65×`** |
 | Coeval 3z (`512/256`, `L-INTEGRAL + TS`) | `55.079 s` | `4.456 s` (`1× 4090`) | **`12.36×`** |
 | Concurrent Batch (`4 × 192/96`, `w=2`) | `14.184 s` | `3.097 s` (`1× 4090`) | **`4.58×`** |
 | `2048³` (`8.590 B` voxels) Zel'dovich IC | `216.665 s` (`v0.5.0` host) | `58.467 s` (`3× 4090` native VRAM) | **`3.71×`** |
 | SBI Batch Sweep (`16 × 192/96`, `2× 4090`) | — | `5.888 s` (`9,782.0 tasks/h`) | **`1.41×` vs 1 GPU** |
+| Zero-D2H Lightcone (`256/128`, 12z `L-INTEGRAL`) | `1.496 s` (`lazy_d2h=False`) | `1.169 s` (`1× 4090`, `lazy_d2h=True`) | **`-21.9%` time / `-8.5%` D2H** |
 
-All **`168/168`** native GPU tests (`-k "not speed"` across 12 native suites) pass on `3× RTX 4090` (CUDA 12.6, `sm_89`).
+All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native suites) plus **`21/21`** new `v0.7.0` feature tests (Phases 7–9 across `test_21cmcu_phase7_oq.py`, `test_21cmcu_phase8_instrument.py`, and `test_21cmcu_phase9_lightcone_viz.py`) are verified on RTX 4090 (CUDA 12.6, `sm_89`).
 
 ---
 
@@ -43,5 +46,5 @@ Repository maintainers can publish updates from `docs/wiki/` to the GitHub Wiki 
 ```bash
 git clone git@github.com:HainaHuang729/21cmCU.wiki.git /tmp/21cmCU.wiki
 cp docs/wiki/*.md /tmp/21cmCU.wiki/
-cd /tmp/21cmCU.wiki && git add -A && git commit -m "Sync v0.6.0 wiki" && git push
+cd /tmp/21cmCU.wiki && git add -A && git commit -m "Sync v0.7.0 wiki" && git push
 ```

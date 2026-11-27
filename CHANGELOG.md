@@ -2,6 +2,22 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
+## [0.7.0] — 2026-11-27 (Directions O, Q, S & Phase 9)
+### Added
+- **Direction O (`8300144`) — GPU-Native Observables & Non-Gaussian Statistics (`cuda_analysis.cu`, `src/py21cmcu/observables.py`, `src/py21cmcu/analysis.py`, `src/py21cmcu/batch.py`)**:
+  - Added GPU-native `p21_cuda_wedge_filter_3d` (cuFFT 3D R2C/C2R + `DeviceFieldRegistry` across `los_axis` ∈ {0, 1, 2}, **`23.86×`** speedup at `256³`) and `p21_cuda_add_thermal_noise_3d` (deterministic Philox Gaussian thermal noise, **`10.71×`** at `256³`).
+  - Added `p21_cuda_field_moments_and_pdf` + `field_moments_and_pdf` (single-pass variance, skewness, excess kurtosis, and 1-point histogram PDF, **`26.43×`** at `256³`, `hist_diff=0`), plus 2D cylindrical lightcone chunk power spectra (`lightcone_chunk_power_spectra_2d`).
+- **Direction Q (`8300144`) — Zero-Copy CUDA Interop & SBI/MCMC Inference (`cuda_mempool.cu`, `src/py21cmcu/interop.py`, `src/py21cmcu/inference.py`)**:
+  - Added `CudaFieldView`, `to_cuda_view`, `lightcone_to_cuda_views`, and `to_torch` exposing pure-`ctypes` `__dlpack__`, `__dlpack_device__`, and `__cuda_array_interface__` (`0.527 ms`, `registry_h2d_bytes=0` under `lazy_d2h=True`; live zero-copy device pointer sharing verified on PyTorch `2.5.1+cu121` on RTX 4090).
+  - Added `Likelihood21cm` and `SBISimulator`, verified with [`tests/native/test_21cmcu_phase7_oq.py`](tests/native/test_21cmcu_phase7_oq.py) (**`7/7` passing**) and [`examples/04_dlpack_and_sbi_inference.py`](examples/04_dlpack_and_sbi_inference.py).
+- **Direction S (`4720a37`) — Radio Interferometer Mock Observation & Sensitivity Forecast Suite (`cuda_analysis.cu`, `src/py21cmcu/instrument.py`)**:
+  - Added single-pass GPU `p21_cuda_mock_observation_3d` & `mock_observation_3d` combining UV coverage cuts, PSF Gaussian smoothing, LOS boxcar/Gaussian channel response, horizon/FoV foreground wedge exclusion, and $P_N(k_\perp, z)$-weighted Hermitian Philox thermal noise (**`71.65×`** on `SKA1-Low` `23.04 ms` vs `1650.48 ms` CPU and **`71.88×`** on `HERA-350` `22.48 ms` vs `1615.87 ms` CPU at `256³`).
+  - Added `InterferometerConfig` & `INSTRUMENT_PRESETS` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`), analytic & explicit `antenna_xy_m` baseline density (`baseline_density_uv`), exact $\Omega_p \Omega_{\mathrm{eff}}$ thermal noise `thermal_noise_power_spectrum`, and 1D/2D SNR forecasters (`forecast_power_spectrum_error`, `forecast_power_spectrum_2d_error`), verified with [`tests/native/test_21cmcu_phase8_instrument.py`](tests/native/test_21cmcu_phase8_instrument.py) (**`7/7` passing**) and [`examples/05_interferometer_mock_and_forecast.py`](examples/05_interferometer_mock_and_forecast.py).
+- **Phase 9 (`e35f58c` + Wiki `d825676`) — Lightcone Pipeline Optimization, One-Line Shortcuts & Interactive 3D WebGL Viewer**:
+  - Added 82nd native CUDA API `p21_cuda_field_mean_f32` and zero-D2H `_get_coeval_array_no_sync` (`256/128` 12-node `L-INTEGRAL` lightcone **`1.496 s → 1.169 s`**, **`-21.9%`** wall time, **`-8.5%`** D2H bytes), plus $O(1)$-memory on-demand `stream_perturbed_fields=True`.
+  - Added ergonomic `quick_coeval` and `quick_lightcone` (with causal-free `parallel_redshifts=True`, integrated telescope mocks, and HTML export) in [`src/py21cmcu/shortcuts.py`](src/py21cmcu/shortcuts.py).
+  - Added offline WebGL2 3D raymarching HTML viewer & matplotlib 2D plotting helpers in [`src/py21cmcu/viz.py`](src/py21cmcu/viz.py) (`export_volume_3d_html`, `export_lightcone_3d_html`, `plot_lightcone_summary`, `plot_coeval_slices`, `plot_mock_comparison`), verified with [`tests/native/test_21cmcu_phase9_lightcone_viz.py`](tests/native/test_21cmcu_phase9_lightcone_viz.py) (**`7/7` passing**), [`examples/06_quick_lightcone_and_3d_viz.py`](examples/06_quick_lightcone_and_3d_viz.py), single-GPU fix in `test_mgpu_device_config_and_api`, and full GitHub Wiki documentation.
+
 ## [0.6.0] — 2026-11-27 (Directions K, L, M & N)
 ### Added
 - **Direction K (`6e91af3`) — Multi-GPU Communication & Low-VRAM Streaming (`cuda_mgpu.cu`, `cuda_ic.cu`)**:
