@@ -22,13 +22,13 @@
   <img src="docs/figures/lightcone_showcase.png" alt="21cmCU 21cm Brightness Temperature and Neutral Fraction Lightcone + Global History + 3D Cutaway" width="100%"/>
 </p>
 
-*Panoramic `L-INTEGRAL + Ts + RSD` 21cm brightness temperature & neutral hydrogen fraction lightcone (`256 Mpc`, $z = 6.3\text{–}17.5$), global Cosmic Dawn absorption & reionization history, and 3D EoR volume cutaway at $z = 7.56$ ($\langle x_{\mathrm{HI}} \rangle = 0.47$).*
+*Panoramic `L-INTEGRAL + Ts + RSD` 21cm brightness temperature (`EoR` colormap, `[-150, 30] mK`) & neutral hydrogen fraction (`viridis`) lightcones (`256 Mpc`, $z = 6.3\text{–}17.5$), paired with 3D volume cutaways at the Cosmic Dawn absorption trough ($z \approx 11.56$) and EoR midpoint ($z = 7.56$, $\langle x_{\mathrm{HI}} \rangle = 0.47$).*
 
 <p align="center">
-  <img src="docs/figures/interferometer_mock_showcase.png" alt="21cmCU SKA1-Low and HERA-350 1000h Mock Observations, 2D Wedge Power Spectrum, and 1D Forecast" width="100%"/>
+  <img src="docs/figures/interferometer_mock_showcase.png" alt="21cmCU SKA1-Low and HERA-350 1000h Mock Observations and 2D Cylindrical Power Spectra" width="100%"/>
 </p>
 
-*Single-pass interferometer mock pipeline (`py21cmcu.instrument`): true 21cm fluctuations at $z = 7.56$ vs `SKA1-Low` (1D `SNR = 27.8`) & `HERA-350` (1D `SNR = 5.7`) 1000 h mocks (UV coverage, PSF, channel width, horizon wedge, $P_N$ thermal noise), 2D cylindrical $P(k_\perp, k_\parallel)$, and 1D $\Delta^2_{21}(k)$ sensitivity forecast.*
+*Single-pass interferometer mock pipeline (`py21cmcu.instrument`): true 21cm field at $z = 7.56$ (`EoR` colormap) vs `SKA1-Low` & `HERA-350` 1000 h 2D mocks (UV coverage, PSF, channel response, horizon wedge, $P_N$ thermal noise) and side-by-side 2D cylindrical power spectra $P(k_\perp, k_\parallel)$ highlighting the foreground wedge boundary.*
 
 <p align="center">
   <img src="docs/figures/v070_observables_and_calibration.png" alt="21cmCU v0.7.0 GPU Observables Speedups and 6-Seed strict vs fast Calibration" width="100%"/>
