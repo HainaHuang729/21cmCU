@@ -136,6 +136,11 @@
 - **Single-Pass GPU Mock Observation (`cuda_analysis.cu`, `src/py21cmcu/instrument.py`)**: `p21_cuda_mock_observation_3d` & `mock_observation_3d` combining UV coverage cuts, PSF Gaussian smoothing, LOS boxcar/Gaussian channel response, horizon/FoV foreground wedge exclusion, and $P_N(k_\perp, z)$-weighted Hermitian Philox thermal noise.
 - **Telescope Presets & Forecasts**: `InterferometerConfig`, `INSTRUMENT_PRESETS` (`SKA1-Low`, `HERA-350`, `MWA-II`, `LOFAR`), `baseline_density_uv` (analytic + explicit `antenna_xy_m`), `thermal_noise_power_spectrum`, `forecast_power_spectrum_error`, and `forecast_power_spectrum_2d_error` (`tests/native/test_21cmcu_phase8_instrument.py`, `examples/05_interferometer_mock_and_forecast.py`).
 
+### Phase 9 — Lightcone Pipeline Optimization, `quick_lightcone`, & Interactive 3D Visualization
+- **Zero-D2H Lightcone Means & Streaming (`cuda_analysis.cu`, `coeval.py`, `lightcone.py`, `lightconers.py`)**: `p21_cuda_field_mean_f32` + `_get_coeval_array_no_sync` evaluate `global_quantities` and rectilinear slices directly on GPU-resident `device_only` arrays under `lazy_d2h=True`; `stream_perturbed_fields=True` computes `PerturbedField` on demand inside `_redshift_loop_generator` to cut peak memory to $O(1)$.
+- **One-Line API & Multi-GPU Redshift-Parallel Lightcones (`src/py21cmcu/shortcuts.py`)**: `quick_coeval` and `quick_lightcone` (with `parallel_redshifts=True` for history-independent EoR runs, integrated telescope mock, and HTML export).
+- **Offline Interactive 3D WebGL2 & 2D Plotting (`src/py21cmcu/viz.py`)**: `export_volume_3d_html`, `export_lightcone_3d_html`, `plot_lightcone_summary`, `plot_coeval_slices`, and `plot_mock_comparison` (`tests/native/test_21cmcu_phase9_lightcone_viz.py`, `examples/06_quick_lightcone_and_3d_viz.py`, plus full GitHub Wiki sync).
+
 ---
 
 ## Future Roadmap

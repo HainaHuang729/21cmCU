@@ -27,7 +27,9 @@ All **`168/168`** native GPU tests (`-k "not speed"` across 12 native suites) pa
 | [Precision Modes & Calibration](Precision-Modes-and-Calibration.md) | `strict` vs `fast` mode parity & 6-seed statistical calibration |
 | [Multi-GPU & Large Grids](Multi-GPU-and-Large-Grids.md) | `CUDA_DEVICES`, Y-slab FFT, single-slab `2048³`, and 24 GB sizing table |
 | [Residency & I/O](Residency-and-IO.md) | `CUDA_LAZY_D2H`, `DeviceFieldRegistry`, `DeviceLZF` HDF5, and `CLASS` table cache |
-| [SBI & Batch Pipeline](SBI-and-Batch-Pipeline.md) | Horizon wedge, thermal noise, Sobol sampling, and resumable `run_batch` |
+| [SBI & Batch Pipeline](SBI-and-Batch-Pipeline.md) | Horizon wedge, thermal noise, moments/PDF, Sobol sampling, `SBISimulator`, `Likelihood21cm` |
+| [Interferometer Mock & Forecast](Interferometer-Mock-and-Forecast.md) | `SKA1-Low`/`HERA-350`/`MWA-II`/`LOFAR`, single-pass GPU mock observations, 1D/2D SNR forecasts |
+| [Lightcone Optimization & 3D Viz](Lightcone-Optimization-and-3D-Viz.md) | One-line `quick_lightcone`, zero-D2H lightcones, `to_torch` DLPack, and offline WebGL2 3D viewer |
 | [CLI & API Reference](CLI-and-API-Reference.md) | `21cmcu` subcommands, `P21_*` environment variables, and `py21cmcu` exports |
 | [Architecture Overview](Architecture-Overview.md) | Native CFFI CUDA engine layout, Philox RNG, 64-bit indexing, and engine fixes |
 | [Troubleshooting & FAQ](Troubleshooting-and-FAQ.md) | Common HPC build issues, v4 `_ACG` naming, `Z_HEAT_MAX`, and OOM tuning |

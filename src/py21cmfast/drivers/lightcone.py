@@ -15,7 +15,8 @@ from astropy import units
 from astropy.cosmology import z_at_value
 
 from .. import __version__
-from ..c_21cmfast import lib
+from .._cfg import config
+from ..c_21cmfast import ffi, lib
 from ..io import h5
 from ..io.caching import CacheConfig, OutputCache
 from ..lightconers import Lightconer, RectilinearLightconer
@@ -33,6 +34,7 @@ from ..wrapper.outputs import (
 )
 from ._param_config import high_level_func
 from .coeval import (
+    _get_coeval_array_no_sync,
     _obtain_starting_point_for_scrolling,
     _redshift_loop_generator,
     _setup_ics_and_pfs_for_scrolling,
@@ -585,7 +587,13 @@ def _run_lightcone_from_perturbed_fields(
         init_coeval=prev_coeval,
         iokw=iokw,
     ):
-        # Save mean/global quantities
+        # Save mean/global quantities (prefer GPU-resident mean to avoid unnecessary D2H copies)
+        cuda_mean_ready = bool(
+            config["USE_CUDA"]
+            and lib.p21_cuda_is_compiled()
+            and lib.p21_cuda_is_available()
+        )
+        mean_buf = ffi.new("double *") if cuda_mean_ready else None
         for quantity in lightcone.global_quantities:
             if quantity == "log10_mturn_acg":
                 lightcone.global_quantities[quantity][iz] = (
@@ -596,9 +604,23 @@ def _run_lightcone_from_perturbed_fields(
                     coeval.ionized_box.log10_mturn_ave_mcg
                 )
             else:
-                lightcone.global_quantities[quantity][iz] = np.mean(
-                    getattr(coeval, quantity)
-                )
+                mean_val: float | None = None
+                if cuda_mean_ready:
+                    arr_ns = _get_coeval_array_no_sync(coeval, quantity)
+                    if (
+                        arr_ns is not None
+                        and arr_ns.size > 0
+                        and lib.p21_cuda_field_mean_f32(
+                            ffi.cast("const float *", ffi.from_buffer(arr_ns)),
+                            int(arr_ns.size),
+                            mean_buf,
+                        )
+                        == 0
+                    ):
+                        mean_val = float(mean_buf[0])
+                if mean_val is None:
+                    mean_val = float(np.mean(getattr(coeval, quantity)))
+                lightcone.global_quantities[quantity][iz] = mean_val
 
         # Update photon conservation data in-place
         lightcone.photon_nonconservation_data |= coeval.photon_nonconservation_data
@@ -665,6 +687,7 @@ def generate_lightcone(
     progressbar: bool = False,
     lightcone_filename: str | Path | None = None,
     global_quantities: Sequence[str] | None = None,
+    stream_perturbed_fields: bool = False,
 ):
     r"""
     Create a generator function for a lightcone run.
@@ -753,6 +776,7 @@ def generate_lightcone(
         inputs=inputs,
         write=write,
         progressbar=progressbar,
+        stream_perturbed_fields=stream_perturbed_fields,
         **iokw,
     )
 

@@ -642,13 +642,19 @@ class RectilinearLightconer(Lightconer):
         def _try_batch(name: str, attr_name: str, kind: str) -> None:
             if kind not in ("mean", "mean_max"):
                 return
-            arr_a = np.asarray(getattr(c1, attr_name))
-            arr_b = np.asarray(getattr(c2, attr_name))
+            from .drivers.coeval import _get_coeval_array_no_sync
+
+            arr_a = _get_coeval_array_no_sync(c1, attr_name)
+            arr_b = _get_coeval_array_no_sync(c2, attr_name)
+            if arr_a is None:
+                arr_a = np.asarray(getattr(c1, attr_name))
+            if arr_b is None:
+                arr_b = np.asarray(getattr(c2, attr_name))
             if arr_a.ndim != 3 or arr_a.shape != arr_b.shape:
                 return
             nx, ny, nz = arr_a.shape
-            a32 = np.ascontiguousarray(arr_a, dtype=np.float32)
-            b32 = np.ascontiguousarray(arr_b, dtype=np.float32)
+            a32 = arr_a if (arr_a.dtype == np.float32 and arr_a.flags.c_contiguous) else np.ascontiguousarray(arr_a, dtype=np.float32)
+            b32 = arr_b if (arr_b.dtype == np.float32 and arr_b.flags.c_contiguous) else np.ascontiguousarray(arr_b, dtype=np.float32)
             z_idx = np.ascontiguousarray(
                 np.mod(z_indices_raw, nz), dtype=np.int32
             )

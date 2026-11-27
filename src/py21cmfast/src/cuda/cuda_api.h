@@ -298,6 +298,7 @@ int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny
                                  int apply_wedge, double wedge_slope, double wedge_buffer_mpc,
                                  int add_noise, int n_noise_table, double noise_kperp_max,
                                  const float *h_sigma_re_table, unsigned long long seed);
+int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out);
 
 #ifdef __cplusplus
 }

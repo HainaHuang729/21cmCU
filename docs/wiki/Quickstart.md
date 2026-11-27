@@ -57,7 +57,16 @@ All scripts below have been verified end-to-end on cluster node `b1` (`RTX 4090`
    ```
    - Runs scrambled Sobol sampling over `(F_STAR10_ACG, F_ESC10_ACG, ALPHA_STAR_ACG, M_TURN)` with resumable HDF5 checkpoints, wedge filter, and thermal noise.
 
-5. **Interactive Notebook** (`examples/quickstart.ipynb`):
+5. **DLPack Zero-Copy & SBI / `21CMMC` Likelihood** (`examples/04_dlpack_and_sbi_inference.py`):
+   - Demonstrates `SBISimulator`, `CudaFieldView` / `to_torch()`, `field_moments_and_pdf()`, and `Likelihood21cm`.
+
+6. **Interferometer Mock Observations & Sensitivity Forecasts** (`examples/05_interferometer_mock_and_forecast.py`):
+   - Simulates `SKA1-Low` & `HERA-350` 3D mocks on GPU (`~23 ms` at `256³`) and computes 1D/2D EoR-window SNR forecasts.
+
+7. **One-Line Lightcone + 3D WebGL Viewer** (`examples/06_quick_lightcone_and_3d_viz.py`):
+   - Generates a lightcone, injects `SKA1-Low` mock effects, and exports a standalone interactive 3D HTML viewer in 1 call (`quick_lightcone`).
+
+8. **Interactive Notebook** (`examples/quickstart.ipynb`):
    - Self-contained 5-cell Jupyter quickstart covering `doctor()`, coeval, lightcone, and `run_batch`.
 
 ---

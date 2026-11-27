@@ -2164,4 +2164,45 @@ int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny
     return ok ? 0 : -1;
 }
 
+int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out) {
+    if (!h_in || n_elems == 0 || !mean_out) {
+        return -1;
+    }
+    if (!p21_cuda_ensure_init()) {
+        return -1;
+    }
+
+    cudaStream_t stream = p21_cuda_stream();
+    size_t box_bytes = n_elems * sizeof(float);
+    DeviceFloatView v_in = acquire_float_view(h_in, box_bytes, stream);
+    double *d_sum = (double *)p21_cuda_pool_alloc(sizeof(double), stream);
+
+    auto cleanup = [&]() {
+        p21_cuda_pool_free(d_sum, stream);
+        release_float_view(v_in, stream);
+    };
+
+    if (!v_in.d_ptr || !d_sum || !P21_CUDA_OK(cudaMemsetAsync(d_sum, 0, sizeof(double), stream))) {
+        cleanup();
+        return -1;
+    }
+
+    constexpr int kTpb = 256;
+    int blocks = compute_grid_blocks(n_elems, kTpb);
+    moments_pass1_sum_kernel<<<blocks, kTpb, 0, stream>>>(v_in.d_ptr, n_elems, d_sum);
+
+    double total_sum = 0.0;
+    bool ok =
+        P21_CUDA_OK(cudaGetLastError()) &&
+        P21_CUDA_OK(cudaMemcpyAsync(&total_sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost,
+                                    stream)) &&
+        P21_CUDA_OK(cudaStreamSynchronize(stream));
+    cleanup();
+    if (!ok) {
+        return -1;
+    }
+    *mean_out = total_sum / (double)n_elems;
+    return 0;
+}
+
 }  // extern "C"

@@ -49,8 +49,12 @@ Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`,
 - **Runtime & Device Control**:
   `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`
 - **Analysis & Power Spectra**:
-  `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`
+  `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`, `lightcone_chunk_power_spectra_2d()`, `field_moments_and_pdf()`
 - **I/O Compression**:
   `save_lightcone()` (`compression="device-lzf" | "lzf" | "none"`)
-- **SBI & Batch Pipeline**:
-  `BatchTask`, `BatchResult`, `run_batch()`, `save_batch_h5()`, `horizon_slope()`, `horizon_wedge_mask()`, `apply_wedge_filter_3d()`, `add_thermal_noise_3d()`, `generate_sobol_parameter_grid()`
+- **Observables, Interferometers & Forecasts**:
+  `horizon_slope()`, `horizon_wedge_mask()`, `apply_wedge_filter_3d()`, `add_thermal_noise_3d()`, `InterferometerConfig`, `INSTRUMENT_PRESETS`, `get_instrument_preset()`, `baseline_density_uv()`, `thermal_noise_power_spectrum()`, `mock_observation_3d()`, `forecast_power_spectrum_error()`, `forecast_power_spectrum_2d_error()`
+- **Ergonomic Workflows & Visualization**:
+  `quick_coeval()`, `quick_lightcone()`, `export_volume_3d_html()`, `export_lightcone_3d_html()`, `plot_lightcone_summary()`, `plot_coeval_slices()`, `plot_mock_comparison()`
+- **Zero-Copy Interop & SBI / Batch**:
+  `CudaFieldView`, `to_cuda_view()`, `lightcone_to_cuda_views()`, `to_torch()`, `SBISimulator`, `Likelihood21cm`, `BatchTask`, `BatchResult`, `run_batch()`, `save_batch_h5()`, `generate_sobol_parameter_grid()`

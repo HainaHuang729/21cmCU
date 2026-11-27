@@ -795,6 +795,13 @@ int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny
     return -1;
 }
 
+int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out) {
+    (void)h_in;
+    (void)n_elems;
+    (void)mean_out;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

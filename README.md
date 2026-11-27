@@ -107,6 +107,9 @@ P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny 
 | [02_lightcone_power_spectrum.py](examples/02_lightcone_power_spectrum.py) | Rectilinear lightcone + RSDs + chunk PS + wedge/noise + `DeviceLZF` | `2.53 s` (`64×64×414`) |
 | [03_multigpu_large_ic.py](examples/03_multigpu_large_ic.py) | Multi-GPU slab IC + Perturb + 1D $P(k)$ (`--dim 256..2048`) | `0.474 s` (2-GPU Zel) / `0.569 s` (3-GPU 2LPT) |
 | [sbi_lightcone_dataset.py](examples/sbi_lightcone_dataset.py) | 4D scrambled Sobol sweep + resumable HDF5 checkpoints via `run_batch` | Smoke-verified on `b1` GPUs |
+| [04_dlpack_and_sbi_inference.py](examples/04_dlpack_and_sbi_inference.py) | Zero-copy DLPack / `to_torch`, `field_moments_and_pdf`, `SBISimulator` & `Likelihood21cm` | Verified on `b6` (`RTX 4090`) |
+| [05_interferometer_mock_and_forecast.py](examples/05_interferometer_mock_and_forecast.py) | `SKA1-Low` & `HERA-350` single-pass GPU 3D mocks (`>71×` at `256³`) & 1D/2D SNR | Verified on `b6` (`RTX 4090`) |
+| [06_quick_lightcone_and_3d_viz.py](examples/06_quick_lightcone_and_3d_viz.py) | One-line `quick_lightcone` + mock observation + offline 3D WebGL HTML viewer | Verified on `b6` (`RTX 4090`) |
 | [quickstart.ipynb](examples/quickstart.ipynb) | Interactive 5-cell Jupyter quickstart notebook | — |
 
 ---

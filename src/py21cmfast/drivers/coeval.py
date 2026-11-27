@@ -759,6 +759,22 @@ def _obtain_starting_point_for_scrolling(
         return -1, None
 
 
+def _get_coeval_array_no_sync(coeval: Coeval, name: str) -> np.ndarray | None:
+    """Return a contiguous float32 array without forcing lazy CUDA D2H materialization."""
+    for box in attrs.asdict(coeval, recurse=False).values():
+        if isinstance(box, OutputStruct) and name in box.arrays:
+            arr = box.get(name, _sync_cuda=False)
+            if (
+                arr is not None
+                and isinstance(arr, np.ndarray)
+                and arr.dtype == np.float32
+                and arr.flags.c_contiguous
+            ):
+                return arr
+            return None
+    return None
+
+
 def _in_cache(
     resume_cache: RunCache | None, kind: str, redshift: float, iokw: dict
 ) -> bool:
@@ -831,6 +847,13 @@ def _redshift_loop_generator(
             # computation below loads the arrays it needs (OutputStruct._compute), and
             # boxes found in the cache need none of them.
             this_perturbed_field = perturbed_field[iz]
+            if not this_perturbed_field.is_computed:
+                this_perturbed_field = sf.perturb_field(
+                    redshift=z,
+                    inputs=inputs,
+                    write=write.perturbed_field,
+                    **kw,
+                )
 
             if inputs.matter_options.has_discrete_halos:
                 this_halofield = halofield_list[iz]
@@ -964,6 +987,7 @@ def _setup_ics_and_pfs_for_scrolling(
     write: CacheConfig,
     progressbar: bool,
     overdensity_z0: float | None = None,
+    stream_perturbed_fields: bool = False,
     **iokw,
 ) -> tuple[InitialConditions, list[PerturbedField], list[HaloCatalog], dict]:
     if initial_conditions is None:
@@ -1020,19 +1044,30 @@ def _setup_ics_and_pfs_for_scrolling(
             f"to a value lower than z = {np.amin(all_redshifts)}."
         )
 
-    perturbed_field = []
-    with _progressbar(disable=not progressbar) as _progbar:
-        for z in _progbar.track(all_redshifts, description="Perturbing Matter Fields"):
-            p = sf.perturb_field(
-                redshift=z,
-                inputs=inputs,
-                write=write.perturbed_field,
-                **kw,
-            )
+    use_streaming = bool(
+        stream_perturbed_fields
+        and not inputs.matter_options.has_discrete_halos
+        and not write.perturbed_field
+        and not batch_already_cached
+    )
 
-            if inputs.matter_options.MINIMIZE_MEMORY and write.perturbed_field:
-                p.purge()
-            perturbed_field.append(p)
+    perturbed_field = []
+    if use_streaming:
+        for z in all_redshifts:
+            perturbed_field.append(PerturbedField.new(inputs=inputs, redshift=z))
+    else:
+        with _progressbar(disable=not progressbar) as _progbar:
+            for z in _progbar.track(all_redshifts, description="Perturbing Matter Fields"):
+                p = sf.perturb_field(
+                    redshift=z,
+                    inputs=inputs,
+                    write=write.perturbed_field,
+                    **kw,
+                )
+
+                if inputs.matter_options.MINIMIZE_MEMORY and write.perturbed_field:
+                    p.purge()
+                perturbed_field.append(p)
 
     halofield_list = evolve_halos(
         inputs=inputs,
@@ -1042,8 +1077,8 @@ def _setup_ics_and_pfs_for_scrolling(
         **kw,
     )
 
-    # Now we can purge initial_conditions further.
-    if write.initial_conditions and not batch_already_cached:
+    # Now we can purge initial_conditions further (keep velocity/density when streaming PFs).
+    if write.initial_conditions and not batch_already_cached and not use_streaming:
         initial_conditions.prepare_for_spin_temp()
 
     return (

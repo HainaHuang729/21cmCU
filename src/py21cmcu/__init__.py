@@ -44,6 +44,14 @@ from .observables import (
     horizon_slope,
     horizon_wedge_mask,
 )
+from .shortcuts import quick_coeval, quick_lightcone
+from .viz import (
+    export_lightcone_3d_html,
+    export_volume_3d_html,
+    plot_coeval_slices,
+    plot_lightcone_summary,
+    plot_mock_comparison,
+)
 
 __version__ = "0.6.0"
 
@@ -154,6 +162,8 @@ __all__ = [
     "cuda_device_count",
     "cuda_stats",
     "doctor",
+    "export_lightcone_3d_html",
+    "export_volume_3d_html",
     "field_moments_and_pdf",
     "forecast_power_spectrum_2d_error",
     "forecast_power_spectrum_error",
@@ -167,8 +177,13 @@ __all__ = [
     "lightcone_chunk_power_spectra_2d",
     "lightcone_to_cuda_views",
     "mock_observation_3d",
+    "plot_coeval_slices",
+    "plot_lightcone_summary",
+    "plot_mock_comparison",
     "power_spectrum_1d",
     "power_spectrum_2d",
+    "quick_coeval",
+    "quick_lightcone",
     "reset_cuda_stats",
     "run_batch",
     "save_batch_h5",

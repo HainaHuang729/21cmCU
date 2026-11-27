@@ -23,8 +23,10 @@ Back to [Home](Home.md) · Previous: [Residency & I/O](Residency-and-IO.md) · N
 2. **Horizon Foreground Wedge & Thermal Noise**:
    - `horizon_slope(redshift, cosmo=None)`: horizon slope $m(z) = \frac{H(z)\,\chi(z)}{c\,(1+z)}$.
    - `horizon_wedge_mask(k_perp, k_para, redshift, buffer_h_mpc=0.0, ...)`: boolean mask selecting modes inside the EoR window ($|k_\parallel| \ge m(z)\,k_\perp + b$).
-   - `apply_wedge_filter_3d(field, box_length, redshift, los_axis=2, buffer_h_mpc=0.0)`: zeros wedge-contaminated 3D Fourier modes in-memory.
-   - `add_thermal_noise_3d(field, box_length, sigma_mk=None, redshift=8.0, t_int_hours=1000.0, n_ant=350, seed=0)`: adds deterministic Gaussian thermal noise (explicit RMS or physical radiometer scaling).
+   - `apply_wedge_filter_3d(field, box_length, redshift, los_axis=2, buffer_h_mpc=0.0)`: GPU-accelerated (`23.86×` at `256³`) 3D Fourier wedge filter.
+   - `add_thermal_noise_3d(field, box_length, sigma_mk=None, redshift=8.0, t_int_hours=1000.0, n_ant=350, seed=0)`: GPU Philox (`10.71×` at `256³`) deterministic Gaussian thermal noise.
+   - `field_moments_and_pdf(field, n_bins=32)`: GPU-accelerated (`26.43×` at `256³`) mean, std, variance, skewness, excess kurtosis, and 1-point PDF.
+   - `SBISimulator` & `Likelihood21cm`: high-level wrappers for `sbi` posterior estimation (`"stats"`, `"ps1d"`, `"field"`) and `21CMMC` Gaussian likelihoods.
 
 3. **Resumable Multi-GPU Worker Pool (`run_batch`)**:
    ```python
