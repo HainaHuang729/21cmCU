@@ -6,7 +6,7 @@
 
 | Workload | CPU 16T | `21cmCU v0.7.0` GPU (`fast`) | Speedup |
 | --- | ---: | ---: | ---: |
-| `apply_rsds` (`128 × 128 × 512`) | `37.6455 s` | `0.0764 s` (`1× 4090`) | **`492.74×`** |
+| `apply_rsds` (`128 × 128 × 512`) | `0.0967 s` (`C/OpenMP`, `395.26×` vs `38.2230 s` Py) | `0.0764 s` (`1× 4090`) | **`492.74×` GPU / `395.26×` CPU** |
 | Rectilinear Lightcone (`256/128`, `z=6.5–11`, RSD+dvdr) | `248.773 s` | `3.032 s` (`1× 4090`) | **`82.05×`** |
 | `SKA1-Low / HERA-350` 3D Mock (`256³`) | `1.651 s / 1.616 s` | `23.04 ms / 22.48 ms` | **`71.65× / 71.88×`** |
 | 1-Point Moments+PDF / Wedge Filter (`256³`) | — | `26.43× / 23.86×` vs CPU | **`26.43× / 23.86×`** |
@@ -17,7 +17,7 @@
 | SBI Batch Sweep (`16 × 192/96`, `2× 4090`) | — | `5.888 s` (`9,782.0 tasks/h`) | **`1.41×` vs 1 GPU** |
 | Zero-D2H Lightcone (`256/128`, 12z `L-INTEGRAL`) | `1.496 s` (`lazy_d2h=False`) | `1.169 s` (`1× 4090`, `lazy_d2h=True`) | **`-21.9%` time / `-8.5%` D2H** |
 
-All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native suites) plus **`21/21`** new `v0.7.0` feature tests (Phases 7–9 across `test_21cmcu_phase7_oq.py`, `test_21cmcu_phase8_instrument.py`, and `test_21cmcu_phase9_lightcone_viz.py`) are verified on RTX 4090 (CUDA 12.6, `sm_89`).
+All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native suites), **`21/21`** new `v0.7.0` feature tests (Phases 7–9 across `test_21cmcu_phase7_oq.py`, `test_21cmcu_phase8_instrument.py`, and `test_21cmcu_phase9_lightcone_viz.py`), plus **`58/58`** bit-exact CPU optimization parity tests (`test_21cmcu_phase10_cpu_opt.py`, `max_abs = 0.0`) are verified.
 
 ---
 
@@ -34,7 +34,7 @@ All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native s
 | [Interferometer Mock & Forecast](Interferometer-Mock-and-Forecast.md) | `SKA1-Low`/`HERA-350`/`MWA-II`/`LOFAR`, single-pass GPU mock observations, 1D/2D SNR forecasts |
 | [Lightcone Optimization & 3D Viz](Lightcone-Optimization-and-3D-Viz.md) | One-line `quick_lightcone`, zero-D2H lightcones, `to_torch` DLPack, and offline WebGL2 3D viewer |
 | [CLI & API Reference](CLI-and-API-Reference.md) | `21cmcu` subcommands, `P21_*` environment variables, and `py21cmcu` exports |
-| [Upstream & CPU Optimization](Upstream-Comparison-and-CPU-Optimization.md) | Upstream 21cmFAST v4 roadmap, CPU fallbacks, CPU optimization plan, & accuracy summary |
+| [Upstream & CPU Optimization](Upstream-Comparison-and-CPU-Optimization.md) | Upstream 21cmFAST v4 roadmap, CPU fallbacks, implemented bit-exact CPU optimizations, & accuracy summary |
 | [Architecture Overview](Architecture-Overview.md) | Native CFFI CUDA engine layout, Philox RNG, 64-bit indexing, and engine fixes |
 | [Troubleshooting & FAQ](Troubleshooting-and-FAQ.md) | Common HPC build issues, v4 `_ACG` naming, `Z_HEAT_MAX`, and OOM tuning |
 

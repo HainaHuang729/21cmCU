@@ -39,12 +39,14 @@ Back to [Home](Home.md) · Previous: [SBI & Batch Pipeline](SBI-and-Batch-Pipeli
 | `P21_CUDA_PERTURB_SLAB_X` | Override perturbation X-slab width | Auto |
 | `P21_CUDA_ION_SPILL_KSPACE` | Force host spill for ionization k-space arrays | Auto |
 | `P21_CLASS_CACHE` / `P21_CLASS_DISK_CACHE` | Toggle memory / `.npz` disk cache for `CLASS` tables | Enabled |
+| `P21_FFTW_PLAN_CACHE` | Toggle 32-entry bit-exact FFTW plan LRU cache in `dft.c` (`0` to disable) | Enabled (`1`) |
+| `P21_CPU_RSDS_NATIVE` | Toggle bit-exact C/OpenMP CPU `apply_rsds` / `rsds_shift` (`0` to use Python/SciPy fallback) | Enabled (`1`) |
 
 ---
 
 ## `py21cmcu` Python API Exports
 
-Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`, `AngularLightconer`, `run_coeval`, `run_lightcone`, `compute_initial_conditions`, `perturb_field`, `compute_ionization_field`, `spin_temperature`, `brightness_temperature`, `config`, etc.), `py21cmcu` exports:
+Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`, `ObliqueRectilinearLightconer`, `AngularLightconer`, `run_coeval`, `run_lightcone`, `compute_initial_conditions`, `perturb_field`, `compute_ionization_field`, `spin_temperature`, `brightness_temperature`, `config`, etc.), `py21cmcu` exports:
 
 - **Runtime & Device Control**:
   `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`

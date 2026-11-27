@@ -2,6 +2,17 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
+## [Unreleased]
+### Added & Improved
+- **Bit-Exact CPU Backend Optimizations (`c010ce1`)**:
+  - Added a 32-entry thread-safe aligned FFTW plan LRU cache in [`src/py21cmfast/src/dft.c`](src/py21cmfast/src/dft.c) (`P21_FFTW_PLAN_CACHE=1` default, `p21_dft_clear_plan_cache`, `p21_dft_get_cache_stats`) cleaned cleanly in `clean_fftw()` and `CreateFFTWWisdoms()`. Verified **`589` hits / `9` misses (`9` entries)** and `19.4612 s → 19.3780 s` with strict `max_abs = 0.0` across all 25 `OutputStruct` arrays on a `256/128` 16T `L-INTEGRAL + TS` Coeval.
+  - Added native C/OpenMP column-parallel `apply_rsds` / `rsds_shift` kernels (`p21_cpu_rsds_shift_f32` / `p21_cpu_rsds_shift_f64`) in [`src/py21cmfast/src/rsds_cpu.c`](src/py21cmfast/src/rsds_cpu.c) and [`src/py21cmfast/rsds.py`](src/py21cmfast/rsds.py) (`P21_CPU_RSDS_NATIVE=1` default) under strict non-FMA/non-reassociate FP guards (`#pragma STDC FP_CONTRACT OFF` and `no-fast-math`), accelerating `128 × 128 × 512` 16-core CPU `apply_rsds` from **`38.2230 s → 0.0967 s`** (**`395.26×`**) with **`max_abs = 0.0`**.
+  - Added [`tests/native/test_21cmcu_phase10_cpu_opt.py`](tests/native/test_21cmcu_phase10_cpu_opt.py) (**`58/58`** bit-exact parity tests wired into [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+- **Anti-Repetition Oblique Lightcones (`9b86822`)**:
+  - Added `ObliqueRectilinearLightconer` and `quick_lightcone(..., oblique=True)` with GPU/CPU parity, using periodic oblique line-of-sight traversal (`direction=(3, 5, 11)`) to extend non-repeating path length by `12.45×`.
+- **Upstream Comparison & 21cmFAST-Aligned Showcase (`3cf3700`, `b58d8cd`)**:
+  - Added [`docs/UPSTREAM_AND_OPTIMIZATION.md`](docs/UPSTREAM_AND_OPTIMIZATION.md), corresponding Wiki documentation, and 21cmFAST `EoR`/`viridis`-aligned 2D/3D showcase figures in [`README.md`](README.md).
+
 ## [0.7.0] — 2026-11-27 (Directions O, Q, S & Phase 9)
 ### Added
 - **Direction O (`8300144`) — GPU-Native Observables & Non-Gaussian Statistics (`cuda_analysis.cu`, `src/py21cmcu/observables.py`, `src/py21cmcu/analysis.py`, `src/py21cmcu/batch.py`)**:
