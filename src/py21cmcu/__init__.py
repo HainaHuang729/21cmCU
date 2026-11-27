@@ -21,7 +21,15 @@ from .analysis import (
     power_spectrum_2d,
 )
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
+from .doctor import doctor
 from .io import save_lightcone
+from .observables import (
+    add_thermal_noise_3d,
+    apply_wedge_filter_3d,
+    generate_sobol_parameter_grid,
+    horizon_slope,
+    horizon_wedge_mask,
+)
 
 __version__ = "0.5.0"
 
@@ -117,14 +125,20 @@ __all__ = [
     "BatchResult",
     "BatchTask",
     "CudaMode",
+    "add_thermal_noise_3d",
+    "apply_wedge_filter_3d",
     "cleanup_cuda",
     "clear_class_cache",
     "cuda_available",
     "cuda_compiled",
     "cuda_device_count",
     "cuda_stats",
+    "doctor",
+    "generate_sobol_parameter_grid",
     "get_cuda_devices",
     "get_cuda_mode",
+    "horizon_slope",
+    "horizon_wedge_mask",
     "lightcone_chunk_power_spectra",
     "power_spectrum_1d",
     "power_spectrum_2d",

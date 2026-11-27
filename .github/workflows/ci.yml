@@ -27,7 +27,7 @@ jobs:
           pip install pytest ruff
 
       - name: Lint with ruff
-        run: ruff check --isolated src/py21cmcu benchmarks tests/native
+        run: ruff check --isolated src/py21cmcu examples benchmarks tests/native
 
       - name: Run CPU-safe native tests
         run: |
@@ -36,4 +36,5 @@ jobs:
             tests/native/test_21cmcu_phase3_d.py \
             tests/native/test_21cmcu_phase4_h.py \
             tests/native/test_21cmcu_phase4_i.py \
-            tests/native/test_21cmcu_phase5_g.py
+            tests/native/test_21cmcu_phase5_g.py \
+            tests/native/test_21cmcu_phase6_lm.py
