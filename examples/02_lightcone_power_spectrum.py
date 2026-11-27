@@ -66,7 +66,7 @@ def main() -> None:
         # Apply mock foreground horizon wedge + thermal noise to the middle lightcone cube
         z_mid = float(np.mean(lc.lightcone_redshifts))
         box_dims = (args.box_len, args.box_len, args.box_len)
-        nx, ny, nz = tb_rsd.shape
+        nx, _, nz = tb_rsd.shape
         sub = np.ascontiguousarray(tb_rsd[:, :, : min(nz, nx)])
         box_sub = (
             args.box_len,

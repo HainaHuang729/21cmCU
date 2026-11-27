@@ -183,7 +183,7 @@ def generate_sobol_parameter_grid(
         if "random_seed" not in row:
             row["random_seed"] = int(base_seed + i)
         else:
-            row["random_seed"] = int(round(row["random_seed"]))
+            row["random_seed"] = round(row["random_seed"])
         rows.append(row)
     return rows
 
