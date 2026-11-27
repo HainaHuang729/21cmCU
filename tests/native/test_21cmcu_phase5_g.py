@@ -314,6 +314,73 @@ def test_mgpu_power_spectra_parity(monkeypatch: pytest.MonkeyPatch, los_axis: in
         py21cmcu.cleanup_cuda()
 
 
+@requires_multi_gpu
+@pytest.mark.parametrize("use_init_dens", [False, True])
+def test_mgpu_ic_single_slab_mode_parity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, use_init_dens: bool
+) -> None:
+    """Verify Direction K single-work-slab multi-GPU mode matches 1-GPU across 2LPT + CLASS."""
+    inputs = py21cmcu.InputParameters(random_seed=7951).with_logspaced_redshifts(
+        zmin=10.0, zmax=15.0, step=1.2
+    ).evolve_input_structs(
+        DIM=48,
+        HII_DIM=24,
+        BOX_LEN=96.0,
+        PERTURB_ALGORITHM="2LPT",
+        PERTURB_ON_HIGH_RES=False,
+        POWER_SPECTRUM="CLASS",
+        V_CB_MODEL="FLUCTS",
+        K_MAX_FOR_CLASS=1.0,
+        Z_HEAT_MAX=15.0,
+        ZPRIME_STEP_FACTOR=1.2,
+        USE_MCGS=True,
+        USE_TS_FLUCT=True,
+        RECOMB_MODEL="inhomogeneous",
+        R_BUBBLE_MAX=50.0,
+        M_TURN_STELLAR_FEEDBACK=6.0,
+    )
+    init_kw = {}
+    if use_init_dens:
+        rng = np.random.default_rng(7952)
+        init_kw["initial_density"] = rng.normal(loc=0.0, scale=1e-3, size=(48, 48, 48)).astype(
+            np.float32
+        )
+
+    mode = "strict" if use_init_dens else "fast"
+    with py21cmcu.use_mode(mode, use_cuda=True, devices=[0], direc=str(tmp_path / "g1")):
+        ic_ref = py21cmcu.compute_initial_conditions(
+            inputs=inputs, regenerate=True, write=False, **init_kw
+        )
+
+    monkeypatch.setenv("P21_CUDA_FORCE_MGPU", "1")
+    monkeypatch.setenv("P21_CUDA_MGPU_SINGLE_SLAB", "1")
+    py21cmcu.reset_cuda_stats()
+    with py21cmcu.use_mode(mode, use_cuda=True, devices=[0, 1], direc=str(tmp_path / "g2")):
+        ic_ss = py21cmcu.compute_initial_conditions(
+            inputs=inputs, regenerate=True, write=False, **init_kw
+        )
+        assert py21cmcu.cuda_stats()["mgpu_ic_runs"] >= 1
+        for name in (
+            "lowres_density",
+            "hires_density",
+            "lowres_vx",
+            "lowres_vy",
+            "lowres_vz",
+            "lowres_vx_2LPT",
+            "lowres_vy_2LPT",
+            "lowres_vz_2LPT",
+            "lowres_vcb",
+        ):
+            np.testing.assert_allclose(
+                np.asarray(getattr(ic_ss, name), dtype=np.float64),
+                np.asarray(getattr(ic_ref, name), dtype=np.float64),
+                rtol=1e-4,
+                atol=1e-4,
+                err_msg=name,
+            )
+    py21cmcu.cleanup_cuda()
+
+
 @requires_three_plus_gpus
 def test_mgpu_large_1536_e2e(tmp_path: Path) -> None:
     """Smoke-test real 1536^3 IC + perturb_field + 1D P(k) across 3+ GPUs without forced env."""

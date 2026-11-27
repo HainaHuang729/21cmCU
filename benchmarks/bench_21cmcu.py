@@ -879,12 +879,32 @@ def run_mgpu_suite() -> dict[str, Any]:
                 _reset_and_gc()
         out["ic_1792"] = ic_1792
 
-    # 4. 2048^3 (DIM=2048, 8.59B voxels) on max available GPUs (Zel'dovich always attempted; 2LPT if >=4 GPUs)
+    # 4. 2048^3 (DIM=2048, 8.59B voxels) on max available GPUs (Zel'dovich always; 2LPT when host RAM >= 240 GiB)
     if n_avail >= 3:
         ic_2048: dict[str, Any] = {}
-        algos_2048 = ("ZELDOVICH", "2LPT") if n_avail >= 4 else ("ZELDOVICH",)
-        for algo in algos_2048:
+        host_budget_gb = float("inf")
+        slurm_mb = os.environ.get("SLURM_MEM_PER_NODE", "").strip()
+        if slurm_mb.isdigit():
+            host_budget_gb = min(host_budget_gb, float(slurm_mb) / 1024.0)
+        try:
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                if line.startswith("MemAvailable:"):
+                    host_budget_gb = min(host_budget_gb, float(line.split()[1]) / (1024.0 * 1024.0))
+                    break
+        except OSError:
+            pass
+
+        for algo in ("ZELDOVICH", "2LPT"):
             key = f"{algo}_g{n_avail}"
+            if algo == "2LPT" and host_budget_gb < 235.0:
+                ic_2048[key] = {
+                    "status": "skipped_host_ram_limit",
+                    "algo": algo,
+                    "n_gpus": n_avail,
+                    "host_budget_gb": round(host_budget_gb, 1),
+                    "required_gb": 235.0,
+                }
+                continue
             try:
                 ic_2048[key] = _bench_ic_box(
                     dim=2048,

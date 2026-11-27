@@ -1,13 +1,71 @@
 #include "cuda_mgpu.cuh"
 
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include <vector>
 
 namespace {
 
-constexpr size_t kMgpuMaxStripBytes = 256ULL << 20;
+constexpr size_t kMgpuMaxStripBytes = 128ULL << 20;
+constexpr size_t kMgpuHostBounceBytes = 64ULL << 20;
 constexpr int kMgpuThreads = 256;
+std::mutex g_mgpu_cufft_mtx;
+
+struct MgpuHostBounce {
+    void *ptr = nullptr;
+    bool pinned = false;
+
+    bool alloc(size_t bytes) {
+        size_t n = bytes > 0 ? bytes : 256;
+        if (cudaHostAlloc(&ptr, n, cudaHostAllocPortable) == cudaSuccess && ptr != nullptr) {
+            pinned = true;
+            return true;
+        }
+        cudaGetLastError();
+        ptr = malloc(n);
+        pinned = false;
+        return ptr != nullptr;
+    }
+
+    void free_mem(void) {
+        if (!ptr) {
+            return;
+        }
+        if (pinned) {
+            cudaFreeHost(ptr);
+            cudaGetLastError();
+        } else {
+            ::free(ptr);
+        }
+        ptr = nullptr;
+        pinned = false;
+    }
+};
+
+template <typename Fn>
+bool mgpu_parallel_gpus(int n_gpus, Fn &&fn) {
+    if (n_gpus <= 1) {
+        return n_gpus == 1 ? fn(0) : true;
+    }
+    std::atomic<bool> ok{true};
+    std::vector<std::thread> threads;
+    threads.reserve((size_t)n_gpus);
+    for (int g = 0; g < n_gpus; ++g) {
+        threads.emplace_back([&, g]() {
+            if (!fn(g)) {
+                ok.store(false, std::memory_order_relaxed);
+            }
+        });
+    }
+    for (auto &t : threads) {
+        t.join();
+    }
+    return ok.load(std::memory_order_relaxed);
+}
 
 struct MgpuPart {
     int n_parts = 0;
@@ -173,14 +231,16 @@ bool mgpu_local_2d_r2c(int dev, cudaStream_t stream, int sx, int ny, int nz, con
 
     auto run_strip = [&](int batch, int x_off) -> bool {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok = P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                  P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
-                                                 1, (int)plane_cplx, CUFFT_R2C, batch, &work_size)) &&
-                  P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
+                                                1, (int)plane_cplx, CUFFT_R2C, batch, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -194,21 +254,26 @@ bool mgpu_local_2d_r2c(int dev, cudaStream_t stream, int sx, int ny, int nz, con
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         return ok;
     };
 
     int full_end = (sx / strip) * strip;
     if (full_end > 0) {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok = P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                  P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
-                                                 1, (int)plane_cplx, CUFFT_R2C, strip, &work_size)) &&
-                  P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
+                                                1, (int)plane_cplx, CUFFT_R2C, strip, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -224,7 +289,10 @@ bool mgpu_local_2d_r2c(int dev, cudaStream_t stream, int sx, int ny, int nz, con
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         if (!ok) {
             return false;
         }
@@ -256,14 +324,16 @@ bool mgpu_local_2d_c2r(int dev, cudaStream_t stream, int sx, int ny, int nz, cuf
 
     auto run_tail = [&](int batch, int x_off) -> bool {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok = P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                  P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
-                                                 1, (int)plane_real, CUFFT_C2R, batch, &work_size)) &&
-                  P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
+                                                1, (int)plane_real, CUFFT_C2R, batch, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -276,21 +346,26 @@ bool mgpu_local_2d_c2r(int dev, cudaStream_t stream, int sx, int ny, int nz, cuf
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         return ok;
     };
 
     int full_end = (sx / strip) * strip;
     if (full_end > 0) {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok = P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                  P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
-                                                 1, (int)plane_real, CUFFT_C2R, strip, &work_size)) &&
-                  P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
+                                                1, (int)plane_real, CUFFT_C2R, strip, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -305,7 +380,10 @@ bool mgpu_local_2d_c2r(int dev, cudaStream_t stream, int sx, int ny, int nz, cuf
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         if (!ok) {
             return false;
         }
@@ -330,15 +408,16 @@ bool mgpu_local_1d_c2c(int dev, cudaStream_t stream, int n_rows, int nx, cufftCo
 
     auto run_tail = [&](int batch, int row_off) -> bool {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok =
-            P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-            P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C, batch,
-                                           &work_size)) &&
-            P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C,
+                                                batch, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -351,22 +430,26 @@ bool mgpu_local_1d_c2c(int dev, cudaStream_t stream, int n_rows, int nx, cufftCo
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         return ok;
     };
 
     int full_end = (n_rows / strip) * strip;
     if (full_end > 0) {
         cufftHandle plan = 0;
-        if (!P21_CUFFT_OK(cufftCreate(&plan))) {
-            return false;
-        }
         size_t work_size = 0;
-        bool ok =
-            P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-            P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C, strip,
-                                           &work_size)) &&
-            P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
+                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
+                 P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C,
+                                                strip, &work_size)) &&
+                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        }
         void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
         if (ok && work_size > 0 && !d_work) {
             ok = false;
@@ -381,7 +464,10 @@ bool mgpu_local_1d_c2c(int dev, cudaStream_t stream, int n_rows, int nx, cufftCo
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        cufftDestroy(plan);
+        if (plan) {
+            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+            cufftDestroy(plan);
+        }
         if (!ok) {
             return false;
         }
@@ -486,8 +572,9 @@ bool mgpu_transpose_x_to_y(const P21MgpuGrid &grid, cufftComplex *const *d_cplx_
         }
     }
 
-    /* Low-VRAM / fallback host-staged path (safe for 2048^3 on 4x 24 GB GPUs). */
-    size_t max_tile_bytes = (size_t)grid.max_sx * (size_t)grid.max_sy * (size_t)hz * sizeof(cufftComplex);
+    /* Low-VRAM / fallback host-staged path (sub-tiled <=64 MiB pinned bounce, parallel per GPU). */
+    size_t min_row_bytes_y = (size_t)std::max(1, grid.max_sx) * (size_t)hz * sizeof(cufftComplex);
+    size_t bounce_bytes = std::max(kMgpuHostBounceBytes, min_row_bytes_y);
     cufftComplex *h_stage = (cufftComplex *)h_stage_opt;
     bool own_stage = false;
     if (!h_stage) {
@@ -498,54 +585,94 @@ bool mgpu_transpose_x_to_y(const P21MgpuGrid &grid, cufftComplex *const *d_cplx_
         own_stage = true;
     }
 
-    std::vector<cufftComplex *> d_tile((size_t)G, nullptr);
-    bool ok = true;
-    for (int g = 0; g < G; ++g) {
-        d_tile[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], max_tile_bytes, grid.streams[g]);
-        if (!d_tile[(size_t)g]) {
-            ok = false;
+    bool ok = mgpu_parallel_gpus(G, [&](int s) -> bool {
+        if (!P21_CUDA_OK(cudaSetDevice(grid.devs[s]))) {
+            return false;
         }
-    }
-
-    for (int s = 0; s < G && ok; ++s) {
-        P21_CUDA_OK(cudaSetDevice(grid.devs[s]));
-        for (int d = 0; d < G && ok; ++d) {
-            size_t tile_elems = (size_t)grid.sx[s] * (size_t)grid.sy[d] * (size_t)hz;
-            cufftComplex *h_slot = h_stage + ((size_t)grid.y0[d] * (size_t)hz * (size_t)nx) +
-                                   (size_t)grid.x0[s] * (size_t)grid.sy[d] * (size_t)hz;
-            mgpu_pack_xy_tile_kernel<<<grid_blocks_u32(tile_elems), kMgpuThreads, 0,
-                                     grid.streams[s]>>>(
-                d_cplx_x[s], grid.sx[s], ny, hz, grid.y0[d], grid.sy[d], d_tile[(size_t)s]);
-            ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 P21_CUDA_OK(cudaMemcpyAsync(h_slot, d_tile[(size_t)s],
-                                             tile_elems * sizeof(cufftComplex),
-                                             cudaMemcpyDeviceToHost, grid.streams[s])) &&
-                 P21_CUDA_OK(cudaStreamSynchronize(grid.streams[s]));
+        cudaStream_t stream = grid.streams[s];
+        cufftComplex *d_tile =
+            (cufftComplex *)p21_mgpu_malloc(grid.devs[s], bounce_bytes, stream);
+        MgpuHostBounce h_bounce;
+        if (!d_tile || !h_bounce.alloc(bounce_bytes)) {
+            p21_mgpu_free(grid.devs[s], d_tile, stream);
+            h_bounce.free_mem();
+            return false;
         }
-    }
-
-    for (int d = 0; d < G && ok; ++d) {
-        P21_CUDA_OK(cudaSetDevice(grid.devs[d]));
-        for (int s = 0; s < G && ok; ++s) {
-            size_t tile_elems = (size_t)grid.sx[s] * (size_t)grid.sy[d] * (size_t)hz;
-            const cufftComplex *h_slot = h_stage + ((size_t)grid.y0[d] * (size_t)hz * (size_t)nx) +
-                                         (size_t)grid.x0[s] * (size_t)grid.sy[d] * (size_t)hz;
-            ok = P21_CUDA_OK(cudaMemcpyAsync(d_tile[(size_t)d], h_slot,
-                                             tile_elems * sizeof(cufftComplex),
-                                             cudaMemcpyHostToDevice, grid.streams[d]));
-            if (ok) {
-                mgpu_unpack_xy_tile_kernel<<<grid_blocks_u32(tile_elems), kMgpuThreads, 0,
-                                           grid.streams[d]>>>(
-                    d_tile[(size_t)d], grid.x0[s], grid.sx[s], grid.sy[d], hz, nx, d_cplx_y[d]);
-                ok = P21_CUDA_OK(cudaGetLastError()) &&
-                     P21_CUDA_OK(cudaStreamSynchronize(grid.streams[d]));
+        bool lok = true;
+        for (int d = 0; d < G && lok; ++d) {
+            size_t row_bytes = (size_t)grid.sx[s] * (size_t)hz * sizeof(cufftComplex);
+            int step_y =
+                std::max(1, std::min(grid.sy[d], (int)(bounce_bytes / std::max<size_t>(1, row_bytes))));
+            for (int y_off = 0; y_off < grid.sy[d] && lok; y_off += step_y) {
+                int cur_sy = std::min(step_y, grid.sy[d] - y_off);
+                size_t chunk_elems = (size_t)cur_sy * (size_t)hz * (size_t)grid.sx[s];
+                size_t chunk_bytes = chunk_elems * sizeof(cufftComplex);
+                cufftComplex *h_chunk = h_stage + ((size_t)grid.y0[d] * (size_t)hz * (size_t)nx) +
+                                        (size_t)grid.x0[s] * (size_t)grid.sy[d] * (size_t)hz +
+                                        (size_t)y_off * (size_t)hz * (size_t)grid.sx[s];
+                mgpu_pack_xy_tile_kernel<<<grid_blocks_u32(chunk_elems), kMgpuThreads, 0, stream>>>(
+                    d_cplx_x[s], grid.sx[s], ny, hz, grid.y0[d] + y_off, cur_sy, d_tile);
+                lok = P21_CUDA_OK(cudaGetLastError()) &&
+                      P21_CUDA_OK(cudaMemcpyAsync(h_bounce.ptr, d_tile, chunk_bytes,
+                                                  cudaMemcpyDeviceToHost, stream)) &&
+                      P21_CUDA_OK(cudaStreamSynchronize(stream));
+                if (lok) {
+                    memcpy(h_chunk, h_bounce.ptr, chunk_bytes);
+                }
             }
         }
+        p21_mgpu_free(grid.devs[s], d_tile, stream);
+        h_bounce.free_mem();
+        return lok;
+    });
+
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int d) -> bool {
+            if (!P21_CUDA_OK(cudaSetDevice(grid.devs[d]))) {
+                return false;
+            }
+            cudaStream_t stream = grid.streams[d];
+            cufftComplex *d_tile =
+                (cufftComplex *)p21_mgpu_malloc(grid.devs[d], bounce_bytes, stream);
+            MgpuHostBounce h_bounce;
+            if (!d_tile || !h_bounce.alloc(bounce_bytes)) {
+                p21_mgpu_free(grid.devs[d], d_tile, stream);
+                h_bounce.free_mem();
+                return false;
+            }
+            bool lok = true;
+            for (int s = 0; s < G && lok; ++s) {
+                size_t row_bytes = (size_t)grid.sx[s] * (size_t)hz * sizeof(cufftComplex);
+                int step_y = std::max(
+                    1, std::min(grid.sy[d], (int)(bounce_bytes / std::max<size_t>(1, row_bytes))));
+                for (int y_off = 0; y_off < grid.sy[d] && lok; y_off += step_y) {
+                    int cur_sy = std::min(step_y, grid.sy[d] - y_off);
+                    size_t chunk_elems = (size_t)cur_sy * (size_t)hz * (size_t)grid.sx[s];
+                    size_t chunk_bytes = chunk_elems * sizeof(cufftComplex);
+                    const cufftComplex *h_chunk =
+                        h_stage + ((size_t)grid.y0[d] * (size_t)hz * (size_t)nx) +
+                        (size_t)grid.x0[s] * (size_t)grid.sy[d] * (size_t)hz +
+                        (size_t)y_off * (size_t)hz * (size_t)grid.sx[s];
+                    memcpy(h_bounce.ptr, h_chunk, chunk_bytes);
+                    lok = P21_CUDA_OK(cudaMemcpyAsync(d_tile, h_bounce.ptr, chunk_bytes,
+                                                      cudaMemcpyHostToDevice, stream));
+                    if (lok) {
+                        cufftComplex *dst_ptr =
+                            d_cplx_y[d] + (size_t)y_off * (size_t)hz * (size_t)nx;
+                        mgpu_unpack_xy_tile_kernel<<<grid_blocks_u32(chunk_elems), kMgpuThreads, 0,
+                                                   stream>>>(d_tile, grid.x0[s], grid.sx[s], cur_sy,
+                                                             hz, nx, dst_ptr);
+                        lok = P21_CUDA_OK(cudaGetLastError()) &&
+                              P21_CUDA_OK(cudaStreamSynchronize(stream));
+                    }
+                }
+            }
+            p21_mgpu_free(grid.devs[d], d_tile, stream);
+            h_bounce.free_mem();
+            return lok;
+        });
     }
 
-    for (int g = 0; g < G; ++g) {
-        p21_mgpu_free(grid.devs[g], d_tile[(size_t)g], grid.streams[g]);
-    }
     if (own_stage) {
         free(h_stage);
     }
@@ -643,7 +770,8 @@ bool mgpu_transpose_y_to_x(const P21MgpuGrid &grid, cufftComplex *const *d_cplx_
         }
     }
 
-    size_t max_tile_bytes = (size_t)grid.max_sx * (size_t)grid.max_sy * (size_t)hz * sizeof(cufftComplex);
+    size_t min_row_bytes_x = (size_t)std::max(1, grid.max_sy) * (size_t)hz * sizeof(cufftComplex);
+    size_t bounce_bytes = std::max(kMgpuHostBounceBytes, min_row_bytes_x);
     cufftComplex *h_stage = (cufftComplex *)h_stage_opt;
     bool own_stage = false;
     if (!h_stage) {
@@ -654,54 +782,94 @@ bool mgpu_transpose_y_to_x(const P21MgpuGrid &grid, cufftComplex *const *d_cplx_
         own_stage = true;
     }
 
-    std::vector<cufftComplex *> d_tile((size_t)G, nullptr);
-    bool ok = true;
-    for (int g = 0; g < G; ++g) {
-        d_tile[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], max_tile_bytes, grid.streams[g]);
-        if (!d_tile[(size_t)g]) {
-            ok = false;
+    bool ok = mgpu_parallel_gpus(G, [&](int d) -> bool {
+        if (!P21_CUDA_OK(cudaSetDevice(grid.devs[d]))) {
+            return false;
         }
-    }
-
-    for (int d = 0; d < G && ok; ++d) {
-        P21_CUDA_OK(cudaSetDevice(grid.devs[d]));
-        for (int s = 0; s < G && ok; ++s) {
-            size_t tile_elems = (size_t)grid.sx[s] * (size_t)grid.sy[d] * (size_t)hz;
-            cufftComplex *h_slot = h_stage + ((size_t)grid.x0[s] * (size_t)ny * (size_t)hz) +
-                                   (size_t)grid.sx[s] * (size_t)grid.y0[d] * (size_t)hz;
-            mgpu_pack_yx_tile_kernel<<<grid_blocks_u32(tile_elems), kMgpuThreads, 0,
-                                     grid.streams[d]>>>(
-                d_cplx_y[d], grid.sy[d], hz, nx, grid.x0[s], grid.sx[s], d_tile[(size_t)d]);
-            ok = P21_CUDA_OK(cudaGetLastError()) &&
-                 P21_CUDA_OK(cudaMemcpyAsync(h_slot, d_tile[(size_t)d],
-                                             tile_elems * sizeof(cufftComplex),
-                                             cudaMemcpyDeviceToHost, grid.streams[d])) &&
-                 P21_CUDA_OK(cudaStreamSynchronize(grid.streams[d]));
+        cudaStream_t stream = grid.streams[d];
+        cufftComplex *d_tile =
+            (cufftComplex *)p21_mgpu_malloc(grid.devs[d], bounce_bytes, stream);
+        MgpuHostBounce h_bounce;
+        if (!d_tile || !h_bounce.alloc(bounce_bytes)) {
+            p21_mgpu_free(grid.devs[d], d_tile, stream);
+            h_bounce.free_mem();
+            return false;
         }
-    }
-
-    for (int s = 0; s < G && ok; ++s) {
-        P21_CUDA_OK(cudaSetDevice(grid.devs[s]));
-        for (int d = 0; d < G && ok; ++d) {
-            size_t tile_elems = (size_t)grid.sx[s] * (size_t)grid.sy[d] * (size_t)hz;
-            const cufftComplex *h_slot = h_stage + ((size_t)grid.x0[s] * (size_t)ny * (size_t)hz) +
-                                         (size_t)grid.sx[s] * (size_t)grid.y0[d] * (size_t)hz;
-            ok = P21_CUDA_OK(cudaMemcpyAsync(d_tile[(size_t)s], h_slot,
-                                             tile_elems * sizeof(cufftComplex),
-                                             cudaMemcpyHostToDevice, grid.streams[s]));
-            if (ok) {
-                mgpu_unpack_yx_tile_kernel<<<grid_blocks_u32(tile_elems), kMgpuThreads, 0,
-                                           grid.streams[s]>>>(
-                    d_tile[(size_t)s], grid.sx[s], grid.y0[d], grid.sy[d], ny, hz, d_cplx_x[s]);
-                ok = P21_CUDA_OK(cudaGetLastError()) &&
-                     P21_CUDA_OK(cudaStreamSynchronize(grid.streams[s]));
+        bool lok = true;
+        for (int s = 0; s < G && lok; ++s) {
+            size_t row_bytes = (size_t)grid.sy[d] * (size_t)hz * sizeof(cufftComplex);
+            int step_x =
+                std::max(1, std::min(grid.sx[s], (int)(bounce_bytes / std::max<size_t>(1, row_bytes))));
+            for (int x_off = 0; x_off < grid.sx[s] && lok; x_off += step_x) {
+                int cur_sx = std::min(step_x, grid.sx[s] - x_off);
+                size_t chunk_elems = (size_t)cur_sx * (size_t)grid.sy[d] * (size_t)hz;
+                size_t chunk_bytes = chunk_elems * sizeof(cufftComplex);
+                cufftComplex *h_chunk = h_stage + ((size_t)grid.x0[s] * (size_t)ny * (size_t)hz) +
+                                        (size_t)grid.sx[s] * (size_t)grid.y0[d] * (size_t)hz +
+                                        (size_t)x_off * (size_t)grid.sy[d] * (size_t)hz;
+                mgpu_pack_yx_tile_kernel<<<grid_blocks_u32(chunk_elems), kMgpuThreads, 0, stream>>>(
+                    d_cplx_y[d], grid.sy[d], hz, nx, grid.x0[s] + x_off, cur_sx, d_tile);
+                lok = P21_CUDA_OK(cudaGetLastError()) &&
+                      P21_CUDA_OK(cudaMemcpyAsync(h_bounce.ptr, d_tile, chunk_bytes,
+                                                  cudaMemcpyDeviceToHost, stream)) &&
+                      P21_CUDA_OK(cudaStreamSynchronize(stream));
+                if (lok) {
+                    memcpy(h_chunk, h_bounce.ptr, chunk_bytes);
+                }
             }
         }
+        p21_mgpu_free(grid.devs[d], d_tile, stream);
+        h_bounce.free_mem();
+        return lok;
+    });
+
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int s) -> bool {
+            if (!P21_CUDA_OK(cudaSetDevice(grid.devs[s]))) {
+                return false;
+            }
+            cudaStream_t stream = grid.streams[s];
+            cufftComplex *d_tile =
+                (cufftComplex *)p21_mgpu_malloc(grid.devs[s], bounce_bytes, stream);
+            MgpuHostBounce h_bounce;
+            if (!d_tile || !h_bounce.alloc(bounce_bytes)) {
+                p21_mgpu_free(grid.devs[s], d_tile, stream);
+                h_bounce.free_mem();
+                return false;
+            }
+            bool lok = true;
+            for (int d = 0; d < G && lok; ++d) {
+                size_t row_bytes = (size_t)grid.sy[d] * (size_t)hz * sizeof(cufftComplex);
+                int step_x = std::max(
+                    1, std::min(grid.sx[s], (int)(bounce_bytes / std::max<size_t>(1, row_bytes))));
+                for (int x_off = 0; x_off < grid.sx[s] && lok; x_off += step_x) {
+                    int cur_sx = std::min(step_x, grid.sx[s] - x_off);
+                    size_t chunk_elems = (size_t)cur_sx * (size_t)grid.sy[d] * (size_t)hz;
+                    size_t chunk_bytes = chunk_elems * sizeof(cufftComplex);
+                    const cufftComplex *h_chunk =
+                        h_stage + ((size_t)grid.x0[s] * (size_t)ny * (size_t)hz) +
+                        (size_t)grid.sx[s] * (size_t)grid.y0[d] * (size_t)hz +
+                        (size_t)x_off * (size_t)grid.sy[d] * (size_t)hz;
+                    memcpy(h_bounce.ptr, h_chunk, chunk_bytes);
+                    lok = P21_CUDA_OK(cudaMemcpyAsync(d_tile, h_bounce.ptr, chunk_bytes,
+                                                      cudaMemcpyHostToDevice, stream));
+                    if (lok) {
+                        cufftComplex *dst_ptr =
+                            d_cplx_x[s] + (size_t)x_off * (size_t)ny * (size_t)hz;
+                        mgpu_unpack_yx_tile_kernel<<<grid_blocks_u32(chunk_elems), kMgpuThreads, 0,
+                                                   stream>>>(d_tile, cur_sx, grid.y0[d], grid.sy[d],
+                                                             ny, hz, dst_ptr);
+                        lok = P21_CUDA_OK(cudaGetLastError()) &&
+                              P21_CUDA_OK(cudaStreamSynchronize(stream));
+                    }
+                }
+            }
+            p21_mgpu_free(grid.devs[s], d_tile, stream);
+            h_bounce.free_mem();
+            return lok;
+        });
     }
 
-    for (int g = 0; g < G; ++g) {
-        p21_mgpu_free(grid.devs[g], d_tile[(size_t)g], grid.streams[g]);
-    }
     if (own_stage) {
         free(h_stage);
     }
@@ -888,13 +1056,12 @@ bool p21_mgpu_fft_r2c_slabs(const P21MgpuGrid &grid, float *const *d_real_x,
         }
     }
 
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_2d_r2c(grid.devs[g], grid.streams[g], grid.sx[g], grid.ny, grid.nz,
-                               d_real_x[g], d_cplx_x[(size_t)g]);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            return mgpu_local_2d_r2c(grid.devs[g], grid.streams[g], grid.sx[g], grid.ny, grid.nz,
+                                     d_real_x[g], d_cplx_x[(size_t)g]) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
     }
 
     if (ok) {
@@ -907,13 +1074,12 @@ bool p21_mgpu_fft_r2c_slabs(const P21MgpuGrid &grid, float *const *d_real_x,
         }
     }
 
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * grid.hz, grid.nx,
-                               d_cplx_y[g], CUFFT_FORWARD);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            return mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * grid.hz, grid.nx,
+                                     d_cplx_y[g], CUFFT_FORWARD) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
     }
     cudaSetDevice(grid.primary_dev);
     if (ok) {
@@ -934,7 +1100,7 @@ bool p21_mgpu_fft_r2c_from_host(const P21MgpuGrid &grid, const float *h_real_in,
     const int hz = grid.hz;
     const size_t plane_real = (size_t)ny * (size_t)nz;
     const size_t plane_cplx = (size_t)ny * (size_t)hz;
-    const size_t strip_cap_bytes = 128ULL << 20;
+    const size_t strip_cap_bytes = 64ULL << 20;
     const int strip_max = std::max(
         1, std::min(grid.max_sx, (int)(strip_cap_bytes / std::max<size_t>(1, plane_real * sizeof(float)))));
 
@@ -956,43 +1122,50 @@ bool p21_mgpu_fft_r2c_from_host(const P21MgpuGrid &grid, const float *h_real_in,
         }
     }
 
-    for (int g = 0; g < G && ok; ++g) {
-        int dev = grid.devs[g];
-        cudaStream_t stream = grid.streams[g];
-        int sx_g = grid.sx[g];
-        if (sx_g <= 0) {
-            continue;
-        }
-        if (!P21_CUDA_OK(cudaSetDevice(dev))) {
-            ok = false;
-            break;
-        }
-        int strip = std::min(strip_max, sx_g);
-        float *d_strip = (float *)p21_mgpu_malloc(dev, (size_t)strip * plane_real * sizeof(float), stream);
-        if (!d_strip) {
-            ok = false;
-            break;
-        }
-        for (int x = 0; ok && x < sx_g; x += strip) {
-            int cur_nx = std::min(strip, sx_g - x);
-            size_t elems = (size_t)cur_nx * plane_real;
-            const float *src = h_real_in + (size_t)(grid.x0[g] + x) * plane_real;
-            ok = P21_CUDA_OK(cudaMemcpyAsync(d_strip, src, elems * sizeof(float),
-                                             cudaMemcpyHostToDevice, stream));
-            if (ok && pre_scale != 1.0) {
-                scale_strip_f32_kernel<<<grid_blocks_u32(elems), kMgpuThreads, 0, stream>>>(
-                    d_strip, elems, pre_scale);
-                ok = P21_CUDA_OK(cudaGetLastError());
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            int dev = grid.devs[g];
+            cudaStream_t stream = grid.streams[g];
+            int sx_g = grid.sx[g];
+            if (sx_g <= 0) {
+                return true;
             }
-            if (ok) {
-                ok = mgpu_local_2d_r2c(dev, stream, cur_nx, ny, nz, d_strip,
-                                       d_cplx_x[(size_t)g] + (size_t)x * plane_cplx);
+            if (!P21_CUDA_OK(cudaSetDevice(dev))) {
+                return false;
             }
-        }
-        p21_mgpu_free(dev, d_strip, stream);
-        if (ok) {
-            ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
-        }
+            int strip = std::min(strip_max, sx_g);
+            size_t buf_bytes = (size_t)strip * plane_real * sizeof(float);
+            float *d_strip = (float *)p21_mgpu_malloc(dev, buf_bytes, stream);
+            MgpuHostBounce h_bounce;
+            if (!d_strip || !h_bounce.alloc(buf_bytes)) {
+                p21_mgpu_free(dev, d_strip, stream);
+                h_bounce.free_mem();
+                return false;
+            }
+            bool lok = true;
+            for (int x = 0; lok && x < sx_g; x += strip) {
+                int cur_nx = std::min(strip, sx_g - x);
+                size_t elems = (size_t)cur_nx * plane_real;
+                size_t bytes = elems * sizeof(float);
+                const float *src = h_real_in + (size_t)(grid.x0[g] + x) * plane_real;
+                memcpy(h_bounce.ptr, src, bytes);
+                lok = P21_CUDA_OK(cudaMemcpyAsync(d_strip, h_bounce.ptr, bytes,
+                                                  cudaMemcpyHostToDevice, stream));
+                if (lok && pre_scale != 1.0) {
+                    scale_strip_f32_kernel<<<grid_blocks_u32(elems), kMgpuThreads, 0, stream>>>(
+                        d_strip, elems, pre_scale);
+                    lok = P21_CUDA_OK(cudaGetLastError());
+                }
+                if (lok) {
+                    lok = mgpu_local_2d_r2c(dev, stream, cur_nx, ny, nz, d_strip,
+                                            d_cplx_x[(size_t)g] + (size_t)x * plane_cplx) &&
+                          P21_CUDA_OK(cudaStreamSynchronize(stream));
+                }
+            }
+            p21_mgpu_free(dev, d_strip, stream);
+            h_bounce.free_mem();
+            return lok;
+        });
     }
 
     if (ok) {
@@ -1003,13 +1176,12 @@ bool p21_mgpu_fft_r2c_from_host(const P21MgpuGrid &grid, const float *h_real_in,
             p21_mgpu_free(grid.devs[g], d_cplx_x[(size_t)g], grid.streams[g]);
         }
     }
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * hz, grid.nx, d_cplx_y[g],
-                               CUFFT_FORWARD);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            return mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * hz, grid.nx,
+                                     d_cplx_y[g], CUFFT_FORWARD) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
     }
     cudaSetDevice(grid.primary_dev);
     if (ok) {
@@ -1027,19 +1199,15 @@ bool p21_mgpu_fft_c2r_strips(const P21MgpuGrid &grid, cufftComplex **d_cplx_y, v
     const int hz = grid.hz;
     const size_t plane_real = (size_t)ny * (size_t)nz;
     const size_t plane_cplx = (size_t)ny * (size_t)hz;
-    const size_t strip_cap_bytes = 128ULL << 20;
+    const size_t strip_cap_bytes = 64ULL << 20;
     const int strip_max = std::max(
         1, std::min(grid.max_sx, (int)(strip_cap_bytes / std::max<size_t>(1, plane_real * sizeof(float)))));
 
-    bool ok = true;
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * hz, grid.nx, d_cplx_y[g],
-                               CUFFT_INVERSE);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-    }
+    bool ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+        return mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * hz, grid.nx,
+                                 d_cplx_y[g], CUFFT_INVERSE) &&
+               P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    });
 
     std::vector<cufftComplex *> d_cplx_x((size_t)G, nullptr);
     std::vector<bool> owns_x((size_t)G, false);
@@ -1061,33 +1229,34 @@ bool p21_mgpu_fft_c2r_strips(const P21MgpuGrid &grid, cufftComplex **d_cplx_y, v
         ok = mgpu_transpose_y_to_x(grid, d_cplx_y, d_cplx_x.data(), h_stage_opt);
     }
 
-    for (int g = 0; g < G && ok; ++g) {
-        int dev = grid.devs[g];
-        cudaStream_t stream = grid.streams[g];
-        int sx_g = grid.sx[g];
-        if (sx_g <= 0) {
-            continue;
-        }
-        if (!P21_CUDA_OK(cudaSetDevice(dev))) {
-            ok = false;
-            break;
-        }
-        int strip = std::min(strip_max, sx_g);
-        float *d_strip = (float *)p21_mgpu_malloc(dev, (size_t)strip * plane_real * sizeof(float), stream);
-        if (!d_strip) {
-            ok = false;
-            break;
-        }
-        for (int x = 0; ok && x < sx_g; x += strip) {
-            int cur_nx = std::min(strip, sx_g - x);
-            ok = mgpu_local_2d_c2r(dev, stream, cur_nx, ny, nz,
-                                   d_cplx_x[(size_t)g] + (size_t)x * plane_cplx, d_strip) &&
-                 on_strip(g, grid.x0[g] + x, cur_nx, d_strip, stream);
-        }
-        if (ok) {
-            ok = P21_CUDA_OK(cudaStreamSynchronize(stream));
-        }
-        p21_mgpu_free(dev, d_strip, stream);
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            int dev = grid.devs[g];
+            cudaStream_t stream = grid.streams[g];
+            int sx_g = grid.sx[g];
+            if (sx_g <= 0) {
+                return true;
+            }
+            if (!P21_CUDA_OK(cudaSetDevice(dev))) {
+                return false;
+            }
+            int strip = std::min(strip_max, sx_g);
+            float *d_strip =
+                (float *)p21_mgpu_malloc(dev, (size_t)strip * plane_real * sizeof(float), stream);
+            if (!d_strip) {
+                return false;
+            }
+            bool lok = true;
+            for (int x = 0; lok && x < sx_g; x += strip) {
+                int cur_nx = std::min(strip, sx_g - x);
+                lok = mgpu_local_2d_c2r(dev, stream, cur_nx, ny, nz,
+                                        d_cplx_x[(size_t)g] + (size_t)x * plane_cplx, d_strip) &&
+                      on_strip(g, grid.x0[g] + x, cur_nx, d_strip, stream) &&
+                      P21_CUDA_OK(cudaStreamSynchronize(stream));
+            }
+            p21_mgpu_free(dev, d_strip, stream);
+            return lok;
+        });
     }
 
     for (int g = 0; g < G; ++g) {
@@ -1106,15 +1275,11 @@ bool p21_mgpu_fft_c2r_strips(const P21MgpuGrid &grid, cufftComplex **d_cplx_y, v
 bool p21_mgpu_fft_c2r_slabs(const P21MgpuGrid &grid, cufftComplex **d_cplx_y, float **d_real_x,
                             void *h_stage_opt) {
     const int G = grid.n_gpus;
-    bool ok = true;
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * grid.hz, grid.nx,
-                               d_cplx_y[g], CUFFT_INVERSE);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-    }
+    bool ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+        return mgpu_local_1d_c2c(grid.devs[g], grid.streams[g], grid.sy[g] * grid.hz, grid.nx,
+                                 d_cplx_y[g], CUFFT_INVERSE) &&
+               P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    });
 
     std::vector<cufftComplex *> d_cplx_x((size_t)G, nullptr);
     std::vector<bool> owns_x((size_t)G, false);
@@ -1135,13 +1300,12 @@ bool p21_mgpu_fft_c2r_slabs(const P21MgpuGrid &grid, cufftComplex **d_cplx_y, fl
     if (ok) {
         ok = mgpu_transpose_y_to_x(grid, d_cplx_y, d_cplx_x.data(), h_stage_opt);
     }
-    for (int g = 0; g < G && ok; ++g) {
-        ok = mgpu_local_2d_c2r(grid.devs[g], grid.streams[g], grid.sx[g], grid.ny, grid.nz,
-                               d_cplx_x[(size_t)g], d_real_x[g]);
-    }
-    for (int g = 0; g < G && ok; ++g) {
-        cudaSetDevice(grid.devs[g]);
-        ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+    if (ok) {
+        ok = mgpu_parallel_gpus(G, [&](int g) -> bool {
+            return mgpu_local_2d_c2r(grid.devs[g], grid.streams[g], grid.sx[g], grid.ny, grid.nz,
+                                     d_cplx_x[(size_t)g], d_real_x[g]) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
     }
 
     for (int g = 0; g < G; ++g) {

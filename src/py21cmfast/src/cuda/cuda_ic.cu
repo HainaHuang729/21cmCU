@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <atomic>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include <vector>
 
 #include "cuda_common.cuh"
@@ -585,6 +587,63 @@ bool mgpu_ic_force_enabled(void) {
     return env && strcmp(env, "1") == 0;
 }
 
+bool mgpu_ic_force_single_slab(void) {
+    const char *env = getenv("P21_CUDA_MGPU_SINGLE_SLAB");
+    return env && strcmp(env, "1") == 0;
+}
+
+template <typename Fn>
+bool mgpu_ic_parallel(int n_workers, Fn &&fn) {
+    if (n_workers <= 1) {
+        return n_workers == 1 ? fn(0) : true;
+    }
+    std::atomic<bool> ok{true};
+    std::vector<std::thread> threads;
+    threads.reserve((size_t)n_workers);
+    for (int w = 0; w < n_workers; ++w) {
+        threads.emplace_back([&, w]() {
+            if (!fn(w)) {
+                ok.store(false, std::memory_order_relaxed);
+            }
+        });
+    }
+    for (auto &t : threads) {
+        t.join();
+    }
+    return ok.load(std::memory_order_relaxed);
+}
+
+struct IcHostBounce {
+    void *ptr = nullptr;
+    bool pinned = false;
+
+    bool alloc(size_t bytes) {
+        size_t n = bytes > 0 ? bytes : 256;
+        if (cudaHostAlloc(&ptr, n, cudaHostAllocPortable) == cudaSuccess && ptr != nullptr) {
+            pinned = true;
+            return true;
+        }
+        cudaGetLastError();
+        ptr = malloc(n);
+        pinned = false;
+        return ptr != nullptr;
+    }
+
+    void free_mem(void) {
+        if (!ptr) {
+            return;
+        }
+        if (pinned) {
+            cudaFreeHost(ptr);
+            cudaGetLastError();
+        } else {
+            ::free(ptr);
+        }
+        ptr = nullptr;
+        pinned = false;
+    }
+};
+
 void compute_ox_range(int ox_dim, double dim_ratio, int x_begin, int x_end, int *ox_start_out,
                       int *ox_count_out) {
     int first = ox_dim;
@@ -845,6 +904,7 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
     }
     const int G = grid.n_gpus;
     const size_t hi_pixels = (size_t)nx * (size_t)ny * (size_t)nz;
+    const size_t plane_real = (size_t)ny * (size_t)nz;
     const int tpb = 256;
     const double dk_x = 2.0 * M_PI / box_len_x;
     const double dk_y = 2.0 * M_PI / box_len_y;
@@ -857,8 +917,10 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
         max_real_x_bytes = std::max(max_real_x_bytes, grid.real_elems_x(g) * sizeof(float));
     }
     const size_t min_free = p21_mgpu_min_free_mem(grid);
+    const bool single_slab_mode =
+        mgpu_ic_force_single_slab() || (min_free < 2ULL * max_slab_bytes + (2048ULL << 20));
     void *h_stage = nullptr;
-    if (min_free < 3ULL * max_slab_bytes + (768ULL << 20)) {
+    if (min_free < 4ULL * max_slab_bytes + (768ULL << 20)) {
         h_stage = malloc(grid.total_cplx_elems() * sizeof(cufftComplex));
         if (!h_stage) {
             grid.destroy();
@@ -869,14 +931,22 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
     std::vector<cufftComplex *> d_saved((size_t)G, nullptr), d_work((size_t)G, nullptr);
     std::vector<double *> d_cdens((size_t)G, nullptr), d_cvcb((size_t)G, nullptr);
     std::vector<CosmoKernelParams> dev_cosmo((size_t)G, base_cosmo);
+    std::vector<IcHostBounce> h_strip_bounce((size_t)G);
+    cufftComplex *h_saved_input = nullptr;
     bool ok = true;
 
+    const size_t strip_cap_bytes = 64ULL << 20;
+    const size_t bounce_bytes = std::max(strip_cap_bytes, plane_real * sizeof(float));
     for (int g = 0; g < G && ok; ++g) {
         cudaSetDevice(grid.devs[g]);
         size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
-        d_saved[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
         d_work[(size_t)g] = (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
-        if (!d_saved[(size_t)g] || !d_work[(size_t)g]) {
+        if (!single_slab_mode) {
+            d_saved[(size_t)g] =
+                (cufftComplex *)p21_mgpu_malloc(grid.devs[g], bytes_y, grid.streams[g]);
+        }
+        if (!d_work[(size_t)g] || (!single_slab_mode && !d_saved[(size_t)g]) ||
+            !h_strip_bounce[(size_t)g].alloc(bounce_bytes)) {
             ok = false;
             break;
         }
@@ -903,6 +973,12 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
             }
         }
     }
+    if (ok && single_slab_mode && non_zero_input) {
+        h_saved_input = (cufftComplex *)malloc(grid.total_cplx_elems() * sizeof(cufftComplex));
+        if (!h_saved_input) {
+            ok = false;
+        }
+    }
 
     auto cleanup_all = [&]() {
         for (int g = 0; g < G; ++g) {
@@ -910,6 +986,11 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
             p21_mgpu_free(grid.devs[g], d_cdens[(size_t)g], grid.streams[g]);
             p21_mgpu_free(grid.devs[g], d_work[(size_t)g], grid.streams[g]);
             p21_mgpu_free(grid.devs[g], d_saved[(size_t)g], grid.streams[g]);
+            h_strip_bounce[(size_t)g].free_mem();
+        }
+        if (h_saved_input) {
+            free(h_saved_input);
+            h_saved_input = nullptr;
         }
         if (h_stage) {
             free(h_stage);
@@ -923,25 +1004,71 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
         return -1;
     }
 
-    auto copy_yslab_work_from_saved = [&](void) -> bool {
-        for (int g = 0; g < G; ++g) {
+    auto spill_yslabs_to_host = [&](cufftComplex *const *d_src, cufftComplex *h_buf) -> bool {
+        return mgpu_ic_parallel(G, [&](int g) -> bool {
             cudaSetDevice(grid.devs[g]);
-            size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
-            if (!P21_CUDA_OK(cudaMemcpyAsync(d_work[(size_t)g], d_saved[(size_t)g], bytes_y,
-                                             cudaMemcpyDeviceToDevice, grid.streams[g]))) {
-                return false;
-            }
+            size_t elems_y = grid.cplx_elems_y(g);
+            size_t bytes_y = elems_y * sizeof(cufftComplex);
+            cufftComplex *dst =
+                h_buf + (size_t)grid.y0[g] * (size_t)grid.hz * (size_t)grid.nx;
+            return P21_CUDA_OK(cudaMemcpyAsync(dst, d_src[(size_t)g], bytes_y,
+                                               cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
+    };
+
+    auto upload_yslabs_from_host = [&](const cufftComplex *h_buf, cufftComplex **d_dst) -> bool {
+        return mgpu_ic_parallel(G, [&](int g) -> bool {
+            cudaSetDevice(grid.devs[g]);
+            size_t elems_y = grid.cplx_elems_y(g);
+            size_t bytes_y = elems_y * sizeof(cufftComplex);
+            const cufftComplex *src =
+                h_buf + (size_t)grid.y0[g] * (size_t)grid.hz * (size_t)grid.nx;
+            return P21_CUDA_OK(cudaMemcpyAsync(d_dst[(size_t)g], src, bytes_y,
+                                               cudaMemcpyHostToDevice, grid.streams[g])) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
+    };
+
+    auto generate_base_modes_fast = [&](cufftComplex **d_dst) -> bool {
+        bool lok = mgpu_ic_parallel(G, [&](int g) -> bool {
+            cudaSetDevice(grid.devs[g]);
+            size_t elems_y = grid.cplx_elems_y(g);
+            int kg = (int)((elems_y + tpb - 1) / tpb);
+            fill_ic_modes_fast_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                d_dst[(size_t)g], (uint64_t)random_seed, grid.y0[g], grid.sy[g], nx, ny, nz,
+                box_len_x, box_len_y, box_len_z, volume, dev_cosmo[(size_t)g]);
+            return P21_CUDA_OK(cudaGetLastError()) &&
+                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+        });
+        if (lok) {
+            lok = p21_mgpu_enforce_real_planes_yslabs(grid, d_dst);
         }
-        return true;
+        return lok;
+    };
+
+    auto prepare_base_kspace_in_work = [&](void) -> bool {
+        if (!single_slab_mode) {
+            return mgpu_ic_parallel(G, [&](int g) -> bool {
+                cudaSetDevice(grid.devs[g]);
+                size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
+                return P21_CUDA_OK(cudaMemcpyAsync(d_work[(size_t)g], d_saved[(size_t)g], bytes_y,
+                                                   cudaMemcpyDeviceToDevice, grid.streams[g])) &&
+                       P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            });
+        }
+        if (non_zero_input) {
+            return upload_yslabs_from_host(h_saved_input, d_work.data());
+        }
+        return generate_base_modes_fast(d_work.data());
     };
 
     auto c2r_to_host = [&](float *h_dst, double post_scale) -> bool {
-        const size_t plane_real = (size_t)ny * (size_t)nz;
         return p21_mgpu_fft_c2r_strips(
             grid, d_work.data(), h_stage,
             [&](int g, int x_global_start, int cur_nx, float *d_strip, cudaStream_t stream) -> bool {
-                (void)g;
                 size_t elems = (size_t)cur_nx * plane_real;
+                size_t bytes = elems * sizeof(float);
                 if (post_scale != 1.0) {
                     int sg = (int)((elems + tpb - 1) / tpb);
                     scale_real_kernel<<<sg, tpb, 0, stream>>>(d_strip, d_strip, elems, post_scale);
@@ -949,9 +1076,14 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                         return false;
                     }
                 }
-                float *dst = h_dst + (size_t)x_global_start * plane_real;
-                return P21_CUDA_OK(cudaMemcpyAsync(dst, d_strip, elems * sizeof(float),
-                                                   cudaMemcpyDeviceToHost, stream));
+                void *bounce = h_strip_bounce[(size_t)g].ptr;
+                if (!P21_CUDA_OK(cudaMemcpyAsync(bounce, d_strip, bytes, cudaMemcpyDeviceToHost,
+                                                 stream)) ||
+                    !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+                    return false;
+                }
+                memcpy(h_dst + (size_t)x_global_start * plane_real, bounce, bytes);
+                return true;
             });
     };
 
@@ -988,15 +1120,18 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                     volume, divide_vol, false, d_out[(size_t)g]);
                 return P21_CUDA_OK(cudaGetLastError());
             });
-        for (int g = 0; g < G && cok; ++g) {
-            if (ox_cnt[(size_t)g] > 0) {
+        if (cok) {
+            cok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                if (ox_cnt[(size_t)g] <= 0) {
+                    return true;
+                }
                 cudaSetDevice(grid.devs[g]);
                 size_t bytes = (size_t)ox_cnt[(size_t)g] * (size_t)oy * (size_t)oz * sizeof(float);
                 float *dst = h_dst + (size_t)ox_start[(size_t)g] * (size_t)oy * (size_t)oz;
-                cok = P21_CUDA_OK(cudaMemcpyAsync(dst, d_out[(size_t)g], bytes,
-                                                  cudaMemcpyDeviceToHost, grid.streams[g])) &&
-                      P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-            }
+                return P21_CUDA_OK(cudaMemcpyAsync(dst, d_out[(size_t)g], bytes,
+                                                   cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                       P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            });
         }
         for (int g = 0; g < G; ++g) {
             p21_mgpu_free(grid.devs[g], d_out[(size_t)g], grid.streams[g]);
@@ -1006,40 +1141,35 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
 
     /* 1. Initial density modes */
     if (non_zero_input) {
+        cufftComplex **base_dst = single_slab_mode ? d_work.data() : d_saved.data();
         ok = p21_mgpu_fft_r2c_from_host(grid, boxes->hires_density, volume / (double)hi_pixels,
-                                        d_saved.data(), h_stage);
+                                        base_dst, h_stage);
+        if (ok && single_slab_mode) {
+            ok = spill_yslabs_to_host(d_work.data(), h_saved_input);
+        }
     } else {
-        for (int g = 0; g < G && ok; ++g) {
-            cudaSetDevice(grid.devs[g]);
-            size_t elems_y = grid.cplx_elems_y(g);
-            int kg = (int)((elems_y + tpb - 1) / tpb);
-            fill_ic_modes_fast_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                d_saved[(size_t)g], (uint64_t)random_seed, grid.y0[g], grid.sy[g], nx, ny, nz,
-                box_len_x, box_len_y, box_len_z, volume, dev_cosmo[(size_t)g]);
-            ok = P21_CUDA_OK(cudaGetLastError());
+        cufftComplex **base_dst = single_slab_mode ? d_work.data() : d_saved.data();
+        ok = generate_base_modes_fast(base_dst);
+        if (ok && !single_slab_mode) {
+            ok = prepare_base_kspace_in_work();
         }
-        for (int g = 0; g < G && ok; ++g) {
-            cudaSetDevice(grid.devs[g]);
-            ok = P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-        }
-        if (ok) ok = p21_mgpu_enforce_real_planes_yslabs(grid, d_saved.data());
-        if (ok) ok = copy_yslab_work_from_saved();
         if (ok) ok = c2r_to_host(boxes->hires_density, 1.0 / volume);
     }
 
     /* 2. Filtered lowres density */
     if (ok) {
-        ok = copy_yslab_work_from_saved();
+        ok = prepare_base_kspace_in_work();
         if (ok && nx != lx) {
-            for (int g = 0; g < G && ok; ++g) {
+            ok = mgpu_ic_parallel(G, [&](int g) -> bool {
                 cudaSetDevice(grid.devs[g]);
                 size_t elems_y = grid.cplx_elems_y(g);
                 int kg = (int)((elems_y + tpb - 1) / tpb);
                 filter_tophat_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
                     d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz, dk_x, dk_y, dk_z,
                     tophat_R);
-                ok = P21_CUDA_OK(cudaGetLastError());
-            }
+                return P21_CUDA_OK(cudaGetLastError()) &&
+                       P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            });
         }
         if (ok) ok = c2r_resample_to_host(lx, ly, lz, dim_ratio_hi_lo, true, boxes->lowres_density);
     }
@@ -1062,20 +1192,28 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
             }
         }
         for (int ii = 0; ok && ii < 3; ++ii) {
-            for (int g = 0; g < G && ok; ++g) {
-                cudaSetDevice(grid.devs[g]);
-                size_t elems_y = grid.cplx_elems_y(g);
-                int kg = (int)((elems_y + tpb - 1) / tpb);
-                vcb_kspace_axis_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                    d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
-                    box_len_x, box_len_y, box_len_z, ii, dev_cosmo[(size_t)g]);
-                ok = P21_CUDA_OK(cudaGetLastError());
-                if (ok && nx != lx) {
-                    filter_tophat_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                        d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz, dk_x, dk_y, dk_z,
-                        tophat_R);
-                    ok = P21_CUDA_OK(cudaGetLastError());
-                }
+            ok = prepare_base_kspace_in_work();
+            if (ok) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                    cudaSetDevice(grid.devs[g]);
+                    size_t elems_y = grid.cplx_elems_y(g);
+                    int kg = (int)((elems_y + tpb - 1) / tpb);
+                    vcb_kspace_axis_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                        d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                        box_len_x, box_len_y, box_len_z, ii, dev_cosmo[(size_t)g]);
+                    if (!P21_CUDA_OK(cudaGetLastError())) {
+                        return false;
+                    }
+                    if (nx != lx) {
+                        filter_tophat_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                            d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz, dk_x, dk_y,
+                            dk_z, tophat_R);
+                        if (!P21_CUDA_OK(cudaGetLastError())) {
+                            return false;
+                        }
+                    }
+                    return P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
             }
             if (ok) {
                 ok = p21_mgpu_fft_c2r_strips(
@@ -1095,19 +1233,22 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                     });
             }
         }
-        for (int g = 0; g < G && ok; ++g) {
-            if (ox_cnt[(size_t)g] > 0) {
+        if (ok) {
+            ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                if (ox_cnt[(size_t)g] <= 0) {
+                    return true;
+                }
                 cudaSetDevice(grid.devs[g]);
                 size_t elems = (size_t)ox_cnt[(size_t)g] * (size_t)ly * (size_t)lz;
                 int lg = (int)((elems + tpb - 1) / tpb);
                 vcb_finalize_kernel<<<lg, tpb, 0, grid.streams[g]>>>(d_vcb[(size_t)g], elems,
                                                                       volume);
                 float *dst = boxes->lowres_vcb + (size_t)ox_start[(size_t)g] * (size_t)ly * (size_t)lz;
-                ok = P21_CUDA_OK(cudaGetLastError()) &&
-                     P21_CUDA_OK(cudaMemcpyAsync(dst, d_vcb[(size_t)g], elems * sizeof(float),
-                                                 cudaMemcpyDeviceToHost, grid.streams[g])) &&
-                     P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-            }
+                return P21_CUDA_OK(cudaGetLastError()) &&
+                       P21_CUDA_OK(cudaMemcpyAsync(dst, d_vcb[(size_t)g], elems * sizeof(float),
+                                                   cudaMemcpyDeviceToHost, grid.streams[g])) &&
+                       P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            });
         }
         for (int g = 0; g < G; ++g) {
             p21_mgpu_free(grid.devs[g], d_vcb[(size_t)g], grid.streams[g]);
@@ -1117,14 +1258,18 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
     /* 4. 1LPT velocities */
     const int do_tophat_vel = (!perturb_hires && nx != lx) ? 1 : 0;
     for (int ii = 0; ok && ii < 3; ++ii) {
-        for (int g = 0; g < G && ok; ++g) {
-            cudaSetDevice(grid.devs[g]);
-            size_t elems_y = grid.cplx_elems_y(g);
-            int kg = (int)((elems_y + tpb - 1) / tpb);
-            f_gradient_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
-                box_len_x, box_len_y, box_len_z, ii, do_tophat_vel, tophat_R);
-            ok = P21_CUDA_OK(cudaGetLastError());
+        ok = prepare_base_kspace_in_work();
+        if (ok) {
+            ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                cudaSetDevice(grid.devs[g]);
+                size_t elems_y = grid.cplx_elems_y(g);
+                int kg = (int)((elems_y + tpb - 1) / tpb);
+                f_gradient_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                    d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                    box_len_x, box_len_y, box_len_z, ii, do_tophat_vel, tophat_R);
+                return P21_CUDA_OK(cudaGetLastError()) &&
+                       P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+            });
         }
         if (ok) {
             if (perturb_hires) {
@@ -1140,7 +1285,7 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
         const size_t min_free_2lpt = p21_mgpu_min_free_mem(grid);
         const bool fit_2lpt_gpu = (min_free_2lpt >= 2ULL * max_real_x_bytes + (768ULL << 20));
         const int pairs[3][2] = {{0, 1}, {0, 2}, {1, 2}};
-        const size_t plane_real = (size_t)ny * (size_t)nz;
+        cufftComplex *h_phi2_k = nullptr;
 
         if (fit_2lpt_gpu) {
             std::vector<float *> d_phi2((size_t)G, nullptr), d_diag((size_t)G, nullptr);
@@ -1155,14 +1300,17 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                 }
             }
             for (int p_idx = 0; ok && p_idx < 3; ++p_idx) {
-                for (int g = 0; g < G && ok; ++g) {
-                    cudaSetDevice(grid.devs[g]);
-                    size_t elems_y = grid.cplx_elems_y(g);
-                    int kg = (int)((elems_y + tpb - 1) / tpb);
-                    f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                        d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
-                        box_len_x, box_len_y, box_len_z, pairs[p_idx][0], pairs[p_idx][1]);
-                    ok = P21_CUDA_OK(cudaGetLastError());
+                ok = prepare_base_kspace_in_work();
+                if (ok) {
+                    ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                        cudaSetDevice(grid.devs[g]);
+                        int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
+                        f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                            d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny,
+                            nz, box_len_x, box_len_y, box_len_z, pairs[p_idx][0], pairs[p_idx][1]);
+                        return P21_CUDA_OK(cudaGetLastError()) &&
+                               P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                    });
                 }
                 if (ok) {
                     ok = p21_mgpu_fft_c2r_strips(
@@ -1179,169 +1327,201 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                 }
             }
             /* Diagonal a=0 -> d_diag (+ optional host hires_vx_2LPT) */
+            if (ok) ok = prepare_base_kspace_in_work();
             if (ok) {
-                for (int g = 0; g < G && ok; ++g) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
                     cudaSetDevice(grid.devs[g]);
                     int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
                     f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                        d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                        d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
                         box_len_x, box_len_y, box_len_z, 0, 0);
-                    ok = P21_CUDA_OK(cudaGetLastError());
-                }
-                if (ok) {
-                    ok = p21_mgpu_fft_c2r_strips(
-                        grid, d_work.data(), h_stage,
-                        [&](int g, int x_global_start, int cur_nx, float *d_strip,
-                            cudaStream_t stream) -> bool {
-                            size_t elems = (size_t)cur_nx * plane_real;
-                            int x_loc = x_global_start - grid.x0[g];
-                            if (!P21_CUDA_OK(cudaMemcpyAsync(
-                                    d_diag[(size_t)g] + (size_t)x_loc * plane_real, d_strip,
-                                    elems * sizeof(float), cudaMemcpyDeviceToDevice, stream))) {
+                    return P21_CUDA_OK(cudaGetLastError()) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
+            }
+            if (ok) {
+                ok = p21_mgpu_fft_c2r_strips(
+                    grid, d_work.data(), h_stage,
+                    [&](int g, int x_global_start, int cur_nx, float *d_strip,
+                        cudaStream_t stream) -> bool {
+                        size_t elems = (size_t)cur_nx * plane_real;
+                        int x_loc = x_global_start - grid.x0[g];
+                        if (!P21_CUDA_OK(cudaMemcpyAsync(
+                                d_diag[(size_t)g] + (size_t)x_loc * plane_real, d_strip,
+                                elems * sizeof(float), cudaMemcpyDeviceToDevice, stream))) {
+                            return false;
+                        }
+                        if (!perturb_hires && boxes->hires_vx_2LPT) {
+                            size_t bytes = elems * sizeof(float);
+                            void *bounce = h_strip_bounce[(size_t)g].ptr;
+                            if (!P21_CUDA_OK(cudaMemcpyAsync(bounce, d_strip, bytes,
+                                                             cudaMemcpyDeviceToHost, stream)) ||
+                                !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
                                 return false;
                             }
-                            if (!perturb_hires && boxes->hires_vx_2LPT) {
-                                return P21_CUDA_OK(cudaMemcpyAsync(
-                                    boxes->hires_vx_2LPT + (size_t)x_global_start * plane_real,
-                                    d_strip, elems * sizeof(float), cudaMemcpyDeviceToHost, stream));
-                            }
-                            return true;
-                        });
-                }
+                            memcpy(boxes->hires_vx_2LPT + (size_t)x_global_start * plane_real,
+                                   bounce, bytes);
+                        }
+                        return true;
+                    });
             }
             /* Diagonal a=1 -> accum d0*d1, d_diag=d0+d1 (+ optional host hires_vy_2LPT) */
+            if (ok) ok = prepare_base_kspace_in_work();
             if (ok) {
-                for (int g = 0; g < G && ok; ++g) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
                     cudaSetDevice(grid.devs[g]);
                     int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
                     f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                        d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                        d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
                         box_len_x, box_len_y, box_len_z, 1, 1);
-                    ok = P21_CUDA_OK(cudaGetLastError());
-                }
-                if (ok) {
-                    ok = p21_mgpu_fft_c2r_strips(
-                        grid, d_work.data(), h_stage,
-                        [&](int g, int x_global_start, int cur_nx, float *d_strip,
-                            cudaStream_t stream) -> bool {
-                            size_t elems = (size_t)cur_nx * plane_real;
-                            int x_loc = x_global_start - grid.x0[g];
-                            size_t off = (size_t)x_loc * plane_real;
-                            if (!perturb_hires && boxes->hires_vy_2LPT) {
-                                if (!P21_CUDA_OK(cudaMemcpyAsync(
-                                        boxes->hires_vy_2LPT + (size_t)x_global_start * plane_real,
-                                        d_strip, elems * sizeof(float), cudaMemcpyDeviceToHost,
-                                        stream))) {
-                                    return false;
-                                }
+                    return P21_CUDA_OK(cudaGetLastError()) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
+            }
+            if (ok) {
+                ok = p21_mgpu_fft_c2r_strips(
+                    grid, d_work.data(), h_stage,
+                    [&](int g, int x_global_start, int cur_nx, float *d_strip,
+                        cudaStream_t stream) -> bool {
+                        size_t elems = (size_t)cur_nx * plane_real;
+                        int x_loc = x_global_start - grid.x0[g];
+                        size_t off = (size_t)x_loc * plane_real;
+                        if (!perturb_hires && boxes->hires_vy_2LPT) {
+                            size_t bytes = elems * sizeof(float);
+                            void *bounce = h_strip_bounce[(size_t)g].ptr;
+                            if (!P21_CUDA_OK(cudaMemcpyAsync(bounce, d_strip, bytes,
+                                                             cudaMemcpyDeviceToHost, stream)) ||
+                                !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+                                return false;
                             }
-                            int sg = (int)((elems + tpb - 1) / tpb);
-                            accum_2lpt_d01_dense_kernel<<<sg, tpb, 0, stream>>>(
-                                d_phi2[(size_t)g] + off, d_diag[(size_t)g] + off, d_strip, elems);
-                            return P21_CUDA_OK(cudaGetLastError());
-                        });
-                }
+                            memcpy(boxes->hires_vy_2LPT + (size_t)x_global_start * plane_real,
+                                   bounce, bytes);
+                        }
+                        int sg = (int)((elems + tpb - 1) / tpb);
+                        accum_2lpt_d01_dense_kernel<<<sg, tpb, 0, stream>>>(
+                            d_phi2[(size_t)g] + off, d_diag[(size_t)g] + off, d_strip, elems);
+                        return P21_CUDA_OK(cudaGetLastError());
+                    });
             }
             /* Diagonal a=2 -> accum (d0+d1)*d2 (+ optional host hires_vz_2LPT) */
+            if (ok) ok = prepare_base_kspace_in_work();
             if (ok) {
-                for (int g = 0; g < G && ok; ++g) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
                     cudaSetDevice(grid.devs[g]);
                     int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
                     f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                        d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                        d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
                         box_len_x, box_len_y, box_len_z, 2, 2);
-                    ok = P21_CUDA_OK(cudaGetLastError());
-                }
-                if (ok) {
-                    ok = p21_mgpu_fft_c2r_strips(
-                        grid, d_work.data(), h_stage,
-                        [&](int g, int x_global_start, int cur_nx, float *d_strip,
-                            cudaStream_t stream) -> bool {
-                            size_t elems = (size_t)cur_nx * plane_real;
-                            int x_loc = x_global_start - grid.x0[g];
-                            size_t off = (size_t)x_loc * plane_real;
-                            if (!perturb_hires && boxes->hires_vz_2LPT) {
-                                if (!P21_CUDA_OK(cudaMemcpyAsync(
-                                        boxes->hires_vz_2LPT + (size_t)x_global_start * plane_real,
-                                        d_strip, elems * sizeof(float), cudaMemcpyDeviceToHost,
-                                        stream))) {
-                                    return false;
-                                }
+                    return P21_CUDA_OK(cudaGetLastError()) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
+            }
+            if (ok) {
+                ok = p21_mgpu_fft_c2r_strips(
+                    grid, d_work.data(), h_stage,
+                    [&](int g, int x_global_start, int cur_nx, float *d_strip,
+                        cudaStream_t stream) -> bool {
+                        size_t elems = (size_t)cur_nx * plane_real;
+                        int x_loc = x_global_start - grid.x0[g];
+                        size_t off = (size_t)x_loc * plane_real;
+                        if (!perturb_hires && boxes->hires_vz_2LPT) {
+                            size_t bytes = elems * sizeof(float);
+                            void *bounce = h_strip_bounce[(size_t)g].ptr;
+                            if (!P21_CUDA_OK(cudaMemcpyAsync(bounce, d_strip, bytes,
+                                                             cudaMemcpyDeviceToHost, stream)) ||
+                                !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+                                return false;
                             }
-                            int sg = (int)((elems + tpb - 1) / tpb);
-                            accum_2lpt_d01_d2_dense_kernel<<<sg, tpb, 0, stream>>>(
-                                d_phi2[(size_t)g] + off, d_diag[(size_t)g] + off, d_strip, elems);
-                            return P21_CUDA_OK(cudaGetLastError());
-                        });
-                }
+                            memcpy(boxes->hires_vz_2LPT + (size_t)x_global_start * plane_real,
+                                   bounce, bytes);
+                        }
+                        int sg = (int)((elems + tpb - 1) / tpb);
+                        accum_2lpt_d01_d2_dense_kernel<<<sg, tpb, 0, stream>>>(
+                            d_phi2[(size_t)g] + off, d_diag[(size_t)g] + off, d_strip, elems);
+                        return P21_CUDA_OK(cudaGetLastError());
+                    });
             }
             for (int g = 0; g < G; ++g) {
                 p21_mgpu_free(grid.devs[g], d_diag[(size_t)g], grid.streams[g]);
             }
             if (ok) {
                 double norm_2lpt = 1.0 / (volume * volume * (double)hi_pixels);
-                for (int g = 0; g < G && ok; ++g) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
                     cudaSetDevice(grid.devs[g]);
                     size_t elems = grid.real_elems_x(g);
                     int hg = (int)((elems + tpb - 1) / tpb);
-                    scale_real_kernel<<<hg, tpb, 0, grid.streams[g]>>>(d_phi2[(size_t)g],
-                                                                       d_phi2[(size_t)g], elems,
-                                                                       norm_2lpt);
-                    ok = P21_CUDA_OK(cudaGetLastError()) &&
-                         P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
-                }
+                    scale_real_kernel<<<hg, tpb, 0, grid.streams[g]>>>(
+                        d_phi2[(size_t)g], d_phi2[(size_t)g], elems, norm_2lpt);
+                    return P21_CUDA_OK(cudaGetLastError()) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
                 if (ok) {
-                    ok = p21_mgpu_fft_r2c_slabs(grid, d_phi2.data(), d_saved.data(), h_stage);
+                    cufftComplex **phi2_dst = single_slab_mode ? d_work.data() : d_saved.data();
+                    ok = p21_mgpu_fft_r2c_slabs(grid, d_phi2.data(), phi2_dst, h_stage);
                 }
             }
             for (int g = 0; g < G; ++g) {
                 p21_mgpu_free(grid.devs[g], d_phi2[(size_t)g], grid.streams[g]);
             }
         } else {
-            /* Hybrid host-accumulated 2LPT (for 2048^3 on 4x 24 GB GPUs):
-             * Reuses boxes->hires_vx/vy/vz_2LPT for diagonals d0, d1, d2 (zero extra 32 GiB). */
+            /* Hybrid host-accumulated 2LPT (Direction K: streaming off-diagonal subtraction
+             * eliminates h_tmp_ab, and std::thread parallelizes diagonal host combine). */
             float *h_phi2 = (float *)calloc(hi_pixels, sizeof(float));
-            float *h_tmp_ab = (float *)malloc(hi_pixels * sizeof(float));
-            if (!h_phi2 || !h_tmp_ab || !boxes->hires_vx_2LPT || !boxes->hires_vy_2LPT ||
-                !boxes->hires_vz_2LPT) {
-                free(h_tmp_ab);
+            if (!h_phi2 || !boxes->hires_vx_2LPT || !boxes->hires_vy_2LPT || !boxes->hires_vz_2LPT) {
                 free(h_phi2);
                 ok = false;
             } else {
                 for (int p_idx = 0; ok && p_idx < 3; ++p_idx) {
-                    for (int g = 0; g < G && ok; ++g) {
-                        cudaSetDevice(grid.devs[g]);
-                        int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
-                        f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                            d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny,
-                            nz, box_len_x, box_len_y, box_len_z, pairs[p_idx][0], pairs[p_idx][1]);
-                        ok = P21_CUDA_OK(cudaGetLastError());
+                    ok = prepare_base_kspace_in_work();
+                    if (ok) {
+                        ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                            cudaSetDevice(grid.devs[g]);
+                            int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
+                            f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                                d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx,
+                                ny, nz, box_len_x, box_len_y, box_len_z, pairs[p_idx][0],
+                                pairs[p_idx][1]);
+                            return P21_CUDA_OK(cudaGetLastError()) &&
+                                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                        });
                     }
                     if (ok) {
-                        ok = c2r_to_host(h_tmp_ab, 1.0);
-                    }
-                    if (ok) {
-                        size_t i;
-#pragma omp parallel for num_threads(simulation_options_global->N_THREADS) private(i)
-                        for (i = 0; i < hi_pixels; ++i) {
-                            double c = (double)h_tmp_ab[i];
-                            h_phi2[i] = (float)((double)h_phi2[i] - c * c);
-                        }
+                        ok = p21_mgpu_fft_c2r_strips(
+                            grid, d_work.data(), h_stage,
+                            [&](int g, int x_global_start, int cur_nx, float *d_strip,
+                                cudaStream_t stream) -> bool {
+                                size_t elems = (size_t)cur_nx * plane_real;
+                                size_t bytes = elems * sizeof(float);
+                                float *bounce = (float *)h_strip_bounce[(size_t)g].ptr;
+                                if (!P21_CUDA_OK(cudaMemcpyAsync(bounce, d_strip, bytes,
+                                                                 cudaMemcpyDeviceToHost, stream)) ||
+                                    !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+                                    return false;
+                                }
+                                float *rhs = h_phi2 + (size_t)x_global_start * plane_real;
+                                for (size_t i = 0; i < elems; ++i) {
+                                    double c = (double)bounce[i];
+                                    rhs[i] = (float)((double)rhs[i] - c * c);
+                                }
+                                return true;
+                            });
                     }
                 }
-                free(h_tmp_ab);
-                h_tmp_ab = nullptr;
 
                 float *diag_host[3] = {boxes->hires_vx_2LPT, boxes->hires_vy_2LPT,
                                        boxes->hires_vz_2LPT};
                 for (int a = 0; ok && a < 3; ++a) {
-                    for (int g = 0; g < G && ok; ++g) {
-                        cudaSetDevice(grid.devs[g]);
-                        int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
-                        f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                            d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny,
-                            nz, box_len_x, box_len_y, box_len_z, a, a);
-                        ok = P21_CUDA_OK(cudaGetLastError());
+                    ok = prepare_base_kspace_in_work();
+                    if (ok) {
+                        ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                            cudaSetDevice(grid.devs[g]);
+                            int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
+                            f_laplacian_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                                d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx,
+                                ny, nz, box_len_x, box_len_y, box_len_z, a, a);
+                            return P21_CUDA_OK(cudaGetLastError()) &&
+                                   P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                        });
                     }
                     if (ok) {
                         ok = c2r_to_host(diag_host[a], 1.0);
@@ -1351,30 +1531,56 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                     const float *d0p = boxes->hires_vx_2LPT;
                     const float *d1p = boxes->hires_vy_2LPT;
                     const float *d2p = boxes->hires_vz_2LPT;
-                    size_t i;
-#pragma omp parallel for num_threads(simulation_options_global->N_THREADS) private(i)
-                    for (i = 0; i < hi_pixels; ++i) {
-                        double d0 = (double)d0p[i];
-                        double d1 = (double)d1p[i];
-                        double d2 = (double)d2p[i];
-                        h_phi2[i] = (float)((double)h_phi2[i] + d0 * d1 + (d0 + d1) * d2);
-                    }
+                    int n_cpu = std::min(16, std::max(1, simulation_options_global->N_THREADS));
+                    mgpu_ic_parallel(n_cpu, [&](int tid) -> bool {
+                        size_t chunk = (hi_pixels + (size_t)n_cpu - 1) / (size_t)n_cpu;
+                        size_t i0 = (size_t)tid * chunk;
+                        size_t i1 = std::min(hi_pixels, i0 + chunk);
+                        for (size_t i = i0; i < i1; ++i) {
+                            double d0 = (double)d0p[i];
+                            double d1 = (double)d1p[i];
+                            double d2 = (double)d2p[i];
+                            h_phi2[i] = (float)((double)h_phi2[i] + d0 * d1 + (d0 + d1) * d2);
+                        }
+                        return true;
+                    });
                     double norm_2lpt = 1.0 / (volume * volume * (double)hi_pixels);
-                    ok = p21_mgpu_fft_r2c_from_host(grid, h_phi2, norm_2lpt, d_saved.data(),
-                                                    h_stage);
+                    cufftComplex **phi2_dst = single_slab_mode ? d_work.data() : d_saved.data();
+                    ok = p21_mgpu_fft_r2c_from_host(grid, h_phi2, norm_2lpt, phi2_dst, h_stage);
                 }
                 free(h_phi2);
+                h_phi2 = nullptr;
             }
         }
 
+        if (ok && single_slab_mode) {
+            h_phi2_k = (cufftComplex *)malloc(grid.total_cplx_elems() * sizeof(cufftComplex));
+            ok = (h_phi2_k != nullptr) && spill_yslabs_to_host(d_work.data(), h_phi2_k);
+        }
+
         for (int ii = 0; ok && ii < 3; ++ii) {
-            for (int g = 0; g < G && ok; ++g) {
-                cudaSetDevice(grid.devs[g]);
-                int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
-                f_gradient_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
-                    d_saved[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
-                    box_len_x, box_len_y, box_len_z, ii, do_tophat_vel, tophat_R);
-                ok = P21_CUDA_OK(cudaGetLastError());
+            if (single_slab_mode) {
+                ok = upload_yslabs_from_host(h_phi2_k, d_work.data());
+            } else {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                    cudaSetDevice(grid.devs[g]);
+                    size_t bytes_y = grid.cplx_elems_y(g) * sizeof(cufftComplex);
+                    return P21_CUDA_OK(cudaMemcpyAsync(d_work[(size_t)g], d_saved[(size_t)g],
+                                                       bytes_y, cudaMemcpyDeviceToDevice,
+                                                       grid.streams[g])) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
+            }
+            if (ok) {
+                ok = mgpu_ic_parallel(G, [&](int g) -> bool {
+                    cudaSetDevice(grid.devs[g]);
+                    int kg = (int)((grid.cplx_elems_y(g) + tpb - 1) / tpb);
+                    f_gradient_yslab_kernel<<<kg, tpb, 0, grid.streams[g]>>>(
+                        d_work[(size_t)g], d_work[(size_t)g], grid.y0[g], grid.sy[g], nx, ny, nz,
+                        box_len_x, box_len_y, box_len_z, ii, do_tophat_vel, tophat_R);
+                    return P21_CUDA_OK(cudaGetLastError()) &&
+                           P21_CUDA_OK(cudaStreamSynchronize(grid.streams[g]));
+                });
             }
             if (ok) {
                 if (perturb_hires) {
@@ -1384,6 +1590,10 @@ int run_mgpu_compute_initial_conditions(unsigned long long int random_seed, Init
                                               vel_pointers_2lpt[ii]);
                 }
             }
+        }
+        if (h_phi2_k) {
+            free(h_phi2_k);
+            h_phi2_k = nullptr;
         }
     }
 
