@@ -1,0 +1,47 @@
+Bootstrap: docker
+From: nvidia/cuda:12.6.2-devel-ubuntu24.04
+
+%labels
+    Author 21cmCU Contributors
+    Version 0.6.0
+    Description Native C/CUDA + cuFFT GPU engine for 21cmFAST v4
+
+%arguments
+    CUDA_ARCHS=80,86,89,90
+
+%files
+    . /opt/21cmcu
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update && apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-dev \
+        python3-pip \
+        python3-venv \
+        gcc \
+        g++ \
+        libgsl-dev \
+        libfftw3-dev \
+        pkg-config \
+        git \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+    python3.12 -m venv /opt/venv
+    /opt/venv/bin/pip install --upgrade pip setuptools wheel cffi
+    cd /opt/21cmcu
+    USE_CUDA=1 CUDA_ARCHS="{{ CUDA_ARCHS }}" /opt/venv/bin/pip install --no-build-isolation .
+
+%environment
+    export PATH="/opt/venv/bin:${PATH}"
+    export P21_USE_CUDA=1
+    export P21_CUDA_MODE=fast
+    export OPENBLAS_NUM_THREADS=1
+    export PYTHONUNBUFFERED=1
+
+%runscript
+    exec 21cmcu "$@"
+
+%test
+    21cmcu doctor --as-json

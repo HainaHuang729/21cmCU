@@ -33,10 +33,17 @@ See the full benchmark report and figures in [**docs/BENCHMARKS.md**](docs/BENCH
 ## Quick Start
 
 ```bash
-export USE_CUDA=1 CUDA_ARCHS=auto   # auto-detects local GPU SM architecture (or set e.g. 86,89)
-pip install -e . --no-build-isolation
+# Option 1: One-command installer + diagnostic verification
+./scripts/install.sh
+21cmcu doctor
 
-# Enable GPU via environment, Python API, or CLI:
+# Option 2: Containerized GPU runtime (Docker / Apptainer)
+docker build -f docker/Dockerfile -t 21cmcu:0.6.0 . && docker run --rm --gpus all 21cmcu:0.6.0
+
+# Run minimal GPU examples or CLI:
+python examples/01_quickstart_coeval.py
+python examples/02_lightcone_power_spectrum.py
+python examples/03_multigpu_large_ic.py --dim 512 --devices 0,1
 P21_USE_CUDA=1 P21_CUDA_MODE=fast 21cmcu run coeval -z 8 --template simple tiny --out ./out
 ```
 

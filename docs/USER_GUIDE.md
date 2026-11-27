@@ -2,21 +2,41 @@
 
 **21cmCU** provides a native C/CUDA + cuFFT drop-in GPU engine for 21cmFAST v4 (`py21cmcu`), with zero CuPy or Numba runtime dependencies.
 
-## 1. Installation & Build
+## 1. Installation & Container Setup
+
+### Option A: One-Command Source Install (`scripts/install.sh`)
 
 ```bash
 git clone https://github.com/HainaHuang729/21cmFAST-GPU.git
 cd 21cmFAST-GPU
-pip install -e . --no-build-isolation
+./scripts/install.sh              # auto-detects CUDA SM arches + toolchain + runs 21cmcu doctor
+# Or specify GPU architectures / venv:
+./scripts/install.sh --cuda-archs 89 --venv .venv
+# Or CPU-only fallback:
+./scripts/install.sh --cpu
 ```
 
-By default, `setup.py` enables CUDA when `nvcc` is present (`USE_CUDA=1`, `CUDA_ARCHS=auto`). To target specific GPU compute capabilities or pass custom library paths:
+Or manually via `pip` (`Python >= 3.12` + `python3.12-dev`, `gcc`, `libgsl-dev`, `libfftw3-dev`, CUDA toolkit):
 
 ```bash
 USE_CUDA=1 CUDA_ARCHS="80,86,89,90" pip install -e . --no-build-isolation
 ```
 
-To verify runtime detection, GPU topology, C/CUDA toolchain, and memory sizing limits:
+### Option B: Docker / Apptainer (HPC Slurm)
+
+Pre-configured GPU recipes live in [`docker/`](../docker/):
+
+```bash
+# Docker
+docker build -f docker/Dockerfile --build-arg CUDA_ARCHS="80,86,89" -t 21cmcu:0.6.0 .
+docker run --rm --gpus all 21cmcu:0.6.0 doctor
+
+# Apptainer / Singularity (Slurm clusters)
+apptainer build 21cmcu.sif docker/21cmcu.def
+apptainer run --nv 21cmcu.sif doctor
+```
+
+### Runtime Self-Check (`doctor`)
 
 ```bash
 21cmcu doctor
@@ -32,6 +52,16 @@ report = py21cmcu.doctor()
 print(py21cmcu.cuda_compiled(), py21cmcu.cuda_available(), py21cmcu.cuda_device_count())
 ```
 
+### 5-Minute Runnable Examples (`examples/`)
+
+| File | What it demonstrates |
+| --- | --- |
+| [`examples/01_quickstart_coeval.py`](../examples/01_quickstart_coeval.py) | Minimal single-GPU coeval box (`L-INTEGRAL + TS`) + 1D $P(k)$ |
+| [`examples/02_lightcone_power_spectrum.py`](../examples/02_lightcone_power_spectrum.py) | GPU rectilinear lightcone + RSDs + chunk PS + wedge/noise + `DeviceLZF` HDF5 |
+| [`examples/03_multigpu_large_ic.py`](../examples/03_multigpu_large_ic.py) | Multi-GPU slab IC + `PerturbField` + 1D $P(k)$ (`--dim 512..2048 --devices 0,1,2`) |
+| [`examples/sbi_lightcone_dataset.py`](../examples/sbi_lightcone_dataset.py) | 4D scrambled Sobol sweep + resumable HDF5 checkpoints via `run_batch` |
+| [`examples/quickstart.ipynb`](../examples/quickstart.ipynb) | Interactive Jupyter quickstart covering all four workflows |
+
 ## 2. Execution Modes: `strict` vs `fast`
 
 21cmCU supports two verified precision/performance profiles controlled via `CUDA_MODE` (`strict` or `fast`), context managers, or CLI flags:
@@ -44,7 +74,7 @@ import py21cmcu
 
 py21cmcu.set_cuda_mode("fast")
 # Or scoped locally:
-with py21cmcu.use_cuda_mode("fast"):
+with py21cmcu.use_mode("fast", lazy_d2h=True):
     ...
 ```
 
