@@ -99,8 +99,8 @@ if [[ "$FORCE_CPU" -eq 0 ]]; then
 fi
 
 echo "==> Building & installing 21cmCU (USE_CUDA=$USE_CUDA_VAL, CUDA_ARCHS=$CUDA_ARCHS)..."
-"$PYTHON_BIN" -m pip install --upgrade pip setuptools cffi
-USE_CUDA="$USE_CUDA_VAL" CUDA_ARCHS="$CUDA_ARCHS" "$PYTHON_BIN" -m pip install -e . --no-build-isolation
+"$PYTHON_BIN" -m pip install --upgrade pip
+USE_CUDA="$USE_CUDA_VAL" CUDA_ARCHS="$CUDA_ARCHS" "$PYTHON_BIN" -m pip install -e .
 
 echo "==> Running 21cmcu doctor..."
 "$PYTHON_BIN" -m py21cmcu.cli doctor

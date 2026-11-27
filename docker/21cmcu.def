@@ -29,9 +29,9 @@ From: nvidia/cuda:12.6.2-devel-ubuntu24.04
     && rm -rf /var/lib/apt/lists/*
 
     python3.12 -m venv /opt/venv
-    /opt/venv/bin/pip install --upgrade pip setuptools wheel cffi
+    /opt/venv/bin/pip install --upgrade pip
     cd /opt/21cmcu
-    USE_CUDA=1 CUDA_ARCHS="{{ CUDA_ARCHS }}" /opt/venv/bin/pip install --no-build-isolation .
+    USE_CUDA=1 CUDA_ARCHS="{{ CUDA_ARCHS }}" /opt/venv/bin/pip install .
 
 %environment
     export PATH="/opt/venv/bin:${PATH}"

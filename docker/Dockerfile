@@ -21,8 +21,8 @@ WORKDIR /opt/21cmcu
 COPY . /opt/21cmcu
 
 RUN python3.12 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip setuptools wheel cffi \
-    && USE_CUDA=1 CUDA_ARCHS="${CUDA_ARCHS}" /opt/venv/bin/pip install --no-build-isolation .
+    && /opt/venv/bin/pip install --upgrade pip \
+    && USE_CUDA=1 CUDA_ARCHS="${CUDA_ARCHS}" /opt/venv/bin/pip install .
 
 ENV PATH="/opt/venv/bin:${PATH}" \
     P21_USE_CUDA=1 \
