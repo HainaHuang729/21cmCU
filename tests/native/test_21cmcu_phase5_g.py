@@ -59,10 +59,16 @@ def test_mgpu_device_config_and_api() -> None:
         # String parsing ("all", comma-separated, list/tuple, empty -> None)
         config["CUDA_DEVICES"] = "0, 1, 0"
         assert config["CUDA_DEVICES"] == (0, 1)
-        assert py21cmcu.get_cuda_devices() == (0, 1)
+        if py21cmcu.cuda_compiled():
+            assert py21cmcu.get_cuda_devices() == (0, 1)
+        else:
+            assert py21cmcu.get_cuda_devices() == ()
 
         config["CUDA_DEVICES"] = (2, 0)
-        assert py21cmcu.get_cuda_devices() == (2, 0)
+        if py21cmcu.cuda_compiled():
+            assert py21cmcu.get_cuda_devices() == (2, 0)
+        else:
+            assert py21cmcu.get_cuda_devices() == ()
 
         py21cmcu.set_cuda_devices("all")
         expected_all = tuple(range(n_total)) if n_total > 0 else (0,)
@@ -78,7 +84,10 @@ def test_mgpu_device_config_and_api() -> None:
 
         with py21cmcu.use_mode("fast", use_cuda=True, devices=[0, 1]):
             assert config["CUDA_DEVICES"] == (0, 1)
-            assert lib.p21_cuda_get_num_devices() >= 1
+            if py21cmcu.cuda_compiled():
+                assert lib.p21_cuda_get_num_devices() >= 1
+            else:
+                assert lib.p21_cuda_get_num_devices() == 0
 
         # use_mode restores prior device selection cleanly
         assert config["CUDA_DEVICES"] is None
