@@ -272,17 +272,19 @@ def _simulate_showcase_data(
         SOURCE_MODEL="L-INTEGRAL",
         USE_TS_FLUCT=True,
         Z_HEAT_MAX=20.0,
+        KEEP_3D_VELOCITIES=True,
         PHOTON_CONS_TYPE="no-photoncons",
         USE_UPPER_STELLAR_TURNOVER=False,
     )
     cosmo = inputs.cosmo_params.cosmo
     res_mpc = box_len / float(eff_hii)
-    lcr = py21cmcu.RectilinearLightconer.between_redshifts(
+    lcr = py21cmcu.ObliqueRectilinearLightconer.between_redshifts(
         min_redshift=6.3,
         max_redshift=17.5,
         resolution=res_mpc * u.Mpc,
         quantities=("brightness_temp", "neutral_fraction"),
         cosmo=cosmo,
+        direction=(3.0, 5.0, 11.0),
     )
 
     mode_str = "fast" if use_cuda else "strict"
@@ -454,7 +456,7 @@ def _render_showcases(out_dir: Path, data: dict[str, Any]) -> dict[str, float | 
     ax_tb.set_ylabel("Transverse Y [Mpc]")
     lc_tag = f"{lc_wall_s:.2f} s on 1× RTX 4090" if use_cuda else f"{int(box_len)} Mpc box"
     ax_tb.set_title(
-        f"21cm Brightness Temperature Lightcone δTb(x, z) — L-INTEGRAL + Ts + RSD "
+        f"21cm Brightness Temperature Lightcone δTb(x, z) — Oblique (3,5,11) L-INTEGRAL + Ts + RSD "
         f"({tb_lc.shape[0]}×{tb_lc.shape[1]}×{tb_lc.shape[2]} voxels, {lc_tag})",
         pad=26,
     )

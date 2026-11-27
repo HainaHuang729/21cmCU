@@ -31,6 +31,13 @@ Why must lightcones step through redshifts sequentially? When **`USE_TS_FLUCT=Tr
 2. **Zero-D2H Batched Lightcone Slicing**: `RectilinearLightconer.make_lightcone_slices` fetches GPU-resident slabs (`_get_coeval_array_no_sync`) directly inside `p21_cuda_rectilinear_slices`.
 3. **On-Demand Streaming `PerturbedField` (`stream_perturbed_fields=True`)**: Generates each node's `PerturbedField` on demand inside the redshift loop and releases the previous node immediately ($O(1)$ peak `PerturbedField` memory instead of storing all $N_z$ boxes simultaneously).
 4. **Causal-Free Redshift-Parallel Lightcones (`parallel_redshifts=True`)**: For history-independent analytic EoR configurations (`SOURCE_MODEL="L-INTEGRAL"` or `"E-INTEGRAL"`, `use_ts_fluct=False`, `recomb_model="none"`, `USE_MCGS=False`, `PHOTON_CONS_TYPE="no-photoncons"`), shares initial conditions across multiple GPUs/workers to evolve overlapping redshift segments in parallel and stitches them with identical `dvdr`/`RSDs`. When causal history or discrete halo merger trees are enabled, it automatically preserves exact serial ordering.
+5. **Anti-Repetition Oblique Slicing (`ObliqueRectilinearLightconer` / `oblique=True`)**: Instead of repeating the simulation box modulo the Z-axis every `BOX_LEN`, traverses the 3D periodic volume along an oblique coprime integer direction (default `(3, 5, 11)`, boosting non-repeating path length by `12.45×` to `~3,187 Mpc` on a `256 Mpc` box with zero seams) via GPU periodic trilinear sampling (`p21_cuda_angular_slice` / `p21_cuda_angular_los_velocity`):
+   ```python
+   lc = p21.quick_lightcone(
+       z_min=6.3, z_max=17.5, box_len=256.0, dim=256,
+       use_ts_fluct=True, apply_rsds=True, oblique=True,
+   )
+   ```
 
 ---
 

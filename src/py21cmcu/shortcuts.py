@@ -19,7 +19,7 @@ from py21cmfast.c_21cmfast import lib
 from py21cmfast.drivers.coeval import run_coeval
 from py21cmfast.drivers.lightcone import LightCone, run_lightcone, setup_lightcone_instance
 from py21cmfast.drivers.single_field import compute_initial_conditions
-from py21cmfast.lightconers import RectilinearLightconer
+from py21cmfast.lightconers import ObliqueRectilinearLightconer, RectilinearLightconer
 from py21cmfast.wrapper.inputs import InputParameters
 
 from .inference import _ALIAS_MAP
@@ -144,12 +144,21 @@ def _lightcone_worker(task: dict[str, Any]) -> dict[str, Any]:
     for k in ic_data.files:
         ic.set(k, ic_data[k])
 
-    lcr = RectilinearLightconer(
-        lc_distances=task["lc_distances_mpc"] * u.Mpc,
-        quantities=tuple(task["quantities"]),
-        cosmo=inputs.cosmo_params.cosmo,
-        index_offset=task["index_offset"],
-    )
+    if task.get("oblique", False):
+        lcr = ObliqueRectilinearLightconer(
+            lc_distances=task["lc_distances_mpc"] * u.Mpc,
+            quantities=tuple(task["quantities"]),
+            cosmo=inputs.cosmo_params.cosmo,
+            index_offset=task["index_offset"],
+            direction=tuple(task["oblique_direction"]),
+        )
+    else:
+        lcr = RectilinearLightconer(
+            lc_distances=task["lc_distances_mpc"] * u.Mpc,
+            quantities=tuple(task["quantities"]),
+            cosmo=inputs.cosmo_params.cosmo,
+            index_offset=task["index_offset"],
+        )
 
     write_off = CacheConfig.off()
     with _mode_ctx(task["mode"], use_cuda=task["use_cuda"], lazy_d2h=task["lazy_d2h"]):
@@ -274,6 +283,12 @@ def _run_parallel_lightcone(
                     "lc_distances_mpc": lightconer.lc_distances.to_value(u.Mpc),
                     "quantities": list(lightconer.quantities),
                     "index_offset": int(lightconer.index_offset),
+                    "oblique": isinstance(lightconer, ObliqueRectilinearLightconer),
+                    "oblique_direction": (
+                        tuple(lightconer.direction)
+                        if isinstance(lightconer, ObliqueRectilinearLightconer)
+                        else (3.0, 5.0, 11.0)
+                    ),
                     "global_quantities": list(global_quantities),
                     "mode": mode,
                     "use_cuda": eff_cuda,
@@ -337,6 +352,8 @@ def quick_lightcone(
     devices: Any = None,
     parallel_redshifts: bool = False,
     n_workers: int | None = None,
+    oblique: bool = False,
+    oblique_direction: tuple[float, float, float] = (3.0, 5.0, 11.0),
     instrument: str | Any = None,
     mock_seed: int = 0,
     html_3d_path: str | Path | None = None,
@@ -347,9 +364,10 @@ def quick_lightcone(
     """Build and run a 21cm rectilinear lightcone in a single call with GPU optimizations.
 
     Combines ``lazy_d2h=True``, zero-D2H GPU global means, on-demand ``PerturbedField``
-    streaming, optional multi-GPU/multi-worker redshift-parallel evolution (for
-    history-independent EoR configurations), optional interferometer mock observation
-    (``brightness_temp_mock``), and optional interactive 3D WebGL HTML export.
+    streaming, optional oblique periodic box traversal (``oblique=True`` via
+    :class:`ObliqueRectilinearLightconer`), optional multi-GPU/multi-worker redshift-parallel
+    evolution (for history-independent EoR configurations), optional interferometer mock
+    observation (``brightness_temp_mock``), and optional interactive 3D WebGL HTML export.
     """
     eff_hii = int(dim) // 2 if hii_dim is None else int(hii_dim)
     overrides = _split_input_overrides(astro_params, cosmo_params, extra_sim_kwargs)
@@ -358,6 +376,8 @@ def quick_lightcone(
     overrides.setdefault("BOX_LEN", float(box_len))
     overrides.setdefault("USE_TS_FLUCT", bool(use_ts_fluct))
     overrides.setdefault("RECOMB_MODEL", str(recomb_model))
+    if oblique and (apply_rsds or include_dvdr_in_tau21):
+        overrides.setdefault("KEEP_3D_VELOCITIES", True)
 
     custom_nodes = overrides.pop("node_redshifts", None)
     base_inputs = InputParameters(random_seed=int(seed)).evolve_input_structs(**overrides)
@@ -366,13 +386,23 @@ def quick_lightcone(
     q_tuple = tuple(quantities)
     g_tuple = tuple(q_tuple) if global_quantities is None else tuple(global_quantities)
     res_mpc = float(box_len) / float(eff_hii)
-    lcr = RectilinearLightconer.between_redshifts(
-        min_redshift=float(z_min),
-        max_redshift=float(z_max),
-        resolution=res_mpc * u.Mpc,
-        quantities=q_tuple,
-        cosmo=cosmo,
-    )
+    if oblique:
+        lcr: RectilinearLightconer = ObliqueRectilinearLightconer.between_redshifts(
+            min_redshift=float(z_min),
+            max_redshift=float(z_max),
+            resolution=res_mpc * u.Mpc,
+            quantities=q_tuple,
+            cosmo=cosmo,
+            direction=oblique_direction,
+        )
+    else:
+        lcr = RectilinearLightconer.between_redshifts(
+            min_redshift=float(z_min),
+            max_redshift=float(z_max),
+            resolution=res_mpc * u.Mpc,
+            quantities=q_tuple,
+            cosmo=cosmo,
+        )
 
     if custom_nodes is not None:
         node_z = [float(z) for z in custom_nodes]

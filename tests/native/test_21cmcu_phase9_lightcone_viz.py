@@ -205,3 +205,143 @@ def test_export_volume_and_lightcone_3d_html(tmp_path: Path) -> None:
 
     plt.close(fig_lc)
     plt.close(fig_cmp)
+
+
+def _make_dummy_coeval(inputs, redshift: float, tb: np.ndarray, vels: tuple[np.ndarray, ...] | None = None):
+    """Construct a lightweight Coeval with synthetic brightness_temp and optional 3D velocities."""
+    from py21cmfast.drivers.coeval import Coeval
+    from py21cmfast.wrapper.outputs import (
+        BrightnessTemp,
+        InitialConditions,
+        IonizedBox,
+        PerturbedField,
+    )
+
+    ic = InitialConditions.new(inputs=inputs)
+    pf = PerturbedField.new(inputs=inputs, redshift=redshift)
+    ib = IonizedBox.new(inputs=inputs, redshift=redshift)
+    bt = BrightnessTemp.new(inputs=inputs, redshift=redshift)
+    bt.set("brightness_temp", tb)
+    if vels is not None:
+        for ax, varr in zip(("velocity_x", "velocity_y", "velocity_z"), vels, strict=True):
+            pf.set(ax, varr)
+    return Coeval(
+        initial_conditions=ic,
+        perturbed_field=pf,
+        ionized_box=ib,
+        brightness_temperature=bt,
+    )
+
+
+def test_oblique_lightconer_anti_repetition_and_quick_api() -> None:
+    """Verify ObliqueRectilinearLightconer eliminates periodic lag repetition and integrates cleanly."""
+    from py21cmfast.wrapper.inputs import InputParameters
+
+    n = 24
+    inputs = InputParameters(random_seed=77, node_redshifts=[9.0, 7.5]).evolve_input_structs(
+        DIM=n * 2, HII_DIM=n, BOX_LEN=48.0, USE_TS_FLUCT=False, RECOMB_MODEL="none"
+    )
+    rng = np.random.default_rng(77)
+    box_a = rng.normal(0.0, 1.0, size=(n, n, n)).astype(np.float32)
+    box_b = box_a.copy()
+
+    lcr_rect = py21cmcu.RectilinearLightconer.with_equal_cdist_slices(
+        min_redshift=7.6,
+        max_redshift=8.8,
+        resolution=inputs.simulation_options.cell_size,
+        quantities=("brightness_temp",),
+        cosmo=inputs.cosmo_params.cosmo,
+    )
+    assert lcr_rect.lc_distances.size > n * 2
+    lcr_obq = py21cmcu.ObliqueRectilinearLightconer(
+        lc_distances=lcr_rect.lc_distances,
+        quantities=("brightness_temp",),
+        cosmo=inputs.cosmo_params.cosmo,
+        direction=(3.0, 5.0, 11.0),
+    )
+
+    c1 = _make_dummy_coeval(inputs, 9.0, box_a)
+    c2 = _make_dummy_coeval(inputs, 7.5, box_b)
+
+    lc_r = np.empty(lcr_rect.get_shape(inputs.simulation_options), dtype=np.float32)
+    lc_o = np.empty(lcr_obq.get_shape(inputs.simulation_options), dtype=np.float32)
+    with py21cmcu.use_mode("strict", use_cuda=False):
+        for _, idx, slc in lcr_rect.make_lightcone_slices(c1, c2):
+            lc_r[:, :, idx] = slc
+        for _, idx, slc in lcr_obq.make_lightcone_slices(c1, c2):
+            lc_o[:, :, idx] = slc
+
+    def _lag_corr(arr: np.ndarray, lag: int) -> float:
+        a = arr[:, :, :-lag].ravel()
+        b = arr[:, :, lag:].ravel()
+        return float(np.corrcoef(a, b)[0, 1])
+
+    assert _lag_corr(lc_r, n) > 0.99
+    assert abs(_lag_corr(lc_o, n)) < 0.25
+
+    lc_quick = py21cmcu.quick_lightcone(
+        7.5,
+        8.8,
+        box_len=64.0,
+        dim=32,
+        hii_dim=16,
+        n_nodes=4,
+        seed=88,
+        oblique=True,
+        apply_rsds=True,
+        use_cuda=False,
+        lazy_d2h=False,
+    )
+    assert lc_quick.lightcones["brightness_temp"].shape[:2] == (16, 16)
+    assert np.all(np.isfinite(lc_quick.lightcones["brightness_temp"]))
+
+
+@requires_cuda_runtime
+def test_oblique_lightconer_gpu_cpu_parity() -> None:
+    """Verify ObliqueRectilinearLightconer GPU kernel matches CPU map_coordinates output."""
+    from py21cmfast.wrapper.inputs import InputParameters
+
+    n = 24
+    inputs = InputParameters(random_seed=19, node_redshifts=[8.8, 7.6]).evolve_input_structs(
+        DIM=n * 2,
+        HII_DIM=n,
+        BOX_LEN=48.0,
+        USE_TS_FLUCT=False,
+        RECOMB_MODEL="none",
+        KEEP_3D_VELOCITIES=True,
+    )
+    rng = np.random.default_rng(19)
+    c1 = _make_dummy_coeval(
+        inputs,
+        8.8,
+        rng.normal(5.0, 10.0, (n, n, n)).astype(np.float32),
+        tuple(rng.normal(0.0, 1.0, (n, n, n)).astype(np.float32) for _ in range(3)),
+    )
+    c2 = _make_dummy_coeval(
+        inputs,
+        7.6,
+        rng.normal(5.0, 10.0, (n, n, n)).astype(np.float32),
+        tuple(rng.normal(0.0, 1.0, (n, n, n)).astype(np.float32) for _ in range(3)),
+    )
+
+    lcr = py21cmcu.ObliqueRectilinearLightconer.with_equal_cdist_slices(
+        min_redshift=7.7,
+        max_redshift=8.7,
+        resolution=inputs.simulation_options.cell_size,
+        quantities=("brightness_temp", "los_velocity"),
+        cosmo=inputs.cosmo_params.cosmo,
+        direction=(3.0, 5.0, 11.0),
+    )
+    cpu_out = np.empty(lcr.get_shape(inputs.simulation_options), dtype=np.float32)
+    gpu_out = np.empty_like(cpu_out)
+    with py21cmcu.use_mode("strict", use_cuda=False):
+        for q, idx, slc in lcr.make_lightcone_slices(c1, c2):
+            if q == "brightness_temp":
+                cpu_out[:, :, idx] = slc
+    with py21cmcu.use_mode("strict", use_cuda=True):
+        for q, idx, slc in lcr.make_lightcone_slices(c1, c2):
+            if q == "brightness_temp":
+                gpu_out[:, :, idx] = slc
+
+    np.testing.assert_allclose(gpu_out, cpu_out, rtol=1e-4, atol=1e-4)
+    py21cmcu.cleanup_cuda()

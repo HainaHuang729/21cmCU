@@ -21,6 +21,7 @@ from cosmotile import (
     make_lightcone_slice_interpolator,
     make_lightcone_slice_vector_field,
 )
+from scipy.ndimage import map_coordinates
 from scipy.spatial.transform import Rotation
 
 from ._cfg import config
@@ -715,6 +716,355 @@ class RectilinearLightconer(Lightconer):
                             idx,
                             self.interpolate_los_velocity_slice(lcd, c1, c2, dc1, dc2),
                         )
+
+
+@attrs.define(kw_only=True, slots=False)
+class ObliqueRectilinearLightconer(RectilinearLightconer):
+    """Rectilinear lightconer slicing along an oblique periodic direction to avoid LOS repetition."""
+
+    direction: tuple[float, float, float] = attrs.field(
+        default=(3.0, 5.0, 11.0),
+        converter=lambda v: (float(v[0]), float(v[1]), float(v[2])),
+    )
+    origin: tuple[float, float, float] = attrs.field(
+        default=(0.0, 0.0, 0.0),
+        converter=lambda v: (float(v[0]), float(v[1]), float(v[2])),
+    )
+    interpolation_order: int = attrs.field(
+        default=1, converter=int, validator=attrs.validators.in_([0, 1])
+    )
+
+    @direction.validator
+    def _direction_validator(self, attribute, value):
+        if float(np.linalg.norm(value)) <= 0.0:
+            raise ValueError(f"direction must be non-zero, got {value}")
+
+    def __attrs_post_init__(self) -> None:
+        self._oblique_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
+
+    def orthonormal_basis(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return right-handed orthonormal triad ``(e1, e2, u_los)``."""
+        d = np.asarray(self.direction, dtype=np.float64)
+        u_los = d / np.linalg.norm(d)
+        ref = np.array([1.0, 0.0, 0.0] if abs(u_los[0]) < 0.9 else [0.0, 1.0, 0.0], dtype=np.float64)
+        e1 = ref - np.dot(ref, u_los) * u_los
+        e1 /= np.linalg.norm(e1)
+        e2 = np.cross(u_los, e1)
+        e2 /= np.linalg.norm(e2)
+        return e1, e2, u_los
+
+    def _transverse_offsets(self, nx: int, ny: int) -> tuple[np.ndarray, np.ndarray]:
+        key = (int(nx), int(ny))
+        cached = self._oblique_cache.get(key)
+        if cached is not None:
+            return cached
+        e1, e2, u_los = self.orthonormal_basis()
+        orig = np.asarray(self.origin, dtype=np.float64)
+        ii, jj = np.meshgrid(
+            np.arange(nx, dtype=np.float64),
+            np.arange(ny, dtype=np.float64),
+            indexing="ij",
+        )
+        ii_f = ii.ravel()
+        jj_f = jj.ravel()
+        base = orig[:, None] + e1[:, None] * ii_f[None, :] + e2[:, None] * jj_f[None, :]
+        base = np.ascontiguousarray(base, dtype=np.float64)
+        unit_xyz = np.ascontiguousarray(
+            np.broadcast_to(u_los[:, None], (3, nx * ny)), dtype=np.float64
+        )
+        self._oblique_cache[key] = (base, unit_xyz)
+        return base, unit_xyz
+
+    def _slice_coords(self, s_pix: float, nx: int, ny: int) -> np.ndarray:
+        _, _, u_los = self.orthonormal_basis()
+        base, _ = self._transverse_offsets(nx, ny)
+        return np.ascontiguousarray(base + u_los[:, None] * float(s_pix), dtype=np.float64)
+
+    def _sample_cpu(
+        self,
+        arr_a: np.ndarray,
+        arr_b: np.ndarray,
+        coords: np.ndarray,
+        w_a: float,
+        w_b: float,
+        dc_a: Quantity[pixel],
+        dc_b: Quantity[pixel],
+        lcd: Quantity[pixel],
+        kind: str,
+        out_shape: tuple[int, int],
+    ) -> np.ndarray:
+        if kind == "mean_max" and self.interpolation_order == 1:
+            shape = np.array(arr_a.shape, dtype=np.int64)[:, None]
+            floor = np.floor(coords)
+            frac = coords - floor
+            lower = floor.astype(np.int64) % shape
+            upper = (lower + 1) % shape
+            out = np.zeros(coords.shape[1], dtype=np.float64)
+            for corner in np.ndindex(2, 2, 2):
+                idx_c = tuple(upper[ax] if c else lower[ax] for ax, c in enumerate(corner))
+                weight = np.prod(
+                    [frac[ax] if c else 1.0 - frac[ax] for ax, c in enumerate(corner)],
+                    axis=0,
+                )
+                out += weight * _dimensionless(
+                    self.redshift_interpolation(
+                        lcd, arr_a[idx_c], arr_b[idx_c], dc_a, dc_b, kind="mean_max"
+                    )
+                )
+            return out.astype(np.float32).reshape(out_shape)
+
+        sa = map_coordinates(arr_a, coords, order=self.interpolation_order, mode="grid-wrap")
+        sb = map_coordinates(arr_b, coords, order=self.interpolation_order, mode="grid-wrap")
+        if kind == "mean_max":
+            return _dimensionless(
+                self.redshift_interpolation(lcd, sa, sb, dc_a, dc_b, kind="mean_max")
+            ).astype(np.float32).reshape(out_shape)
+        return (w_a * sa + w_b * sb).astype(np.float32).reshape(out_shape)
+
+    def _sample_los_velocity_cpu(
+        self,
+        c1: Coeval,
+        c2: Coeval,
+        coords: np.ndarray,
+        w_a: float,
+        w_b: float,
+        out_shape: tuple[int, int],
+    ) -> np.ndarray:
+        _, _, u_los = self.orthonormal_basis()
+        va = np.zeros(coords.shape[1], dtype=np.float64)
+        vb = np.zeros(coords.shape[1], dtype=np.float64)
+        for ax_idx, ax_name in enumerate("xyz"):
+            comp_a = np.asarray(getattr(c1, f"velocity_{ax_name}"), dtype=np.float32)
+            comp_b = np.asarray(getattr(c2, f"velocity_{ax_name}"), dtype=np.float32)
+            va += u_los[ax_idx] * map_coordinates(
+                comp_a, coords, order=self.interpolation_order, mode="grid-wrap"
+            )
+            vb += u_los[ax_idx] * map_coordinates(
+                comp_b, coords, order=self.interpolation_order, mode="grid-wrap"
+            )
+        return (w_a * va + w_b * vb).astype(np.float32).reshape(out_shape)
+
+    def _s_pix_for_distance(self, lcd: Quantity[pixel], coeval_res: Quantity[_LENGTH]) -> float:
+        pixlcdist = self.get_lc_distances_in_pixels(coeval_res)
+        return float((lcd - pixlcdist.min()).to_value(pixel))
+
+    def coeval_subselect(
+        self, lcd: Quantity[pixel], coeval: np.ndarray, coeval_res: Quantity[_LENGTH]
+    ):
+        """Sample an oblique planar slice through a 3D coeval array at distance ``lcd``."""
+        nx, ny, _ = coeval.shape
+        coords = self._slice_coords(self._s_pix_for_distance(lcd, coeval_res), nx, ny)
+        return map_coordinates(
+            np.asarray(coeval, dtype=np.float32),
+            coords,
+            order=self.interpolation_order,
+            mode="grid-wrap",
+        ).astype(np.float32).reshape((nx, ny))
+
+    def interpolate_slice(
+        self,
+        lcd: Quantity[pixel],
+        coeval_a: np.ndarray,
+        coeval_b: np.ndarray,
+        dc_a: Quantity[pixel],
+        dc_b: Quantity[pixel],
+        coeval_res: Quantity[_LENGTH],
+        kind: str = "mean",
+    ) -> np.ndarray:
+        """Interpolate one oblique rectilinear slice from two bracketing coeval boxes."""
+        nx, ny, _ = coeval_a.shape
+        coords = self._slice_coords(self._s_pix_for_distance(lcd, coeval_res), nx, ny)
+        denom = float(np.abs(dc_a - dc_b).value)
+        if denom <= 0.0:
+            return self.coeval_subselect(lcd, coeval_a, coeval_res)
+        w_a = float(np.abs(dc_b - lcd).value / denom)
+        w_b = float(np.abs(dc_a - lcd).value / denom)
+        return self._sample_cpu(
+            np.asarray(coeval_a, dtype=np.float32),
+            np.asarray(coeval_b, dtype=np.float32),
+            coords,
+            w_a,
+            w_b,
+            dc_a,
+            dc_b,
+            lcd,
+            kind,
+            (nx, ny),
+        )
+
+    def interpolate_los_velocity_slice(
+        self,
+        lcd: Quantity[pixel],
+        c_a: Coeval,
+        c_b: Coeval,
+        dc_a: Quantity[pixel],
+        dc_b: Quantity[pixel],
+    ) -> np.ndarray:
+        """Project 3D velocities onto the oblique LOS unit vector at distance ``lcd``."""
+        nx, ny, _ = c_a.velocity_z.shape
+        coords = self._slice_coords(
+            self._s_pix_for_distance(lcd, c_a.simulation_options.cell_size), nx, ny
+        )
+        denom = float(np.abs(dc_a - dc_b).value)
+        w_a = float(np.abs(dc_b - lcd).value / denom)
+        w_b = float(np.abs(dc_a - lcd).value / denom)
+        return self._sample_los_velocity_cpu(c_a, c_b, coords, w_a, w_b, (nx, ny))
+
+    def validate_options(
+        self,
+        inputs: InputParameters,
+        include_dvdr_in_tau21: bool,
+        apply_rsds: bool,
+        classy_output: Class | None = None,
+    ) -> Lightconer:
+        """Validate 21cmFAST options including 3D velocity retention for oblique LOS."""
+        lightconer = super().validate_options(
+            inputs=inputs,
+            include_dvdr_in_tau21=include_dvdr_in_tau21,
+            apply_rsds=apply_rsds,
+            classy_output=classy_output,
+        )
+        if (
+            include_dvdr_in_tau21 or apply_rsds
+        ) and not inputs.matter_options.KEEP_3D_VELOCITIES:
+            raise ValueError(
+                "To account for RSDs or velocity corrections in an ObliqueRectilinearLightconer, "
+                "set matter_options.KEEP_3D_VELOCITIES=True (or use quick_lightcone(..., oblique=True))."
+            )
+        return lightconer
+
+    def make_lightcone_slices(self, c1: Coeval, c2: Coeval):
+        """Generate oblique periodic rectilinear slices on GPU (or CPU fallback)."""
+        if c1.simulation_options != c2.simulation_options:
+            raise ValueError("c1 and c2 must have the same user parameters")
+        if c1.cosmo_params != c2.cosmo_params:
+            raise ValueError("c1 and c2 must have the same cosmological parameters")
+
+        cosmo = c1.cosmo_params.cosmo
+        coeval_res = c1.simulation_options.cell_size
+        pixeleq = pixel_scale(coeval_res / pixel)
+        dc1 = cosmo.comoving_distance(c1.redshift).to(pixel, equivalencies=pixeleq)
+        dc2 = cosmo.comoving_distance(c2.redshift).to(pixel, equivalencies=pixeleq)
+
+        dcmin = min(dc1, dc2)
+        dcmax = max(dc1, dc2)
+        denom = float(np.abs(dc1 - dc2).value)
+        if denom <= 0.0:
+            raise ValueError("c1 and c2 must be at different redshifts")
+
+        pixlcdist = self.get_lc_distances_in_pixels(coeval_res)
+        lcidx = np.nonzero((pixlcdist >= dcmin * (1 - 1e-6)) & (pixlcdist < dcmax))[0]
+        if len(lcidx) == 0:
+            yield None, lcidx, None
+            return
+
+        lc_distances = pixlcdist[lcidx]
+        min_lcpix = pixlcdist.min()
+        w_a = np.abs(dc2 - lc_distances).value / denom
+        w_b = np.abs(dc1 - lc_distances).value / denom
+        use_gpu = bool(
+            config["USE_CUDA"]
+            and lib.p21_cuda_is_compiled()
+            and lib.p21_cuda_is_available()
+        )
+
+        from .drivers.coeval import _get_coeval_array_no_sync
+
+        def _get_f32_pair(attr_name: str) -> tuple[np.ndarray, np.ndarray]:
+            arr_a = _get_coeval_array_no_sync(c1, attr_name)
+            arr_b = _get_coeval_array_no_sync(c2, attr_name)
+            if arr_a is None:
+                arr_a = np.asarray(getattr(c1, attr_name))
+            if arr_b is None:
+                arr_b = np.asarray(getattr(c2, attr_name))
+            a32 = (
+                arr_a
+                if (arr_a.dtype == np.float32 and arr_a.flags.c_contiguous)
+                else np.ascontiguousarray(arr_a, dtype=np.float32)
+            )
+            b32 = (
+                arr_b
+                if (arr_b.dtype == np.float32 and arr_b.flags.c_contiguous)
+                else np.ascontiguousarray(arr_b, dtype=np.float32)
+            )
+            return a32, b32
+
+        q_arrays = {q: _get_f32_pair(q) for q in self.quantities if q != "los_velocity"}
+        has_vel = "los_velocity" in self.quantities
+        if has_vel:
+            vx_a, vx_b = _get_f32_pair("velocity_x")
+            vy_a, vy_b = _get_f32_pair("velocity_y")
+            vz_a, vz_b = _get_f32_pair("velocity_z")
+
+        first_q = next(iter(q_arrays.values()))[0]
+        nx, ny, nz = first_q.shape
+        n_coords = int(nx * ny)
+        _, unit_xyz = self._transverse_offsets(nx, ny)
+        out_buf = np.empty(n_coords, dtype=np.float32)
+
+        for s, (idx, lcd) in enumerate(zip(lcidx, lc_distances, strict=True)):
+            s_pix = float((lcd - min_lcpix).to_value(pixel))
+            coords = self._slice_coords(s_pix, nx, ny)
+            wa_f = float(w_a[s])
+            wb_f = float(w_b[s])
+
+            for q in self.quantities:
+                if q == "los_velocity":
+                    continue
+                kind = self.interp_kinds.get(q, "mean")
+                a32, b32 = q_arrays[q]
+                slc = None
+                if use_gpu and kind in ("mean", "mean_max"):
+                    rc = lib.p21_cuda_angular_slice(
+                        ffi.cast("const float *", ffi.from_buffer(a32)),
+                        ffi.cast("const float *", ffi.from_buffer(b32)),
+                        int(nx),
+                        int(ny),
+                        int(nz),
+                        n_coords,
+                        ffi.cast("const double *", ffi.from_buffer(coords)),
+                        wa_f,
+                        wb_f,
+                        int(self.interpolation_order),
+                        1 if kind == "mean_max" else 0,
+                        ffi.cast("float *", ffi.from_buffer(out_buf)),
+                    )
+                    if rc == 0:
+                        slc = out_buf.reshape((nx, ny)).copy()
+                if slc is None:
+                    slc = self._sample_cpu(
+                        a32, b32, coords, wa_f, wb_f, dc1, dc2, lcd, kind, (nx, ny)
+                    )
+                yield (q, idx, slc)
+
+                if has_vel and q == self.quantities[0]:
+                    vslc = None
+                    if use_gpu:
+                        rc_v = lib.p21_cuda_angular_los_velocity(
+                            ffi.cast("const float *", ffi.from_buffer(vx_a)),
+                            ffi.cast("const float *", ffi.from_buffer(vy_a)),
+                            ffi.cast("const float *", ffi.from_buffer(vz_a)),
+                            ffi.cast("const float *", ffi.from_buffer(vx_b)),
+                            ffi.cast("const float *", ffi.from_buffer(vy_b)),
+                            ffi.cast("const float *", ffi.from_buffer(vz_b)),
+                            int(nx),
+                            int(ny),
+                            int(nz),
+                            n_coords,
+                            ffi.cast("const double *", ffi.from_buffer(coords)),
+                            ffi.cast("const double *", ffi.from_buffer(unit_xyz)),
+                            wa_f,
+                            wb_f,
+                            int(self.interpolation_order),
+                            ffi.cast("float *", ffi.from_buffer(out_buf)),
+                        )
+                        if rc_v == 0:
+                            vslc = out_buf.reshape((nx, ny)).copy()
+                    if vslc is None:
+                        vslc = self._sample_los_velocity_cpu(
+                            c1, c2, coords, wa_f, wb_f, (nx, ny)
+                        )
+                    yield ("los_velocity", idx, vslc)
 
 
 def _dimensionless(x: np.ndarray | Quantity) -> np.ndarray:
