@@ -2,6 +2,21 @@
 
 All notable milestones in **21cmCU** are documented in this file.
 
+## [0.6.0] — 2026-11-27 (Directions K, L, M & N)
+### Added
+- **Direction K (`6e91af3`) — Multi-GPU Communication & Low-VRAM Streaming (`cuda_mgpu.cu`, `cuda_ic.cu`)**:
+  - 64 MiB portable pinned bounce buffers (`MgpuHostBounce`), `std::thread` sub-tiled `X↔Y` host-staged transposes, cuFFT plan creation mutex safety, and parallel multi-GPU strip transfers (`1536³` Zel'dovich **`27.799 s`** / 2LPT **`75.231 s`** on `2× RTX 4090`, up to **`2.80×`** faster than `v0.5.0`; `1792³` 2LPT **`103.892 s`** on `3× RTX 4090`, **`3.52×`** faster).
+  - Zero-`h_tmp_ab` 2LPT pinned streaming (saving `32 GiB` host RAM at `2048³`) and single-work-slab mode (`P21_CUDA_MGPU_SINGLE_SLAB`), unlocking **native in-VRAM `2048³` (`8.590 B` voxels) Zel'dovich IC on `3× RTX 4090` in `58.467 s`** (**`3.71×`** faster than `v0.5.0` host fallback).
+  - Expanded `tests/native/test_21cmcu_phase5_g.py` (`14/14` passing with `test_mgpu_ic_single_slab_mode_parity`).
+- **Direction L (`4c89439`) — SBI Observables & Resumable Pipeline**:
+  - Added `src/py21cmcu/observables.py` (`horizon_slope`, `horizon_wedge_mask`, `apply_wedge_filter_3d`, `add_thermal_noise_3d`, `generate_sobol_parameter_grid`).
+  - Extended `BatchTask` & `run_batch` (`wedge_filter`, `wedge_buffer`, `noise_sigma_mk`, `lightcone_out_path`, `lightcone_compression`, `checkpoint_h5`, `resume=True`) and added [`examples/sbi_lightcone_dataset.py`](examples/sbi_lightcone_dataset.py).
+- **Direction M (`a8eff48`) — Diagnostics, CLI, User Guide & CI**:
+  - Added `py21cmcu.doctor()` (`src/py21cmcu/doctor.py`) and extended `21cmcu` CLI (`src/py21cmcu/cli.py`) with `batch`, `doctor`, and `bench` subcommands (`tests/native/test_21cmcu_phase6_lm.py`, `4/4` passing).
+  - Added [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) and expanded `.github/workflows/ci.yml` to lint `examples/` and execute `tests/native/test_21cmcu_phase6_lm.py`.
+- **Direction N — `v0.6.0` Release Documentation, Figures & Methods Paper**:
+  - Merged `benchmarks/results_rtx4090_v060.json`, updated `benchmarks/plot_benchmarks.py` & `docs/figures/*.png`, added standalone methods paper in [`docs/paper/`](docs/paper/21cmcu_paper.md), bumped version to `0.6.0`, and verified **`168/168` passing tests** (`-k "not speed"` across all 12 native GPU test suites on `3× RTX 4090`).
+
 ## [0.5.0] — 2026-11-27 (Direction G + Full Benchmarks & Figures)
 ### Added
 - **Direction G (`9ec08a4`)**: Native multi-GPU 1D Y-slab domain decomposition (`cuda_mgpu.cu`/`.cuh`) for 3D R2C/C2R FFTs, `compute_initial_conditions` (`ZELDOVICH` + hybrid host-accumulated `2LPT`), and `power_spectrum_1d` / `power_spectrum_2d` with `CUDA_DEVICES` / `P21_CUDA_DEVICES` configuration, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `use_mode(..., devices=...)`, and `mgpu_fft_runs` / `mgpu_ic_runs` stats (`12/12` tests passing in `tests/native/test_21cmcu_phase5_g.py` across `2×` and `3× RTX 4090`).

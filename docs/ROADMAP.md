@@ -101,6 +101,27 @@
 
 ---
 
+## Completed Directions (K → L → M → N, `v0.6.0`)
+
+### Direction K (`6e91af3`) — Multi-GPU Communication, Pinned-Bounce & Single-Slab `2048³`
+- **Pinned host-bounce & parallel transposes (`cuda_mgpu.cu`)**: added 64 MiB portable `MgpuHostBounce`, `std::thread` sub-tiled `mgpu_transpose_x_to_y` / `mgpu_transpose_y_to_x`, cuFFT plan mutex safety (`g_mgpu_cufft_mtx`), and parallel multi-GPU strip transfers (`p21_mgpu_fft_r2c_from_host`, `p21_mgpu_fft_c2r_strips`).
+- **Single-work-slab mode & zero-`h_tmp_ab` 2LPT streaming (`cuda_ic.cu`)**: eliminated the `32 GiB` `h_tmp_ab` host allocation at `2048³` and enabled single-work-slab Zel'dovich execution (`P21_CUDA_MGPU_SINGLE_SLAB=1` / auto), unlocking **native in-VRAM `2048³` (`8.590 B` voxels) Zel'dovich IC on `3× RTX 4090` in `58.467 s`** (**`3.71×`** vs `v0.5.0` host fallback) and **`2.80×` / `3.52×`** 2LPT speedups at `1536³` (`75.231 s`) and `1792³` (`103.892 s`).
+- Verified in `tests/native/test_21cmcu_phase5_g.py` (**`14/14 passed`**, including `test_mgpu_ic_single_slab_mode_parity`).
+
+### Direction L (`4c89439`) — SBI Observables & Resumable Pipeline
+- **Observables module (`src/py21cmcu/observables.py`)**: `horizon_slope`, `horizon_wedge_mask`, `apply_wedge_filter_3d`, `add_thermal_noise_3d`, and `generate_sobol_parameter_grid`.
+- **Resumable HDF5 checkpoints & lightcone archival (`src/py21cmcu/batch.py`, `examples/sbi_lightcone_dataset.py`)**: extended `BatchTask` (`wedge_filter`, `wedge_buffer`, `noise_sigma_mk`, `lightcone_out_path`, `lightcone_compression`) and `run_batch(..., checkpoint_h5=..., resume=True)` for fault-tolerant SBI dataset sweeps.
+
+### Direction M (`a8eff48`) — Hardware Diagnostics, Extended CLI, User Guide & CI
+- **Hardware & sizing doctor (`src/py21cmcu/doctor.py`)**: `py21cmcu.doctor(as_json=...)` checking CUDA runtime, `nvidia-smi topo -m`, compiler/GSL/FFTW bindings, and 24 GB multi-GPU sizing recommendations.
+- **Extended CLI (`src/py21cmcu/cli.py`)**: added `21cmcu batch`, `21cmcu doctor`, and `21cmcu bench` subcommands alongside upstream `run` (`tests/native/test_21cmcu_phase6_lm.py`, `4/4 passed`).
+- **Documentation & CI**: added [`docs/USER_GUIDE.md`](USER_GUIDE.md) and expanded `.github/workflows/ci.yml` to lint `examples` and test `test_21cmcu_phase6_lm.py`.
+
+### Direction N (`v0.6.0`) — Benchmarks, Figures, Methods Draft & Release Verification
+- Merged single-GPU and Direction K multi-GPU benchmarks into `benchmarks/results_rtx4090_v060.json`, updated `benchmarks/plot_benchmarks.py` (`mgpu_scaling.png` displaying native `2048³` Zel'dovich `58.5s`), authored standalone methods draft ([`docs/paper/21cmcu_paper.md`](paper/21cmcu_paper.md), `.tex`, `refs.bib`), bumped version to `0.6.0`, and verified **`168/168` passing tests** (`-k "not speed"` across all 12 native GPU test suites on `3× RTX 4090`).
+
+---
+
 ## Future Roadmap
 
 - **Multi-node / 4+ GPU NVLink Scaling**: extend `cuda_mgpu.cu` (`>= 4× 24 GB` GPUs for in-VRAM `2048³` 2LPT) and optional NCCL all-to-all collective backend for NVLink/NVSwitch nodes.

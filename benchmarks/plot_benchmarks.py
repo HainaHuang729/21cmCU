@@ -198,7 +198,7 @@ def plot_speedup_overview(data: dict, out_path: Path) -> None:
 
 
 def plot_mgpu_scaling(data: dict, out_path: Path) -> None:
-    """Plot Direction G multi-GPU slab decomposition scaling & batch throughput."""
+    """Plot Direction G+K multi-GPU slab decomposition scaling & batch throughput."""
     mgpu = data["mgpu"]
     ic1024 = mgpu["ic_1024"]
     ic1536 = mgpu["ic_1536"]
@@ -207,21 +207,23 @@ def plot_mgpu_scaling(data: dict, out_path: Path) -> None:
     batch16 = mgpu["batch_16x_192_96"]
 
     fig, (ax1, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(15.4, 5.1), gridspec_kw={"width_ratios": [1.25, 1.1, 1.0]}
+        1, 3, figsize=(15.8, 5.2), gridspec_kw={"width_ratios": [1.32, 1.08, 1.0]}
     )
 
-    # Panel (a): Out-of-single-GPU capacity envelope (1024^3 1-GPU vs 1536^3 3-GPU vs 1792^3 3-GPU)
+    # Panel (a): Out-of-single-GPU capacity envelope (1024^3 1-GPU up to 2048^3 3-GPU native)
     configs = [
         "1024^3\n(1.07B)\n1 GPU",
         "1536^3\n(3.62B)\n2 GPUs",
         "1536^3\n(3.62B)\n3 GPUs",
         "1792^3\n(5.75B)\n3 GPUs",
+        "2048^3\n(8.59B)\n3 GPUs",
     ]
     zeld_s = [
         ic1024["ZELDOVICH_g1"]["ic_s"],
         ic1536["ZELDOVICH_g2"]["ic_s"],
         ic1536["ZELDOVICH_g3"]["ic_s"],
         ic1792["ZELDOVICH_g3"]["ic_s"],
+        ic2048["ZELDOVICH_g3"]["ic_s"],
     ]
     lpt2_s = [
         ic1024["2LPT_g1"]["ic_s"],
@@ -231,40 +233,42 @@ def plot_mgpu_scaling(data: dict, out_path: Path) -> None:
     ]
     x = np.arange(len(configs))
     w = 0.35
-    b1 = ax1.bar(x - w / 2, zeld_s, width=w, color=C_BLUE, label="Zel'dovich IC")
-    b2 = ax1.bar(x + w / 2, lpt2_s, width=w, color=C_ORANGE, label="2LPT IC (hybrid host-acc.)")
+    x_zeld = np.array([*(x[:4] - w / 2), float(x[4])])
+    b1 = ax1.bar(x_zeld, zeld_s, width=w, color=C_BLUE, label="Zel'dovich IC (native VRAM)")
+    b2 = ax1.bar(x[:4] + w / 2, lpt2_s, width=w, color=C_ORANGE, label="2LPT IC (hybrid pinned stream)")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(configs, fontsize=8.8)
+    ax1.set_xticklabels(configs, fontsize=8.4)
     ax1.set_ylabel("IC Wall-Clock Time [s]")
-    ax1.set_ylim(0, max(lpt2_s) * 1.18)
+    ax1.set_ylim(0, max(lpt2_s) * 1.46)
     ax1.set_title("(a) Large-Grid Native Multi-GPU IC")
     ax1.grid(axis="y", linestyle="--", alpha=0.55, color=C_GRID)
     ax1.spines["top"].set_visible(False)
     ax1.spines["right"].set_visible(False)
-    ax1.legend(loc="upper left", frameon=True, edgecolor="#CBD5E1", fontsize=8.5)
+    ax1.legend(loc="upper left", frameon=True, edgecolor="#CBD5E1", fontsize=8.2)
 
     for rect in [*b1, *b2]:
         val = rect.get_height()
         ax1.text(
             rect.get_x() + rect.get_width() / 2,
-            val + 6.0,
+            val + 2.0,
             f"{val:.1f}s",
             ha="center",
             va="bottom",
-            fontsize=8.0,
+            fontsize=7.8,
             fontweight="bold",
         )
 
-    fb_2048 = ic2048["ZELDOVICH_g3"]
+    nat_2048 = ic2048["ZELDOVICH_g3"]
     ax1.text(
-        0.03,
-        0.74,
-        f"1536^3/1792^3 exceed 24 GB single GPU.\n"
-        f"2048^3 (8.59B) requires >=4 GPUs in-VRAM;\n"
-        f"on 3 GPUs cleanly falls back to host ({fb_2048['ic_s']:.1f}s).",
+        0.98,
+        0.97,
+        f"2048^3 (8.59B) Zel'dovich: native in-VRAM\n"
+        f"3x RTX 4090 ({nat_2048['ic_s']:.1f}s IC, 3.71x vs v0.5.0)\n"
+        f"2LPT needs >=235 GB host RAM",
         transform=ax1.transAxes,
-        fontsize=7.8,
-        bbox={"boxstyle": "round,pad=0.35", "facecolor": "#F8FAFC", "edgecolor": "#CBD5E1"},
+        fontsize=7.5,
+        bbox={"boxstyle": "round,pad=0.32", "facecolor": "#F8FAFC", "edgecolor": "#CBD5E1"},
+        ha="right",
         va="top",
     )
 
@@ -283,25 +287,24 @@ def plot_mgpu_scaling(data: dict, out_path: Path) -> None:
     ax2.set_yscale("log")
     ax2.set_xticks([1, 2, 3])
     ax2.set_xticklabels(["1 GPU\n(24 GB)", "2 GPUs\n(48 GB)", "3 GPUs\n(72 GB)"], fontsize=9)
-    ax2.set_ylim(2.5, 420.0)
+    ax2.set_ylim(2.2, 210.0)
     ax2.set_ylabel("IC Wall-Clock Time [s] (log scale)")
     ax2.set_title("(b) Slab Transpose Scaling vs Capacity")
     ax2.grid(True, linestyle="--", alpha=0.55, color=C_GRID)
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
     ax2.legend(
-        loc="center left",
-        bbox_to_anchor=(0.02, 0.56),
+        loc="upper left",
         frameon=True,
         edgecolor="#CBD5E1",
         fontsize=8.0,
     )
 
     for g, v in zip(g1536, t1536_z, strict=True):
-        ax2.text(g, v * 1.14, f"{v:.1f}s", ha="center", va="bottom", fontsize=8.0, color=C_TEAL, fontweight="bold")
+        ax2.text(g, v * 1.16, f"{v:.1f}s", ha="center", va="bottom", fontsize=8.0, color=C_TEAL, fontweight="bold")
     for g, v in zip(g1536, t1536_2, strict=True):
-        ax2.text(g, v * 1.12, f"{v:.1f}s", ha="center", va="bottom", fontsize=8.0, color=C_PURPLE, fontweight="bold")
-    ax2.text(1.05, t1024_z[0] * 0.72, f"{t1024_z[0]:.2f}s", fontsize=8.0, color=C_BLUE, fontweight="bold")
+        ax2.text(g, v * 1.15, f"{v:.1f}s", ha="center", va="bottom", fontsize=8.0, color=C_PURPLE, fontweight="bold")
+    ax2.text(1.06, t1024_z[0] * 0.72, f"{t1024_z[0]:.2f}s", fontsize=8.0, color=C_BLUE, fontweight="bold")
 
     # Panel (c): Multi-GPU run_batch throughput (16 x 192/96 L-INTEGRAL+TS, workers_per_gpu=2)
     bg = [1, 2, 3]
@@ -330,7 +333,7 @@ def plot_mgpu_scaling(data: dict, out_path: Path) -> None:
         )
 
     fig.suptitle(
-        "Direction G Multi-GPU Slab Decomposition & Concurrent Ensemble Scaling (Up to 3x RTX 4090)",
+        "Direction G+K Multi-GPU Slab Decomposition & Concurrent Ensemble Scaling (Up to 3x RTX 4090)",
         fontsize=13,
         fontweight="bold",
         y=0.98,

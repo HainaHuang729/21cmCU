@@ -1,21 +1,21 @@
-# 21cmCU Benchmark Suite (`v0.5.0` — NVIDIA RTX 4090)
+# 21cmCU Benchmark Suite (`v0.6.0` — NVIDIA RTX 4090)
 
-All measurements in this report were captured directly on cluster node **`b1`** using [`benchmarks/bench_21cmcu.py`](../benchmarks/bench_21cmcu.py) and stored verbatim in [`benchmarks/results_rtx4090_v050.json`](../benchmarks/results_rtx4090_v050.json).
+All measurements in this report were captured directly on cluster node **`b1`** using [`benchmarks/bench_21cmcu.py`](../benchmarks/bench_21cmcu.py) and merged verbatim into [`benchmarks/results_rtx4090_v060.json`](../benchmarks/results_rtx4090_v060.json) (`v0.5.0` single-GPU baselines + `v0.6.0` Direction K multi-GPU sweep [`benchmarks/results_mgpu_v060.json`](../benchmarks/results_mgpu_v060.json)).
 
 ## Hardware & Environment
 
 | Component | Configuration |
 |---|---|
-| Host CPU & RAM | Node `b1`, 64-core x86_64 host, **16 OpenMP threads** (`N_THREADS=16`) for CPU baselines, 192 GiB Slurm memory limit (`129.48 GiB` peak RSS) |
+| Host CPU & RAM | Node `b1`, 64-core x86_64 host, **16 OpenMP threads** (`N_THREADS=16`) for CPU baselines, 196 GiB Slurm memory limit (`129.77 GiB` peak RSS) |
 | GPUs | **1×, 2×, and 3× NVIDIA GeForce RTX 4090** (`24,564 MiB` VRAM per GPU, PCIe interconnect, `CUDA_ARCHS=89`) |
-| Software | CUDA 12.6, native `c_21cmfast` CFFI extension, NumPy 2.5.5, `21cmCU v0.5.0` |
-| Native GPU Verification | **`162/162` tests passing** (`-k "not speed"` across all 11 native test suites on `3× RTX 4090`) |
+| Software | CUDA 12.6, native `c_21cmfast` CFFI extension, NumPy 2.5.5, `21cmCU v0.6.0` |
+| Native GPU Verification | **`168/168` tests passing** (`-k "not speed"` across all 12 native GPU test suites on `3× RTX 4090`) |
 
-Reproduce the full sweep with:
+Reproduce the suites and figures with:
 
 ```bash
-python benchmarks/bench_21cmcu.py --suite all,mgpu --json benchmarks/results_rtx4090_v050.json
-python benchmarks/plot_benchmarks.py --json benchmarks/results_rtx4090_v050.json --out-dir docs/figures
+python benchmarks/bench_21cmcu.py --suite all,mgpu --json benchmarks/results_rtx4090_v060.json
+python benchmarks/plot_benchmarks.py --json benchmarks/results_rtx4090_v060.json --out-dir docs/figures
 ```
 
 ---
@@ -41,39 +41,39 @@ python benchmarks/plot_benchmarks.py --json benchmarks/results_rtx4090_v050.json
 
 ---
 
-## 2. Direction G Multi-GPU Slab Domain Decomposition (`1×`, `2×`, `3× RTX 4090`)
+## 2. Direction G + K Multi-GPU Slab Domain Decomposition (`1×`, `2×`, `3× RTX 4090`)
 
-![Direction G Multi-GPU Scaling](figures/mgpu_scaling.png)
+![Direction G+K Multi-GPU Scaling](figures/mgpu_scaling.png)
 
-Direction G uses Y-slab domain decomposition across GPUs (striped 2D R2C/C2R + X-to-Y transpose + 1D C2C transforms, adaptive peer-to-peer or host-staged transposes, and hybrid host-accumulated 2LPT). Notice the architectural crossover:
+Direction G partitions 3D complex FFT volumes along Y-slabs across GPUs (`cuda_mgpu.cu`), and **Direction K (`v0.6.0`)** accelerates multi-GPU execution with:
+- **64 MiB pinned portable host-bounce buffers (`MgpuHostBounce`)** with sub-tiled `std::thread` parallel transposes and parallel multi-GPU strip transfers;
+- **Single-work-slab mode (`P21_CUDA_MGPU_SINGLE_SLAB=1` / automatic for Zel'dovich)** running **`2048³` (`8.590 B` voxels)** Zel'dovich IC **natively in-VRAM on `3× RTX 4090`** (`mgpu_ic_runs=1`) in **`58.467 s`** (**`3.71×`** faster than `v0.5.0` host fallback);
+- **Zero-`h_tmp_ab` 2LPT pinned-bounce streaming** eliminating `32 GiB` of host staging at `2048³` and speeding up `1536³`/`1792³` 2LPT by **`2.20×–3.52×`** over `v0.5.0`.
 
-- **`1024³` (`1.074 B` voxels)**: Fits natively inside a single 24 GB GPU, so 1-GPU execution is fastest (`4.122 s` Zel'dovich, `8.134 s` 2LPT) because inter-GPU PCIe slab transposes are unnecessary.
-- **`1536³` (`3.624 B` voxels) & `1792³` (`5.755 B` voxels)**: Exceed single-GPU in-core IC VRAM (`14.51 GiB` and `23.0 GiB` per complex grid × 2 work arrays) and run natively across `2×` and `3× RTX 4090`, with **`3×` outperforming `2×`** at `1536³` and unlocking native multi-GPU execution at `1792³`.
-- **`2048³` (`8.590 B` voxels)**: Requires `>= 4× 24 GB` GPUs for two complex Y-slabs + cuFFT workspace (`34.39 GiB` complex total). On `3× RTX 4090`, allocation bounds are caught cleanly and fall back gracefully to the host C path (`216.665 s` IC, `222.094 s` total with GPU `perturb_field` + `power_spectrum_1d`, finite `P(k)` verified).
-
-| Benchmark | GPUs | Algo | `ic_s` [s] | `perturb_s` [s] | `ps1d_s` [s] | Total [s] | Peak RSS [GiB] | Path |
-|---|---:|---|---:|---:|---:|---:|---:|---|
-| `1024³` (`1.074 B`) | 1 | `ZELDOVICH` | `4.122` | `0.572` | `0.0095` | `4.704` | `6.73` | 1-GPU native |
-| `1024³` (`1.074 B`) | 2 | `ZELDOVICH` | `4.695` | `0.597` | `0.0094` | `5.302` | `6.73` | Multi-GPU slab |
-| `1024³` (`1.074 B`) | 3 | `ZELDOVICH` | `4.604` | `0.595` | `0.0094` | `5.209` | `6.73` | Multi-GPU slab |
-| `1024³` (`1.074 B`) | 1 | `2LPT` | `8.134` | `0.586` | `0.0094` | `8.730` | `17.12` | 1-GPU native |
-| `1024³` (`1.074 B`) | 2 | `2LPT` | `10.307` | `0.628` | `0.0094` | `10.945` | `17.12` | Multi-GPU slab |
-| `1024³` (`1.074 B`) | 3 | `2LPT` | `10.539` | `0.634` | `0.0093` | `11.182` | `17.12` | Multi-GPU slab |
-| `1536³` (`3.624 B`) | 2 | `ZELDOVICH` | `53.903` | `3.444` | `0.0095` | `57.357` | `27.77` | Multi-GPU slab |
-| `1536³` (`3.624 B`) | 3 | `ZELDOVICH` | **`46.131`** | `1.946` | `0.0095` | **`48.087`** | `27.77` | Multi-GPU slab |
-| `1536³` (`3.624 B`) | 2 | `2LPT` | `210.680` | `1.967` | `0.0094` | `212.656` | `81.84` | Multi-GPU hybrid |
-| `1536³` (`3.624 B`) | 3 | `2LPT` | **`201.302`** | `1.969` | `0.0095` | **`203.281`** | `81.84` | Multi-GPU hybrid |
-| `1792³` (`5.755 B`) | 3 | `ZELDOVICH` | **`98.095`** | `4.441` | `0.0097` | **`102.545`** | `81.84` | Multi-GPU slab |
-| `1792³` (`5.755 B`) | 3 | `2LPT` | **`365.663`** | `7.005` | `0.0112` | **`372.680`** | `129.48` | Multi-GPU hybrid |
-| `2048³` (`8.590 B`) | 3 | `ZELDOVICH` | `216.665` | `5.419` | `0.0096` | `222.094` | `129.48` | Graceful host IC fallback |
+| Benchmark | GPUs | Algo | `v0.5.0` `ic_s` | `v0.6.0` `ic_s` | Speedup | `perturb_s` | `ps1d_s` | Total [s] | Peak RSS [GiB] | Path (`v0.6.0`) |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `1024³` (`1.074 B`) | 1 | `ZELDOVICH` | `4.122` | `4.288` | `0.96×` | `0.580` | `0.0094` | `4.878` | `4.66` | 1-GPU native |
+| `1024³` (`1.074 B`) | 2 | `ZELDOVICH` | `4.695` | `5.007` | `0.94×` | `0.634` | `0.0094` | `5.650` | `4.74` | Multi-GPU slab |
+| `1024³` (`1.074 B`) | 3 | `ZELDOVICH` | `4.604` | `4.397` | `1.05×` | `0.584` | `0.0093` | `4.990` | `4.88` | Multi-GPU slab |
+| `1024³` (`1.074 B`) | 1 | `2LPT` | `8.134` | `8.200` | `0.99×` | `0.567` | `0.0093` | `8.777` | `17.01` | 1-GPU native |
+| `1024³` (`1.074 B`) | 2 | `2LPT` | `10.307` | `9.999` | `1.03×` | `0.616` | `0.0094` | `10.624` | `17.01` | Multi-GPU slab |
+| `1024³` (`1.074 B`) | 3 | `2LPT` | `10.539` | `8.686` | `1.21×` | `0.617` | `0.0090` | `9.312` | `17.10` | Multi-GPU slab |
+| `1536³` (`3.624 B`) | 2 | `ZELDOVICH` | `53.903` | **`27.799`** | **`1.94×`** | `1.883` | `0.0093` | **`29.691`** | `27.93` | Multi-GPU slab |
+| `1536³` (`3.624 B`) | 3 | `ZELDOVICH` | `46.131` | **`29.005`** | **`1.59×`** | `2.010` | `0.0094` | **`31.024`** | `28.06` | Multi-GPU slab |
+| `1536³` (`3.624 B`) | 2 | `2LPT` | `210.680` | **`75.231`** | **`2.80×`** | `3.109` | `0.0101` | **`78.350`** | `82.00` | Multi-GPU pinned stream |
+| `1536³` (`3.624 B`) | 3 | `2LPT` | `201.302` | **`91.616`** | **`2.20×`** | `3.591` | `0.0099` | **`95.217`** | `82.13` | Multi-GPU pinned stream |
+| `1792³` (`5.755 B`) | 3 | `ZELDOVICH` | `98.095` | **`38.699`** | **`2.53×`** | `3.046` | `0.0094` | **`41.754`** | `82.13` | Multi-GPU slab |
+| `1792³` (`5.755 B`) | 3 | `2LPT` | `365.663` | **`103.892`** | **`3.52×`** | `4.373` | `0.0100` | **`108.275`** | `129.77` | Multi-GPU pinned stream |
+| `2048³` (`8.590 B`) | 3 | `ZELDOVICH` | `216.665` (host) | **`58.467`** | **`3.71×`** | `5.805` | `0.0094` | **`64.282`** | `129.77` | **Native in-VRAM (`single_slab`)** |
+| `2048³` (`8.590 B`) | 3 | `2LPT` | — | *skipped* | — | — | — | — | — | Requires `235.0 GiB` > `196.0 GiB` host budget |
 
 ### Concurrent `run_batch` Ensemble (`16 × 192/96` `L-INTEGRAL + TS`, `workers_per_gpu=2`)
 
 | Active GPUs | Concurrent Workers | Wall Time [s] | Throughput [tasks / hour] | Scaling vs 1 GPU |
 |---:|---:|---:|---:|---:|
-| 1 | 2 | `9.039` | `6,372.5` | `1.00×` |
-| 2 | 4 | `6.029` | `9,553.1` | **`1.50×`** |
-| 3 | 6 | **`5.485`** | **`10,502.0`** | **`1.65×`** |
+| 1 | 2 | `8.324` | `6,920.1` | `1.00×` |
+| 2 | 4 | **`5.888`** | **`9,782.0`** | **`1.41×`** |
+| 3 | 6 | `6.035` | `9,544.3` | `1.38×` |
 
 ---
 

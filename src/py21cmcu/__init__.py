@@ -31,7 +31,7 @@ from .observables import (
     horizon_wedge_mask,
 )
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 CudaMode = Literal["strict", "fast"]
 
