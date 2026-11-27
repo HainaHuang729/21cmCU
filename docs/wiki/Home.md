@@ -39,7 +39,7 @@ All **`168/168`** native GPU tests (`-k "not speed"` across 12 native suites) pa
 Repository maintainers can publish updates from `docs/wiki/` to the GitHub Wiki remote directly:
 
 ```bash
-git clone https://github.com/HainaHuang729/21cmFAST-GPU.wiki.git /tmp/21cmCU.wiki
+git clone git@github.com:HainaHuang729/21cmCU.wiki.git /tmp/21cmCU.wiki
 cp docs/wiki/*.md /tmp/21cmCU.wiki/
 cd /tmp/21cmCU.wiki && git add -A && git commit -m "Sync v0.6.0 wiki" && git push
 ```

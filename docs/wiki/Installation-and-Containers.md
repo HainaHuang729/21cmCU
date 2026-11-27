@@ -16,8 +16,8 @@ Back to [Home](Home.md) · Next: [Quickstart](Quickstart.md)
 ## Option 1: One-Command Install Script (`scripts/install.sh`)
 
 ```bash
-git clone https://github.com/HainaHuang729/21cmFAST-GPU.git
-cd 21cmFAST-GPU
+git clone https://github.com/HainaHuang729/21cmCU.git
+cd 21cmCU
 ./scripts/install.sh
 ```
 

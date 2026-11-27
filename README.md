@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-0.6.0-blue)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12-blue)
 ![CUDA](https://img.shields.io/badge/CUDA-12%2B-green)
-[![CPU CI](https://github.com/HainaHuang729/21cmFAST-GPU/actions/workflows/ci.yml/badge.svg)](https://github.com/HainaHuang729/21cmFAST-GPU/actions/workflows/ci.yml)
+[![CPU CI](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml/badge.svg)](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml)
 ![Native GPU Tests](https://img.shields.io/badge/GPU%20tests-168%2F168%20passing-brightgreen)
 
 [Quickstart](#5-minute-quickstart) · [Wiki](docs/wiki/Home.md) · [User Guide](docs/USER_GUIDE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Methods Paper](docs/paper/21cmcu_paper.md) · [Examples](examples/)
@@ -49,8 +49,8 @@ All timings were measured directly on node `b1` (64-core CPU host with `N_THREAD
 
 ```bash
 # Option A: One-command installer (checks Python >=3.12, headers, gcc, GSL, FFTW3f, CUDA, then runs `21cmcu doctor`)
-git clone https://github.com/HainaHuang729/21cmFAST-GPU.git
-cd 21cmFAST-GPU
+git clone https://github.com/HainaHuang729/21cmCU.git
+cd 21cmCU
 ./scripts/install.sh
 
 # Option B: Docker

@@ -37,7 +37,7 @@ legacy-cupy = ["cupy-cuda12x"]
 21cmfast = "py21cmfast.cli:app"
 
 [project.urls]
-Repository = "https://github.com/HainaHuang729/21cmFAST-GPU"
+Repository = "https://github.com/HainaHuang729/21cmCU"
 Upstream = "https://github.com/21cmfast/21cmFAST"
 
 [dependency-groups]

@@ -7,8 +7,8 @@
 ### Option A: One-Command Source Install (`scripts/install.sh`)
 
 ```bash
-git clone https://github.com/HainaHuang729/21cmFAST-GPU.git
-cd 21cmFAST-GPU
+git clone https://github.com/HainaHuang729/21cmCU.git
+cd 21cmCU
 ./scripts/install.sh              # auto-detects CUDA SM arches + toolchain + runs 21cmcu doctor
 # Or specify GPU architectures / venv:
 ./scripts/install.sh --cuda-archs 89 --venv .venv

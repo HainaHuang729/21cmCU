@@ -14,7 +14,7 @@ setup(
     description="Native CUDA/cuFFT 21cm cosmological simulation engine",
     long_description=(THISDIR / "README.md").read_text(encoding="utf8"),
     long_description_content_type="text/markdown",
-    url="https://github.com/HainaHuang729/21cmFAST-GPU",
+    url="https://github.com/HainaHuang729/21cmCU",
     packages=find_packages("src"),
     package_dir={"": "src"},
     include_package_data=True,
