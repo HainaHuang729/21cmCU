@@ -17,15 +17,19 @@ from py21cmfast.wrapper.inputs import (
 
 from .analysis import (
     lightcone_chunk_power_spectra,
+    lightcone_chunk_power_spectra_2d,
     power_spectrum_1d,
     power_spectrum_2d,
 )
 from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
 from .doctor import doctor
+from .inference import Likelihood21cm, SBISimulator
+from .interop import CudaFieldView, lightcone_to_cuda_views, to_cuda_view, to_torch
 from .io import save_lightcone
 from .observables import (
     add_thermal_noise_3d,
     apply_wedge_filter_3d,
+    field_moments_and_pdf,
     generate_sobol_parameter_grid,
     horizon_slope,
     horizon_wedge_mask,
@@ -124,7 +128,10 @@ __all__ = [
     *_p21.__all__,
     "BatchResult",
     "BatchTask",
+    "CudaFieldView",
     "CudaMode",
+    "Likelihood21cm",
+    "SBISimulator",
     "add_thermal_noise_3d",
     "apply_wedge_filter_3d",
     "cleanup_cuda",
@@ -134,12 +141,15 @@ __all__ = [
     "cuda_device_count",
     "cuda_stats",
     "doctor",
+    "field_moments_and_pdf",
     "generate_sobol_parameter_grid",
     "get_cuda_devices",
     "get_cuda_mode",
     "horizon_slope",
     "horizon_wedge_mask",
     "lightcone_chunk_power_spectra",
+    "lightcone_chunk_power_spectra_2d",
+    "lightcone_to_cuda_views",
     "power_spectrum_1d",
     "power_spectrum_2d",
     "reset_cuda_stats",
@@ -148,5 +158,7 @@ __all__ = [
     "save_lightcone",
     "set_cuda_devices",
     "set_cuda_mode",
+    "to_cuda_view",
+    "to_torch",
     "use_mode",
 ]

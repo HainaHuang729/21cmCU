@@ -127,6 +127,7 @@ def _execute_single_task(
                             sigma_mk=task.noise_sigma_mk,
                             redshift=float(c.redshift),
                             seed=int(inputs.random_seed) * 31 + int(round(float(c.redshift) * 100)),
+                            use_cuda=use_cuda,
                         )
                     if task.wedge_filter:
                         tb = py21cmcu.apply_wedge_filter_3d(
@@ -231,6 +232,7 @@ def _execute_single_task(
                         sigma_mk=task.noise_sigma_mk,
                         redshift=mean_z,
                         seed=int(inputs.random_seed) * 31 + 7,
+                        use_cuda=use_cuda,
                     )
                 if task.wedge_filter:
                     lc_arr = py21cmcu.apply_wedge_filter_3d(

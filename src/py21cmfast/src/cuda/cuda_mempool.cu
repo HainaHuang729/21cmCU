@@ -774,4 +774,69 @@ void p21_cuda_registry_clear(void) {
     p21_cuda_radiation_clear();
 }
 
+int p21_cuda_export_device_f32(const float *h_ptr, size_t n_elems, unsigned long long *d_ptr_out,
+                               int *device_id_out) {
+    if (!h_ptr || n_elems == 0 || !d_ptr_out || !device_id_out) {
+        return -1;
+    }
+    if (!p21_cuda_ensure_init()) {
+        return -1;
+    }
+    cudaStream_t stream = p21_cuda_stream();
+    size_t nbytes = n_elems * sizeof(float);
+
+    void *d_export = nullptr;
+    if (!P21_CUDA_OK(cudaMalloc(&d_export, nbytes))) {
+        p21_cuda_registry_evict_to_free(nbytes, stream);
+        if (!P21_CUDA_OK(cudaMalloc(&d_export, nbytes))) {
+            return -1;
+        }
+    }
+
+    const void *d_cached = nullptr;
+    if (nbytes <= p21_cuda_registry_max_entry_bytes()) {
+        d_cached = p21_cuda_registry_get_or_upload(h_ptr, nbytes, stream);
+    }
+
+    bool ok = false;
+    if (d_cached) {
+        ok = P21_CUDA_OK(
+            cudaMemcpyAsync(d_export, d_cached, nbytes, cudaMemcpyDeviceToDevice, stream));
+    } else {
+        ok = P21_CUDA_OK(
+            cudaMemcpyAsync(d_export, h_ptr, nbytes, cudaMemcpyHostToDevice, stream));
+        if (ok) {
+            p21_cuda_stats_mut()->registry_h2d_bytes += (unsigned long long int)nbytes;
+        }
+    }
+    if (!ok || !P21_CUDA_OK(cudaStreamSynchronize(stream))) {
+        cudaFree(d_export);
+        return -1;
+    }
+
+    *d_ptr_out = (unsigned long long)(uintptr_t)d_export;
+    *device_id_out = p21_cuda_current_device();
+    return 0;
+}
+
+void p21_cuda_free_exported_device_ptr(unsigned long long d_ptr) {
+    if (d_ptr == 0ULL) {
+        return;
+    }
+    cudaFree((void *)(uintptr_t)d_ptr);
+}
+
+int p21_cuda_device_copy_to_host_f32(unsigned long long d_ptr, float *h_out, size_t n_elems) {
+    if (d_ptr == 0ULL || !h_out || n_elems == 0) {
+        return -1;
+    }
+    size_t nbytes = n_elems * sizeof(float);
+    if (!P21_CUDA_OK(cudaMemcpy(h_out, (const void *)(uintptr_t)d_ptr, nbytes,
+                                cudaMemcpyDeviceToHost))) {
+        return -1;
+    }
+    p21_cuda_stats_add_d2h(nbytes);
+    return 0;
+}
+
 }  // extern "C"

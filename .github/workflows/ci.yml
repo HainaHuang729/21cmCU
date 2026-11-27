@@ -37,4 +37,5 @@ jobs:
             tests/native/test_21cmcu_phase4_h.py \
             tests/native/test_21cmcu_phase4_i.py \
             tests/native/test_21cmcu_phase5_g.py \
-            tests/native/test_21cmcu_phase6_lm.py
+            tests/native/test_21cmcu_phase6_lm.py \
+            tests/native/test_21cmcu_phase7_oq.py

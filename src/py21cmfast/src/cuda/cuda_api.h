@@ -275,6 +275,21 @@ int p21_cuda_mgpu_fft_r2c_host(const float *h_in, float *h_out_complex, int nx, 
 int p21_cuda_mgpu_fft_c2r_host(const float *h_in_complex, float *h_out_real, int nx, int ny,
                                int nz);
 
+/* Direction O: GPU-native observables & non-Gaussian statistics */
+int p21_cuda_wedge_filter_3d(const float *h_in, float *h_out, int nx, int ny, int nz, double lx,
+                             double ly, double lz, int los_axis, double slope, double buffer_mpc);
+int p21_cuda_add_thermal_noise_3d(const float *h_in, float *h_out, size_t n_elems, float sigma_mk,
+                                  unsigned long long seed);
+int p21_cuda_field_moments_and_pdf(const float *h_in, size_t n_elems, int n_bins, double vmin,
+                                   double vmax, double *mean_out, double *var_out, double *skew_out,
+                                   double *kurt_out, unsigned long long *hist_out);
+
+/* Direction Q: Zero-copy CUDA DLPack / device pointer interop */
+int p21_cuda_export_device_f32(const float *h_ptr, size_t n_elems, unsigned long long *d_ptr_out,
+                               int *device_id_out);
+void p21_cuda_free_exported_device_ptr(unsigned long long d_ptr);
+int p21_cuda_device_copy_to_host_f32(unsigned long long d_ptr, float *h_out, size_t n_elems);
+
 #ifdef __cplusplus
 }
 #endif

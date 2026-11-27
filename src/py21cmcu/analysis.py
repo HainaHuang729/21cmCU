@@ -412,22 +412,24 @@ def power_spectrum_2d(
     )
 
 
-def lightcone_chunk_power_spectra(
+def _lightcone_chunk_slices(
     lightcone: LightCone,
-    quantity: str = "brightness_temp",
-    *,
-    n_chunks: int | None = None,
-    chunk_depth: int | None = None,
-    n_bins: int = 16,
-    use_cuda: bool | None = None,
-    **ps_kwargs,
-) -> dict[str, object]:
-    """Split a rectilinear lightcone along its LoS axis and compute 1D power spectra per chunk."""
+    quantity: str,
+    cross_quantity: str | None,
+    n_chunks: int | None,
+    chunk_depth: int | None,
+) -> tuple[np.ndarray, np.ndarray | None, float, float, float, np.ndarray, np.ndarray]:
     lc_box = np.asarray(lightcone.lightcones[quantity])
     if lc_box.ndim != 3:
         raise ValueError(
             f"lightcone_chunk_power_spectra requires a 3D rectilinear lightcone, got {lc_box.shape}"
         )
+    lc_box_b = np.asarray(lightcone.lightcones[cross_quantity]) if cross_quantity else None
+    if lc_box_b is not None and lc_box_b.shape != lc_box.shape:
+        raise ValueError(
+            f"cross_quantity {cross_quantity!r} shape {lc_box_b.shape} != {lc_box.shape}"
+        )
+
     nx, ny, nz = lc_box.shape
     cell_mpc = float(lightcone.inputs.simulation_options.cell_size.value)
     lx = float(nx) * cell_mpc
@@ -444,23 +446,96 @@ def lightcone_chunk_power_spectra(
 
     lc_z = np.asarray(lightcone.lightcone_redshifts, dtype=np.float64)
     edges = np.linspace(0, nz, n_c + 1, dtype=int)
+    return lc_box, lc_box_b, cell_mpc, lx, ly, lc_z, edges
+
+
+def lightcone_chunk_power_spectra(
+    lightcone: LightCone,
+    quantity: str = "brightness_temp",
+    *,
+    cross_quantity: str | None = None,
+    n_chunks: int | None = None,
+    chunk_depth: int | None = None,
+    n_bins: int = 16,
+    use_cuda: bool | None = None,
+    **ps_kwargs,
+) -> dict[str, object]:
+    """Split a rectilinear lightcone along its LoS axis and compute 1D auto/cross PS per chunk."""
+    lc_box, lc_box_b, cell_mpc, lx, ly, lc_z, edges = _lightcone_chunk_slices(
+        lightcone, quantity, cross_quantity, n_chunks, chunk_depth
+    )
 
     chunks = []
     chunk_z = []
-    for c in range(n_c):
+    for c in range(edges.size - 1):
         lo, hi = int(edges[c]), int(edges[c + 1])
         if hi <= lo:
             continue
-        sub = np.ascontiguousarray(lc_box[:, :, lo:hi], dtype=np.float32)
+        sub_a = np.ascontiguousarray(lc_box[:, :, lo:hi], dtype=np.float32)
+        sub_b = (
+            np.ascontiguousarray(lc_box_b[:, :, lo:hi], dtype=np.float32)
+            if lc_box_b is not None
+            else None
+        )
         lz = float(hi - lo) * cell_mpc
         ps = power_spectrum_1d(
-            sub,
+            sub_a,
             (lx, ly, lz),
+            field_b=sub_b,
             n_bins=n_bins,
             use_cuda=use_cuda,
             **ps_kwargs,
         )
         chunks.append(ps)
+        chunk_z.append(float(np.mean(lc_z[lo:hi])))
+
+    return {
+        "chunk_redshifts": np.asarray(chunk_z, dtype=np.float64),
+        "chunks": chunks,
+    }
+
+
+def lightcone_chunk_power_spectra_2d(
+    lightcone: LightCone,
+    quantity: str = "brightness_temp",
+    *,
+    cross_quantity: str | None = None,
+    n_chunks: int | None = None,
+    chunk_depth: int | None = None,
+    n_kperp: int = 10,
+    n_kpara: int = 10,
+    use_cuda: bool | None = None,
+    **ps2d_kwargs,
+) -> dict[str, object]:
+    """Split a rectilinear lightcone along its LoS axis and compute 2D cylindrical PS per chunk."""
+    lc_box, lc_box_b, cell_mpc, lx, ly, lc_z, edges = _lightcone_chunk_slices(
+        lightcone, quantity, cross_quantity, n_chunks, chunk_depth
+    )
+
+    chunks = []
+    chunk_z = []
+    for c in range(edges.size - 1):
+        lo, hi = int(edges[c]), int(edges[c + 1])
+        if hi <= lo:
+            continue
+        sub_a = np.ascontiguousarray(lc_box[:, :, lo:hi], dtype=np.float32)
+        sub_b = (
+            np.ascontiguousarray(lc_box_b[:, :, lo:hi], dtype=np.float32)
+            if lc_box_b is not None
+            else None
+        )
+        lz = float(hi - lo) * cell_mpc
+        ps2d = power_spectrum_2d(
+            sub_a,
+            (lx, ly, lz),
+            field_b=sub_b,
+            los_axis=2,
+            n_kperp=n_kperp,
+            n_kpara=n_kpara,
+            use_cuda=use_cuda,
+            **ps2d_kwargs,
+        )
+        chunks.append(ps2d)
         chunk_z.append(float(np.mean(lc_z[lo:hi])))
 
     return {
