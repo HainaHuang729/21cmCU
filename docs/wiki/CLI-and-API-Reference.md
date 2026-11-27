@@ -1,0 +1,56 @@
+# CLI & API Reference
+
+Back to [Home](Home.md) · Previous: [SBI & Batch Pipeline](SBI-and-Batch-Pipeline.md) · Next: [Architecture Overview](Architecture-Overview.md)
+
+## `21cmcu` CLI Commands
+
+`21cmcu` (`py21cmcu.cli:app`) inherits upstream `21cmfast` commands (`run`, `template`, `dev`, `predict`, `plot`, `migrate`) and adds three workflow subcommands:
+
+- **`21cmcu run coeval|lightcone ...`**
+  Upstream simulation runner with `--cuda-mode strict|fast` and `--no-use-cuda`.
+- **`21cmcu batch`**
+  Run CSV/JSON parameter sweeps or Sobol grids directly into checkpointed HDF5 summaries:
+  ```bash
+  21cmcu batch --sobol-samples 16 --mode lightcone --redshifts 6.5,8.0,9.5 \
+    --devices 0,1 --workers-per-gpu 2 --cuda-mode fast \
+    --wedge-filter --wedge-buffer 0.05 --noise-sigma-mk 2.0 --resume --out sbi.h5
+  ```
+  Supports both v4 names (`F_STAR10_ACG`, `F_ESC10_ACG`, `ALPHA_STAR_ACG`, `LX_OVER_SFR_ACG`) and legacy aliases (`F_STAR10`, `F_ESC10`, `ALPHA_STAR`, `L_X`, `F_STAR7_MINI`, `F_ESC7_MINI`, `ALPHA_STAR_MINI`, `L_X_MINI`).
+- **`21cmcu doctor [--as-json]`**
+  Inspect runtime versions, CUDA compilation/availability, GPU properties, `nvidia-smi topo -m`, compiler/library detection, and 24 GB grid sizing limits.
+- **`21cmcu bench [--suite lightcone,batch] [--json out.json] [--resume]`**
+  Run `benchmarks/bench_21cmcu.py` suites directly from the CLI.
+
+---
+
+## Environment Variables (`P21_*`)
+
+| Variable | Effect | Default |
+| --- | --- | --- |
+| `P21_USE_CUDA` | Enable CUDA acceleration globally (`1`/`true`) | `False` |
+| `P21_CUDA_MODE` | Precision mode: `strict` or `fast` | `strict` |
+| `P21_CUDA_LAZY_D2H` | Opt-in GPU-only intermediate residency (`1`/`true`) | `False` |
+| `P21_CUDA_DEVICES` | Active GPU IDs (e.g. `0,1,2` or `all`) | `None` (single GPU 0) |
+| `P21_CUDA_FAST_HALO_SAMPLER` | Control GPU halo sampler override | Config-linked |
+| `P21_CUDA_REGISTRY_MB` | Cap `DeviceFieldRegistry` VRAM budget (MiB) | Auto |
+| `P21_CUDA_REGISTRY_MAX_ENTRY_MB` | Max single cached array size in registry (MiB) | Auto |
+| `P21_CUDA_MGPU_SINGLE_SLAB` | Force single-work-slab multi-GPU FFT/IC mode (`1`) | Auto (`2048³` Zel'dovich) |
+| `P21_CUDA_FORCE_MGPU` | Force multi-GPU slab path on smaller test grids (`1`) | `0` |
+| `P21_CUDA_PERTURB_SLAB_X` | Override perturbation X-slab width | Auto |
+| `P21_CUDA_ION_SPILL_KSPACE` | Force host spill for ionization k-space arrays | Auto |
+| `P21_CLASS_CACHE` / `P21_CLASS_DISK_CACHE` | Toggle memory / `.npz` disk cache for `CLASS` tables | Enabled |
+
+---
+
+## `py21cmcu` Python API Exports
+
+Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`, `AngularLightconer`, `run_coeval`, `run_lightcone`, `compute_initial_conditions`, `perturb_field`, `compute_ionization_field`, `spin_temperature`, `brightness_temperature`, `config`, etc.), `py21cmcu` exports:
+
+- **Runtime & Device Control**:
+  `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`
+- **Analysis & Power Spectra**:
+  `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`
+- **I/O Compression**:
+  `save_lightcone()` (`compression="device-lzf" | "lzf" | "none"`)
+- **SBI & Batch Pipeline**:
+  `BatchTask`, `BatchResult`, `run_batch()`, `save_batch_h5()`, `horizon_slope()`, `horizon_wedge_mask()`, `apply_wedge_filter_3d()`, `add_thermal_noise_3d()`, `generate_sobol_parameter_grid()`

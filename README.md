@@ -60,6 +60,7 @@ with p21.use_mode("fast"):
 
 ## Roadmap & Documentation
 
+- **Wiki** (installation, quickstart, multi-GPU, SBI, API/CLI, FAQ): [docs/wiki/Home.md](docs/wiki/Home.md)
 - User & sizing guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - Standalone technical methods draft: [docs/paper/21cmcu_paper.md](docs/paper/21cmcu_paper.md) (LaTeX: [docs/paper/21cmcu_paper.tex](docs/paper/21cmcu_paper.tex))
 - Full benchmark suite, scaling analysis, and publication figures: [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
