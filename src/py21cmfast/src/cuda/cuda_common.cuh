@@ -140,6 +140,7 @@ bool p21_cuda_fft_r2c(const float *d_real, cufftComplex *d_complex, int nx, int 
 bool p21_cuda_fft_c2r(cufftComplex *d_complex_scratch, float *d_real, int nx, int ny, int nz,
                       bool padded, cudaStream_t stream);
 void p21_cuda_fft_clear_cache(void);
+void p21_mgpu_fft_clear_cache(void);
 
 bool p21_cuda_copy_and_filter_box(const cufftComplex *d_src, cufftComplex *d_dst, int nx, int ny,
                                   int nz, double box_len, double non_cubic_factor, int filter_type,

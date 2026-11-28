@@ -143,17 +143,29 @@
 
 ---
 
+## Completed Direction R (`v0.8.0-dev`) — Persistent Multi-GPU Plan Cache, Warm `BatchPool` & Zero-Disk Online SBI
+
+- **Persistent Per-GPU cuFFT Plan Cache (`cuda_mgpu.cu`, `cuda_common.cuh`, `cuda_runtime.cu`)**: replaced per-call plan creation/destruction in `mgpu_local_2d_r2c`, `mgpu_local_2d_c2r`, and `mgpu_local_1d_c2c` with a mutex-guarded, concurrency-safe (`in_use`-tracked) 64-entry per-device LRU cache, cleaned safely by `p21_mgpu_fft_clear_cache()` inside `p21_cuda_cleanup()`.
+- **Warm Persistent `BatchPool` & Integrated Post-Processing (`src/py21cmcu/batch.py`)**:
+  - Extended `BatchTask` (`instrument`, `instrument_kwargs`, `lazy_d2h`, `compute_moments`, `moments_n_bins`, `oblique_lightcone`, `oblique_direction`) and `BatchResult` (`moments`, `worker_pid`, HDF5 roundtrip persistence), automatically enabling `KEEP_3D_VELOCITIES=True` for velocity-corrected oblique lightcones.
+  - Added `BatchPool` (`map`, `imap(ordered=...)`, context manager, periodic `p21_cuda_registry_clear()` every `clear_registry_every` tasks) keeping worker processes, CUDA contexts, cuFFT plans, and CLASS tables resident across repeated SBI rounds; wired `run_batch(..., pool=...)`.
+- **Zero-Disk `OnlineSBIDataset` (`src/py21cmcu/inference.py`, `src/py21cmcu/__init__.py`)**:
+  - Upgraded `SBISimulator` with `instrument`, `batch_pool`, `lazy_d2h`, `oblique_lightcone`, and `BatchPool`-backed `"stats"`/`"ps1d"` batching.
+  - Added `OnlineSBIDataset` (subclassing `torch.utils.data.IterableDataset` when PyTorch is present, zero hard PyTorch dependency) supporting finite Scrambled Sobol and infinite Uniform streaming into NumPy or GPU PyTorch tensors via DLPack.
+- **Verification**:
+  - `USE_CUDA=1 CUDA_ARCHS="86;89"` wheel build compiled all 18 CUDA units (`cuda_mgpu.cu`, `cuda_dlink.o`, `CUDA: True`).
+  - **`81 passed, 53 skipped (GPU)`** across `tests/native/test_21cmcu_phase11_batchpool_sbi.py` and 9 existing native suites (`phase0`, `phase3_d`, `phase3_e`, `phase5_g`, `phase6_lm`, `phase7_oq`, `phase8_instrument`, `phase9_lightcone_viz`, `phase10_cpu_opt`) + [`examples/07_online_sbi_zero_disk.py`](../examples/07_online_sbi_zero_disk.py). *(Note: cluster GPUs on `phy-gpus` `debug` were 100% allocated during this verification run, so CUDA-only test cases were skipped.)*
+  - 4-round × 4-task `128/64` `E-INTEGRAL` + `SKA1-Low` + moments CPU benchmark (`workers_per_gpu=4`, `threads_per_worker=4`): cold `run_batch` **`20.439 s`** (`16` worker PIDs, `[5.479, 5.332, 5.647, 3.982] s`) vs warm `BatchPool` **`7.733 s`** (`4` persistent worker PIDs, `[3.660, 1.228, 1.227, 1.343] s`) — **`2.643×` overall speedup** (**`~4.3×`** on warm rounds).
+
+---
+
 ## Future Roadmap
 
-### Release `v0.8.0` — Extreme-Scale Multi-GPU & Persistent Throughput (Directions P & R)
+### Release `v0.8.0` — Extreme-Scale Multi-GPU EoR (Direction P)
 - **Direction P — Large-Scale Multi-GPU EoR & Sub-160 GiB `2048³` 2LPT Streaming**:
   - **Targets**: `src/py21cmfast/src/cuda_mgpu.cu`, `cuda_ic.cu`, `cuda_ionization.cu`, `cuda_radiation.cu`.
   - **Scope**: Extend distributed Y-slab decomposition to multi-GPU `1024³` full EoR evolution (`IonizedBox` / `TsBox`) and slab-streamed `<160 GiB` host-RAM `2048³` 2LPT IC on `3×–4× 24 GB` GPUs.
   - **Acceptance Criteria**: Numerical parity vs single-GPU/CPU at `256³` and `512³`, plus verified native `1024³` EoR & `2048³` 2LPT execution within 24 GB-per-GPU VRAM.
-- **Direction R — Persistent Multi-GPU cuFFT Plan Cache & `BatchPool`**:
-  - **Targets**: `src/py21cmfast/src/cuda_mgpu.cu`, `src/py21cmcu/batch.py`.
-  - **Scope**: Add per-GPU persistent cuFFT handle caching across Y-slab sub-transforms and introduce a warm persistent `BatchPool` worker pool amortizing CFFI/CUDA/CLASS initialization across `10k+` SBI draws.
-  - **Acceptance Criteria**: `≥1.5×` throughput gain on repeated small-box SBI sweeps (`64³–128³`) with bounded constant host/GPU memory across `10k` tasks.
 
 ### Release `v0.9.0` — Higher-Order Non-Gaussian Science & Multi-Probe Inference (Phases 10 & 11)
 - **Phase 10 — Higher-Order Non-Gaussian & Morphological Topology**:

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <list>
 #include <mutex>
 #include <stdlib.h>
 #include <string.h>
@@ -12,8 +13,159 @@ namespace {
 
 constexpr size_t kMgpuMaxStripBytes = 128ULL << 20;
 constexpr size_t kMgpuHostBounceBytes = 64ULL << 20;
+constexpr size_t kMgpuMaxCachedPlans = 64;
 constexpr int kMgpuThreads = 256;
 std::mutex g_mgpu_cufft_mtx;
+
+struct MgpuPlanKey {
+    int dev;
+    int kind; /* 0: 2D R2C (ny, nz), 1: 2D C2R (ny, nz), 2: 1D C2C (nx, 0) */
+    int n0;
+    int n1;
+    int batch;
+
+    bool operator==(const MgpuPlanKey &other) const {
+        return dev == other.dev && kind == other.kind && n0 == other.n0 && n1 == other.n1 &&
+               batch == other.batch;
+    }
+};
+
+struct MgpuPlanEntry {
+    MgpuPlanKey key;
+    cufftHandle handle = 0;
+    size_t work_size = 0;
+    bool in_use = false;
+};
+
+std::list<MgpuPlanEntry> g_mgpu_plan_lru;
+
+bool mgpu_create_plan(const MgpuPlanKey &key, cufftHandle *out_plan, size_t *out_work_size) {
+    cufftHandle plan = 0;
+    if (!P21_CUFFT_OK(cufftCreate(&plan))) {
+        return false;
+    }
+    if (!P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0))) {
+        cufftDestroy(plan);
+        return false;
+    }
+    size_t work_size = 0;
+    cufftResult res = CUFFT_INVALID_TYPE;
+    if (key.kind == 0 || key.kind == 1) {
+        int n2d[2] = {key.n0, key.n1};
+        int hz = key.n1 / 2 + 1;
+        int real_embed[2] = {key.n0, key.n1};
+        int cplx_embed[2] = {key.n0, hz};
+        int real_dist = key.n0 * key.n1;
+        int cplx_dist = key.n0 * hz;
+        int *inembed = (key.kind == 0) ? real_embed : cplx_embed;
+        int *onembed = (key.kind == 0) ? cplx_embed : real_embed;
+        int idist = (key.kind == 0) ? real_dist : cplx_dist;
+        int odist = (key.kind == 0) ? cplx_dist : real_dist;
+        cufftType ctype = (key.kind == 0) ? CUFFT_R2C : CUFFT_C2R;
+        res = cufftMakePlanMany(plan, 2, n2d, inembed, 1, idist, onembed, 1, odist, ctype,
+                                key.batch, &work_size);
+    } else if (key.kind == 2) {
+        int n1d[1] = {key.n0};
+        res = cufftMakePlanMany(plan, 1, n1d, n1d, 1, key.n0, n1d, 1, key.n0, CUFFT_C2C,
+                                key.batch, &work_size);
+    }
+    if (!P21_CUFFT_OK(res)) {
+        cufftDestroy(plan);
+        return false;
+    }
+    *out_plan = plan;
+    *out_work_size = work_size;
+    return true;
+}
+
+bool mgpu_acquire_plan(const MgpuPlanKey &key, cudaStream_t stream, cufftHandle *out_plan,
+                       size_t *out_work_size, bool *out_cached) {
+    std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+    if (!P21_CUDA_OK(cudaSetDevice(key.dev))) {
+        return false;
+    }
+
+    bool any_same_key_in_use = false;
+    for (auto it = g_mgpu_plan_lru.begin(); it != g_mgpu_plan_lru.end(); ++it) {
+        if (it->key == key) {
+            if (!it->in_use) {
+                if (!P21_CUFFT_OK(cufftSetStream(it->handle, stream))) {
+                    return false;
+                }
+                it->in_use = true;
+                g_mgpu_plan_lru.splice(g_mgpu_plan_lru.begin(), g_mgpu_plan_lru, it);
+                p21_cuda_stats_mut()->cufft_plan_hits++;
+                *out_plan = it->handle;
+                *out_work_size = it->work_size;
+                *out_cached = true;
+                return true;
+            }
+            any_same_key_in_use = true;
+        }
+    }
+
+    cufftHandle plan = 0;
+    size_t work_size = 0;
+    if (!mgpu_create_plan(key, &plan, &work_size)) {
+        return false;
+    }
+    if (!P21_CUFFT_OK(cufftSetStream(plan, stream))) {
+        cufftDestroy(plan);
+        return false;
+    }
+    p21_cuda_stats_mut()->cufft_plan_misses++;
+
+    bool cached = false;
+    if (!any_same_key_in_use) {
+        bool slot_ready = g_mgpu_plan_lru.size() < kMgpuMaxCachedPlans;
+        if (!slot_ready) {
+            for (auto rit = g_mgpu_plan_lru.rbegin(); rit != g_mgpu_plan_lru.rend(); ++rit) {
+                if (!rit->in_use) {
+                    int evict_dev = rit->key.dev;
+                    cufftHandle evict_handle = rit->handle;
+                    g_mgpu_plan_lru.erase(std::prev(rit.base()));
+                    if (evict_dev != key.dev) {
+                        cudaSetDevice(evict_dev);
+                    }
+                    cufftDestroy(evict_handle);
+                    if (evict_dev != key.dev) {
+                        cudaSetDevice(key.dev);
+                    }
+                    p21_cuda_stats_mut()->cufft_plan_evictions++;
+                    slot_ready = true;
+                    break;
+                }
+            }
+        }
+        if (slot_ready) {
+            g_mgpu_plan_lru.push_front(MgpuPlanEntry{key, plan, work_size, true});
+            cached = true;
+        }
+    }
+
+    *out_plan = plan;
+    *out_work_size = work_size;
+    *out_cached = cached;
+    return true;
+}
+
+void mgpu_release_plan(int dev, cufftHandle plan, bool cached) {
+    if (!plan) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+    if (cached) {
+        for (auto &entry : g_mgpu_plan_lru) {
+            if (entry.handle == plan) {
+                entry.in_use = false;
+                return;
+            }
+        }
+    }
+    cudaSetDevice(dev);
+    cufftDestroy(plan);
+    cudaGetLastError();
+}
 
 struct MgpuHostBounce {
     void *ptr = nullptr;
@@ -225,63 +377,20 @@ bool mgpu_local_2d_r2c(int dev, cudaStream_t stream, int sx, int ny, int nz, con
     const int strip =
         std::max(1, std::min(sx, (int)(kMgpuMaxStripBytes / std::max<size_t>(1, plane_bytes))));
 
-    int n2d[2] = {ny, nz};
-    int inembed[2] = {ny, nz};
-    int onembed[2] = {ny, hz};
-
-    auto run_strip = [&](int batch, int x_off) -> bool {
+    auto run_range = [&](int batch, int x_start, int x_end) -> bool {
         cufftHandle plan = 0;
         size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
-                                                1, (int)plane_cplx, CUFFT_R2C, batch, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool cached = false;
+        if (!mgpu_acquire_plan(MgpuPlanKey{dev, 0, ny, nz, batch}, stream, &plan, &work_size,
+                               &cached)) {
+            return false;
         }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
-        if (ok) {
-            ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work)) &&
-                 P21_CUFFT_OK(cufftExecR2C(
-                     plan, (cufftReal *)const_cast<float *>(d_real + (size_t)x_off * plane_real),
-                     d_cplx + (size_t)x_off * plane_cplx));
-        }
-        if (d_work) {
-            p21_mgpu_free(dev, d_work, stream);
-        }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        return ok;
-    };
-
-    int full_end = (sx / strip) * strip;
-    if (full_end > 0) {
-        cufftHandle plan = 0;
-        size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_real, onembed,
-                                                1, (int)plane_cplx, CUFFT_R2C, strip, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
-        }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
+        void *d_work = work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
+        bool ok = !(work_size > 0 && !d_work);
         if (ok) {
             ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work));
         }
-        for (int x = 0; ok && x < full_end; x += strip) {
+        for (int x = x_start; ok && x < x_end; x += batch) {
             ok = P21_CUFFT_OK(cufftExecR2C(
                 plan, (cufftReal *)const_cast<float *>(d_real + (size_t)x * plane_real),
                 d_cplx + (size_t)x * plane_cplx));
@@ -289,16 +398,16 @@ bool mgpu_local_2d_r2c(int dev, cudaStream_t stream, int sx, int ny, int nz, con
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        if (!ok) {
-            return false;
-        }
+        mgpu_release_plan(dev, plan, cached);
+        return ok;
+    };
+
+    int full_end = (sx / strip) * strip;
+    if (full_end > 0 && !run_range(strip, 0, full_end)) {
+        return false;
     }
     if (full_end < sx) {
-        return run_strip(sx - full_end, full_end);
+        return run_range(sx - full_end, full_end, sx);
     }
     return true;
 }
@@ -318,78 +427,36 @@ bool mgpu_local_2d_c2r(int dev, cudaStream_t stream, int sx, int ny, int nz, cuf
     const int strip =
         std::max(1, std::min(sx, (int)(kMgpuMaxStripBytes / std::max<size_t>(1, plane_bytes))));
 
-    int n2d[2] = {ny, nz};
-    int inembed[2] = {ny, hz};
-    int onembed[2] = {ny, nz};
-
-    auto run_tail = [&](int batch, int x_off) -> bool {
+    auto run_range = [&](int batch, int x_start, int x_end) -> bool {
         cufftHandle plan = 0;
         size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
-                                                1, (int)plane_real, CUFFT_C2R, batch, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool cached = false;
+        if (!mgpu_acquire_plan(MgpuPlanKey{dev, 1, ny, nz, batch}, stream, &plan, &work_size,
+                               &cached)) {
+            return false;
         }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
-        if (ok) {
-            ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work)) &&
-                 P21_CUFFT_OK(cufftExecC2R(plan, d_cplx + (size_t)x_off * plane_cplx,
-                                           (cufftReal *)(d_real + (size_t)x_off * plane_real)));
-        }
-        if (d_work) {
-            p21_mgpu_free(dev, d_work, stream);
-        }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        return ok;
-    };
-
-    int full_end = (sx / strip) * strip;
-    if (full_end > 0) {
-        cufftHandle plan = 0;
-        size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 2, n2d, inembed, 1, (int)plane_cplx, onembed,
-                                                1, (int)plane_real, CUFFT_C2R, strip, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
-        }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
+        void *d_work = work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
+        bool ok = !(work_size > 0 && !d_work);
         if (ok) {
             ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work));
         }
-        for (int x = 0; ok && x < full_end; x += strip) {
+        for (int x = x_start; ok && x < x_end; x += batch) {
             ok = P21_CUFFT_OK(cufftExecC2R(plan, d_cplx + (size_t)x * plane_cplx,
                                            (cufftReal *)(d_real + (size_t)x * plane_real)));
         }
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        if (!ok) {
-            return false;
-        }
+        mgpu_release_plan(dev, plan, cached);
+        return ok;
+    };
+
+    int full_end = (sx / strip) * strip;
+    if (full_end > 0 && !run_range(strip, 0, full_end)) {
+        return false;
     }
     if (full_end < sx) {
-        return run_tail(sx - full_end, full_end);
+        return run_range(sx - full_end, full_end, sx);
     }
     return true;
 }
@@ -406,74 +473,36 @@ bool mgpu_local_1d_c2c(int dev, cudaStream_t stream, int n_rows, int nx, cufftCo
     const int strip =
         std::max(1, std::min(n_rows, (int)(kMgpuMaxStripBytes / std::max<size_t>(1, row_bytes))));
 
-    auto run_tail = [&](int batch, int row_off) -> bool {
+    auto run_range = [&](int batch, int r_start, int r_end) -> bool {
         cufftHandle plan = 0;
         size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C,
-                                                batch, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
+        bool cached = false;
+        if (!mgpu_acquire_plan(MgpuPlanKey{dev, 2, nx, 0, batch}, stream, &plan, &work_size,
+                               &cached)) {
+            return false;
         }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
-        if (ok) {
-            cufftComplex *ptr = d_y + (size_t)row_off * (size_t)nx;
-            ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work)) &&
-                 P21_CUFFT_OK(cufftExecC2C(plan, ptr, ptr, dir));
-        }
-        if (d_work) {
-            p21_mgpu_free(dev, d_work, stream);
-        }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        return ok;
-    };
-
-    int full_end = (n_rows / strip) * strip;
-    if (full_end > 0) {
-        cufftHandle plan = 0;
-        size_t work_size = 0;
-        bool ok = false;
-        {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            ok = P21_CUFFT_OK(cufftCreate(&plan)) &&
-                 P21_CUFFT_OK(cufftSetAutoAllocation(plan, 0)) &&
-                 P21_CUFFT_OK(cufftMakePlanMany(plan, 1, &nx, &nx, 1, nx, &nx, 1, nx, CUFFT_C2C,
-                                                strip, &work_size)) &&
-                 P21_CUFFT_OK(cufftSetStream(plan, stream));
-        }
-        void *d_work = ok && work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
-        if (ok && work_size > 0 && !d_work) {
-            ok = false;
-        }
+        void *d_work = work_size > 0 ? p21_mgpu_malloc(dev, work_size, stream) : nullptr;
+        bool ok = !(work_size > 0 && !d_work);
         if (ok) {
             ok = P21_CUFFT_OK(cufftSetWorkArea(plan, d_work));
         }
-        for (int r = 0; ok && r < full_end; r += strip) {
+        for (int r = r_start; ok && r < r_end; r += batch) {
             cufftComplex *ptr = d_y + (size_t)r * (size_t)nx;
             ok = P21_CUFFT_OK(cufftExecC2C(plan, ptr, ptr, dir));
         }
         if (d_work) {
             p21_mgpu_free(dev, d_work, stream);
         }
-        if (plan) {
-            std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
-            cufftDestroy(plan);
-        }
-        if (!ok) {
-            return false;
-        }
+        mgpu_release_plan(dev, plan, cached);
+        return ok;
+    };
+
+    int full_end = (n_rows / strip) * strip;
+    if (full_end > 0 && !run_range(strip, 0, full_end)) {
+        return false;
     }
     if (full_end < n_rows) {
-        return run_tail(n_rows - full_end, full_end);
+        return run_range(n_rows - full_end, full_end, n_rows);
     }
     return true;
 }
@@ -1532,4 +1561,24 @@ extern "C" int p21_cuda_mgpu_fft_c2r_host(const float *h_in_complex, float *h_ou
     }
     grid.destroy();
     return ok ? 0 : -1;
+}
+
+void p21_mgpu_fft_clear_cache(void) {
+    std::lock_guard<std::mutex> lock(g_mgpu_cufft_mtx);
+    int prev_dev = -1;
+    if (cudaGetDevice(&prev_dev) != cudaSuccess) {
+        prev_dev = -1;
+        cudaGetLastError();
+    }
+    for (const auto &entry : g_mgpu_plan_lru) {
+        if (entry.handle) {
+            cudaSetDevice(entry.key.dev);
+            cufftDestroy(entry.handle);
+        }
+    }
+    g_mgpu_plan_lru.clear();
+    if (prev_dev >= 0) {
+        cudaSetDevice(prev_dev);
+    }
+    cudaGetLastError();
 }

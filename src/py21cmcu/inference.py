@@ -1,16 +1,24 @@
-"""High-level likelihood (21CMMC) and SBI simulator wrappers for 21cmCU."""
+"""High-level likelihood (21CMMC), SBI simulator, and zero-disk dataset streaming for 21cmCU."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import math
+from collections.abc import Iterator, Sequence
 from typing import Any, Literal
 
 import numpy as np
+from scipy.stats import qmc
 
 from .analysis import _normalize_box_length, lightcone_chunk_power_spectra, power_spectrum_1d
-from .batch import BatchTask, run_batch
+from .batch import BatchPool, BatchTask, run_batch
+from .instrument import mock_observation_3d
 from .interop import to_cuda_view, to_torch
 from .observables import add_thermal_noise_3d, apply_wedge_filter_3d, field_moments_and_pdf
+
+try:
+    from torch.utils.data import IterableDataset as _IterableDatasetBase
+except ImportError:
+    _IterableDatasetBase = object  # type: ignore[assignment,misc]
 
 _ALIAS_MAP = {
     "F_STAR10": "F_STAR10_ACG",
@@ -204,10 +212,15 @@ class SBISimulator:
         wedge_filter: bool = True,
         wedge_buffer: float = 0.05,
         noise_sigma_mk: float | None = 2.0,
+        instrument: str | Any | None = None,
+        instrument_kwargs: dict[str, Any] | None = None,
         cuda_mode: Literal["strict", "fast"] = "fast",
         use_cuda: bool = True,
+        lazy_d2h: bool = True,
+        oblique_lightcone: bool = False,
         devices: tuple[int, ...] = (0,),
         workers_per_gpu: int = 1,
+        batch_pool: BatchPool | None = None,
         as_torch: bool = False,
         as_cuda_view: bool = False,
     ) -> None:
@@ -222,10 +235,15 @@ class SBISimulator:
         self.wedge_filter = bool(wedge_filter)
         self.wedge_buffer = float(wedge_buffer)
         self.noise_sigma_mk = noise_sigma_mk
+        self.instrument = instrument
+        self.instrument_kwargs = dict(instrument_kwargs) if instrument_kwargs is not None else {}
         self.cuda_mode = cuda_mode
         self.use_cuda = bool(use_cuda)
+        self.lazy_d2h = bool(lazy_d2h)
+        self.oblique_lightcone = bool(oblique_lightcone)
         self.devices = tuple(devices)
         self.workers_per_gpu = int(workers_per_gpu)
+        self.batch_pool = batch_pool
         self.as_torch = bool(as_torch)
         self.as_cuda_view = bool(as_cuda_view)
 
@@ -241,7 +259,7 @@ class SBISimulator:
             float(inputs.simulation_options.NON_CUBIC_FACTOR * inputs.simulation_options.BOX_LEN),
         )
 
-        with py21cmcu.use_mode(self.cuda_mode, use_cuda=self.use_cuda, lazy_d2h=True):
+        with py21cmcu.use_mode(self.cuda_mode, use_cuda=self.use_cuda, lazy_d2h=self.lazy_d2h):
             if self.mode == "coeval":
                 cv = py21cmcu.run_coeval(
                     inputs=inputs, out_redshifts=[z_out], write=False, regenerate=True
@@ -251,10 +269,18 @@ class SBISimulator:
                 mean_tb = float(np.mean(arr))
                 box_eval = box_len
                 z_eval = z_out
+                noise_seed = int(inputs.random_seed) * 31 + int(round(z_eval * 100))
             else:
+                if self.oblique_lightcone and not inputs.matter_options.KEEP_3D_VELOCITIES:
+                    inputs = inputs.evolve_input_structs(KEEP_3D_VELOCITIES=True)
                 min_z = self.min_redshift if self.min_redshift is not None else z_nodes[0] + 0.05
                 max_z = self.max_redshift if self.max_redshift is not None else z_nodes[-1] - 0.05
-                lc_def = py21cmcu.RectilinearLightconer.between_redshifts(
+                lc_cls = (
+                    py21cmcu.ObliqueRectilinearLightconer
+                    if self.oblique_lightcone
+                    else py21cmcu.RectilinearLightconer
+                )
+                lc_def = lc_cls.between_redshifts(
                     min_redshift=float(min_z),
                     max_redshift=float(max_z),
                     resolution=inputs.simulation_options.cell_size,
@@ -275,29 +301,47 @@ class SBISimulator:
                 cell = float(inputs.simulation_options.cell_size.value)
                 box_eval = (arr.shape[0] * cell, arr.shape[1] * cell, arr.shape[2] * cell)
                 z_eval = float(np.mean(lc.lightcone_redshifts))
+                noise_seed = int(inputs.random_seed) * 31 + 7
 
-            if self.noise_sigma_mk is not None:
-                arr = add_thermal_noise_3d(
+            if self.instrument is not None:
+                arr = mock_observation_3d(
                     arr,
                     box_eval,
-                    sigma_mk=self.noise_sigma_mk,
                     redshift=z_eval,
-                    seed=int(inputs.random_seed) * 31 + 7,
-                    use_cuda=self.use_cuda,
-                )
-            if self.wedge_filter:
-                arr = apply_wedge_filter_3d(
-                    arr,
-                    box_eval,
-                    z_eval,
-                    buffer_h_mpc=self.wedge_buffer,
+                    instrument=self.instrument,
+                    los_axis=2,
+                    seed=noise_seed,
                     cosmo=inputs.cosmo_params.cosmo,
                     use_cuda=self.use_cuda,
+                    **self.instrument_kwargs,
                 )
+            else:
+                if self.noise_sigma_mk is not None:
+                    arr = add_thermal_noise_3d(
+                        arr,
+                        box_eval,
+                        sigma_mk=self.noise_sigma_mk,
+                        redshift=z_eval,
+                        seed=noise_seed,
+                        use_cuda=self.use_cuda,
+                    )
+                if self.wedge_filter:
+                    arr = apply_wedge_filter_3d(
+                        arr,
+                        box_eval,
+                        z_eval,
+                        buffer_h_mpc=self.wedge_buffer,
+                        cosmo=inputs.cosmo_params.cosmo,
+                        use_cuda=self.use_cuda,
+                    )
 
             if self.summary == "field":
                 if self.as_torch:
-                    return to_torch(arr)
+                    if self.use_cuda and py21cmcu.cuda_compiled() and py21cmcu.cuda_available():
+                        return to_torch(arr)
+                    import torch
+
+                    return torch.from_numpy(np.ascontiguousarray(arr, dtype=np.float32))
                 if self.as_cuda_view:
                     return to_cuda_view(arr)
                 return arr
@@ -307,10 +351,76 @@ class SBISimulator:
             )
             delta2 = np.nan_to_num(ps["delta_sq"], nan=0.0).astype(np.float32)
             if self.summary == "ps1d":
-                vec = delta2
-            else:
-                mom = field_moments_and_pdf(arr, n_bins=16, use_cuda=self.use_cuda)
-                vec = np.concatenate(
+                return delta2
+            mom = field_moments_and_pdf(arr, n_bins=16, use_cuda=self.use_cuda)
+            return np.concatenate(
+                [
+                    np.array(
+                        [mean_xh, mean_tb, mom["std"], mom["skewness"], mom["kurtosis"]],
+                        dtype=np.float32,
+                    ),
+                    delta2,
+                ]
+            )
+
+    def _run_summary_batch(self, arr: np.ndarray) -> np.ndarray:
+        z_out_tuple = (
+            (float(self.out_redshift),)
+            if self.out_redshift is not None and self.mode == "coeval"
+            else None
+        )
+        want_moments = self.summary == "stats"
+        tasks = [
+            BatchTask(
+                task_id=f"sbi_{i:04d}",
+                inputs=_evolve_from_vector(self.base_inputs, self.param_names, arr[i], seed_offset=i),
+                mode=self.mode,
+                out_redshifts=z_out_tuple,
+                min_redshift=self.min_redshift,
+                max_redshift=self.max_redshift,
+                cuda_mode=self.cuda_mode,
+                apply_rsds=(self.mode == "lightcone"),
+                include_dvdr_in_tau21=True,
+                quantities=("brightness_temp", "neutral_fraction"),
+                ps_n_bins=self.ps_n_bins,
+                extra_ps_kwargs={"remove_mean": True},
+                wedge_filter=self.wedge_filter,
+                wedge_buffer=self.wedge_buffer,
+                noise_sigma_mk=self.noise_sigma_mk,
+                instrument=self.instrument,
+                instrument_kwargs=dict(self.instrument_kwargs),
+                lazy_d2h=self.lazy_d2h,
+                compute_moments=want_moments,
+                moments_n_bins=16,
+                oblique_lightcone=self.oblique_lightcone,
+                lightcone_chunk_depth=999_999 if self.mode == "lightcone" else None,
+            )
+            for i in range(arr.shape[0])
+        ]
+        if self.batch_pool is not None:
+            results = self.batch_pool.map(tasks)
+        else:
+            results = run_batch(
+                tasks,
+                devices=self.devices,
+                workers_per_gpu=self.workers_per_gpu,
+                use_cuda=self.use_cuda,
+            )
+
+        rows = []
+        for res in results:
+            if not res.ok:
+                raise RuntimeError(res.error or f"BatchTask {res.task_id} failed")
+            delta2 = np.nan_to_num(res.ps_1d["spectra"][0]["delta_sq"], nan=0.0).astype(np.float32)
+            if not want_moments:
+                rows.append(delta2)
+                continue
+            mom = res.moments[0] if isinstance(res.moments, list) else res.moments
+            assert mom is not None
+            mean_xh = float(np.mean(res.global_xH))
+            mean_tb = float(np.mean(res.global_Tb))
+            rows.append(
+                np.concatenate(
                     [
                         np.array(
                             [mean_xh, mean_tb, mom["std"], mom["skewness"], mom["kurtosis"]],
@@ -319,7 +429,8 @@ class SBISimulator:
                         delta2,
                     ]
                 )
-            return vec
+            )
+        return np.stack(rows, axis=0)
 
     def __call__(self, theta: Sequence[float] | np.ndarray) -> Any:
         arr = np.asarray(theta, dtype=np.float64)
@@ -331,41 +442,117 @@ class SBISimulator:
         if self.summary == "field":
             return [self._simulate_single_stats(arr[i], idx=i) for i in range(arr.shape[0])]
 
-        if self.summary == "ps1d" and len(arr) >= 2:
-            tasks = []
-            for i in range(arr.shape[0]):
-                inp = _evolve_from_vector(self.base_inputs, self.param_names, arr[i], seed_offset=i)
-                tasks.append(
-                    BatchTask(
-                        task_id=f"sbi_{i:04d}",
-                        inputs=inp,
-                        mode=self.mode,
-                        out_redshifts=(float(self.out_redshift),)
-                        if self.out_redshift is not None and self.mode == "coeval"
-                        else None,
-                        min_redshift=self.min_redshift,
-                        max_redshift=self.max_redshift,
-                        cuda_mode=self.cuda_mode,
-                        ps_n_bins=self.ps_n_bins,
-                        wedge_filter=self.wedge_filter,
-                        wedge_buffer=self.wedge_buffer,
-                        noise_sigma_mk=self.noise_sigma_mk,
-                    )
-                )
-            results = run_batch(
-                tasks,
-                devices=self.devices,
-                workers_per_gpu=self.workers_per_gpu,
-                use_cuda=self.use_cuda,
-            )
-            rows = [
-                np.nan_to_num(r.ps_1d["spectra"][0]["delta_sq"], nan=0.0).astype(np.float32)
-                for r in results
-            ]
-            return np.stack(rows, axis=0)
+        if self.summary in ("ps1d", "stats") and (
+            self.batch_pool is not None or (self.summary == "ps1d" and len(arr) >= 2)
+        ):
+            return self._run_summary_batch(arr)
 
         rows = [self._simulate_single_stats(arr[i], idx=i) for i in range(arr.shape[0])]
         return np.stack(rows, axis=0)
 
 
-__all__ = ["Likelihood21cm", "SBISimulator"]
+class OnlineSBIDataset(_IterableDatasetBase):
+    """Zero-disk on-the-fly parameter-to-observable streaming dataset for SBI / PyTorch."""
+
+    def __init__(
+        self,
+        simulator: SBISimulator,
+        param_bounds: dict[str, tuple[float, float]],
+        *,
+        n_samples: int | None = None,
+        batch_size: int = 1,
+        sampling: Literal["sobol", "uniform"] = "sobol",
+        seed: int = 42,
+        as_torch: bool = False,
+        seed_stride: int = 1_000_003,
+    ) -> None:
+        super().__init__()
+        if batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
+        if n_samples is not None and n_samples < 1:
+            raise ValueError(f"n_samples must be >= 1 or None, got {n_samples}")
+        if sampling not in ("sobol", "uniform"):
+            raise ValueError(f"Unsupported sampling mode {sampling!r}; expected 'sobol' or 'uniform'")
+
+        missing = [name for name in simulator.param_names if name not in param_bounds]
+        if missing:
+            raise ValueError(f"param_bounds missing simulator parameters: {missing}")
+
+        lo = np.array([float(param_bounds[k][0]) for k in simulator.param_names], dtype=np.float64)
+        hi = np.array([float(param_bounds[k][1]) for k in simulator.param_names], dtype=np.float64)
+        if np.any(hi < lo):
+            raise ValueError("All parameter bounds must satisfy upper >= lower")
+
+        self.simulator = simulator
+        self.param_bounds = {k: (float(v[0]), float(v[1])) for k, v in param_bounds.items()}
+        self._lo = lo
+        self._hi = hi
+        self.n_samples = int(n_samples) if n_samples is not None else None
+        self.batch_size = int(batch_size)
+        self.sampling = sampling
+        self.seed = int(seed)
+        self.as_torch = bool(as_torch)
+        self.seed_stride = int(seed_stride)
+        self._epoch = 0
+
+    def __len__(self) -> int:
+        if self.n_samples is None:
+            raise TypeError("Infinite OnlineSBIDataset (n_samples=None) has no fixed length")
+        return math.ceil(self.n_samples / self.batch_size)
+
+    def _emit_batch(self, theta_batch: np.ndarray) -> tuple[Any, Any]:
+        x_out = self.simulator(theta_batch)
+        if self.as_torch:
+            import torch
+
+            if isinstance(x_out, list):
+                tensors = [
+                    el if isinstance(el, torch.Tensor) else torch.as_tensor(el, dtype=torch.float32)
+                    for el in x_out
+                ]
+                x_tensor = torch.stack(tensors, dim=0)
+            elif isinstance(x_out, torch.Tensor):
+                x_tensor = x_out.to(dtype=torch.float32)
+            else:
+                x_tensor = torch.from_numpy(np.ascontiguousarray(x_out, dtype=np.float32))
+            theta_tensor = torch.as_tensor(theta_batch, dtype=torch.float32, device=x_tensor.device)
+            return theta_tensor, x_tensor
+
+        if isinstance(x_out, list):
+            arrs = [
+                el.detach().cpu().numpy() if hasattr(el, "detach") else np.asarray(el, dtype=np.float32)
+                for el in x_out
+            ]
+            x_np = np.stack(arrs, axis=0).astype(np.float32, copy=False)
+        else:
+            x_np = np.asarray(x_out, dtype=np.float32)
+        return theta_batch.astype(np.float32, copy=False), x_np
+
+    def __iter__(self) -> Iterator[tuple[Any, Any]]:
+        self._epoch += 1
+        epoch_seed = self.seed + (self._epoch - 1) * self.seed_stride
+        ndim = len(self.simulator.param_names)
+
+        if self.n_samples is not None:
+            if self.sampling == "sobol":
+                unit = qmc.Sobol(d=ndim, scramble=True, seed=epoch_seed).random(self.n_samples)
+            else:
+                unit = np.random.default_rng(epoch_seed).random((self.n_samples, ndim))
+            scaled = qmc.scale(unit, self._lo, self._hi)
+            for start in range(0, self.n_samples, self.batch_size):
+                yield self._emit_batch(scaled[start : start + self.batch_size])
+            return
+
+        if self.sampling == "sobol":
+            sobol = qmc.Sobol(d=ndim, scramble=True, seed=epoch_seed)
+            while True:
+                yield self._emit_batch(qmc.scale(sobol.random(self.batch_size), self._lo, self._hi))
+        else:
+            rng = np.random.default_rng(epoch_seed)
+            while True:
+                yield self._emit_batch(
+                    qmc.scale(rng.random((self.batch_size, ndim)), self._lo, self._hi)
+                )
+
+
+__all__ = ["Likelihood21cm", "OnlineSBIDataset", "SBISimulator"]

@@ -1,4 +1,4 @@
-"""High-throughput multi-GPU / concurrent batch runner for 21cmCU parameter sweeps and SBI."""
+"""High-throughput multi-GPU / concurrent batch runner and persistent pool for 21cmCU."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import multiprocessing as mp
 import os
 import time
 import traceback
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -41,6 +41,13 @@ class BatchTask:
     noise_sigma_mk: float | None = None
     lightcone_out_path: str | None = None
     lightcone_compression: str = "device-lzf"
+    instrument: str | Any | None = None
+    instrument_kwargs: dict[str, Any] = field(default_factory=dict)
+    lazy_d2h: bool = True
+    compute_moments: bool = False
+    moments_n_bins: int = 16
+    oblique_lightcone: bool = False
+    oblique_direction: tuple[float, float, float] | None = None
 
 
 @dataclass(slots=True)
@@ -59,12 +66,61 @@ class BatchResult:
     ps_1d: dict[str, Any]
     ps_2d: dict[str, Any] | None
     cuda_stats: dict[str, int]
+    moments: dict[str, Any] | list[dict[str, Any]] | None = None
+    worker_pid: int = 0
 
 
 def _box_length_3d(inputs: Any) -> tuple[float, float, float]:
     L = float(inputs.simulation_options.BOX_LEN)
     ncf = float(inputs.simulation_options.NON_CUBIC_FACTOR)
     return (L, L, L * ncf)
+
+
+def _apply_postprocessing(
+    field: np.ndarray,
+    box_len: tuple[float, float, float],
+    redshift: float,
+    task: BatchTask,
+    *,
+    cosmo: Any,
+    seed: int,
+    use_cuda: bool,
+) -> np.ndarray:
+    import py21cmcu
+
+    out = field
+    if task.instrument is not None:
+        return py21cmcu.mock_observation_3d(
+            out,
+            box_len,
+            redshift=redshift,
+            instrument=task.instrument,
+            los_axis=2,
+            seed=seed,
+            cosmo=cosmo,
+            use_cuda=use_cuda,
+            **task.instrument_kwargs,
+        )
+    if task.noise_sigma_mk is not None:
+        out = py21cmcu.add_thermal_noise_3d(
+            out,
+            box_len,
+            sigma_mk=task.noise_sigma_mk,
+            redshift=redshift,
+            seed=seed,
+            use_cuda=use_cuda,
+        )
+    if task.wedge_filter:
+        out = py21cmcu.apply_wedge_filter_3d(
+            out,
+            box_len,
+            redshift,
+            los_axis=2,
+            buffer_h_mpc=task.wedge_buffer,
+            cosmo=cosmo,
+            use_cuda=use_cuda,
+        )
+    return out
 
 
 def _execute_single_task(
@@ -83,7 +139,8 @@ def _execute_single_task(
         inputs = inputs.evolve_input_structs(N_THREADS=int(threads_per_worker))
 
     try:
-        with py21cmcu.use_mode(task.cuda_mode, use_cuda=use_cuda):
+        with py21cmcu.use_mode(task.cuda_mode, use_cuda=use_cuda, lazy_d2h=task.lazy_d2h):
+            moments_out: dict[str, Any] | list[dict[str, Any]] | None = None
             if task.mode == "coeval":
                 if task.out_redshifts is not None:
                     out_z = task.out_redshifts
@@ -118,26 +175,20 @@ def _execute_single_task(
                 box_len = _box_length_3d(inputs)
                 ps1_list = []
                 ps2_list = []
+                mom_list = []
                 for c in coevals:
+                    z_c = float(c.redshift)
                     tb = np.asarray(c.brightness_temp, dtype=np.float32)
-                    if task.noise_sigma_mk is not None:
-                        tb = py21cmcu.add_thermal_noise_3d(
-                            tb,
-                            box_len,
-                            sigma_mk=task.noise_sigma_mk,
-                            redshift=float(c.redshift),
-                            seed=int(inputs.random_seed) * 31 + int(round(float(c.redshift) * 100)),
-                            use_cuda=use_cuda,
-                        )
-                    if task.wedge_filter:
-                        tb = py21cmcu.apply_wedge_filter_3d(
-                            tb,
-                            box_len,
-                            float(c.redshift),
-                            buffer_h_mpc=task.wedge_buffer,
-                            cosmo=inputs.cosmo_params.cosmo,
-                            use_cuda=use_cuda,
-                        )
+                    seed_c = int(inputs.random_seed) * 31 + int(round(z_c * 100))
+                    tb = _apply_postprocessing(
+                        tb,
+                        box_len,
+                        z_c,
+                        task,
+                        cosmo=inputs.cosmo_params.cosmo,
+                        seed=seed_c,
+                        use_cuda=use_cuda,
+                    )
                     ps1 = py21cmcu.power_spectrum_1d(
                         tb,
                         box_len,
@@ -155,6 +206,12 @@ def _execute_single_task(
                             use_cuda=use_cuda,
                         )
                         ps2_list.append(ps2)
+                    if task.compute_moments:
+                        mom_list.append(
+                            py21cmcu.field_moments_and_pdf(
+                                tb, n_bins=task.moments_n_bins, use_cuda=use_cuda
+                            )
+                        )
 
                 ps_1d: dict[str, Any] = {
                     "redshifts": redshifts,
@@ -165,6 +222,8 @@ def _execute_single_task(
                     if task.compute_ps_2d
                     else None
                 )
+                if task.compute_moments:
+                    moments_out = mom_list
             elif task.mode == "lightcone":
                 min_z = task.min_redshift
                 max_z = task.max_redshift
@@ -178,13 +237,28 @@ def _execute_single_task(
                     max_z = max_z if max_z is not None else nz[-1] - 0.05
 
                 quantities = tuple(task.quantities)
-                lightconer = py21cmcu.RectilinearLightconer.between_redshifts(
-                    min_redshift=float(min_z),
-                    max_redshift=float(max_z),
-                    resolution=inputs.simulation_options.cell_size,
-                    quantities=quantities,
-                    cosmo=inputs.cosmo_params.cosmo,
-                )
+                if task.oblique_lightcone:
+                    if (task.apply_rsds or task.include_dvdr_in_tau21) and not inputs.matter_options.KEEP_3D_VELOCITIES:
+                        inputs = inputs.evolve_input_structs(KEEP_3D_VELOCITIES=True)
+                    ob_kwargs: dict[str, Any] = {}
+                    if task.oblique_direction is not None:
+                        ob_kwargs["direction"] = tuple(task.oblique_direction)
+                    lightconer = py21cmcu.ObliqueRectilinearLightconer.between_redshifts(
+                        min_redshift=float(min_z),
+                        max_redshift=float(max_z),
+                        resolution=inputs.simulation_options.cell_size,
+                        quantities=quantities,
+                        cosmo=inputs.cosmo_params.cosmo,
+                        **ob_kwargs,
+                    )
+                else:
+                    lightconer = py21cmcu.RectilinearLightconer.between_redshifts(
+                        min_redshift=float(min_z),
+                        max_redshift=float(max_z),
+                        resolution=inputs.simulation_options.cell_size,
+                        quantities=quantities,
+                        cosmo=inputs.cosmo_params.cosmo,
+                    )
                 lc = py21cmcu.run_lightcone(
                     lightconer=lightconer,
                     inputs=inputs,
@@ -225,27 +299,22 @@ def _execute_single_task(
                 lx = lc_arr.shape[0] * cell
                 ly = lc_arr.shape[1] * cell
                 mean_z = float(np.mean(lc.lightcone_redshifts))
-                if task.noise_sigma_mk is not None:
-                    lc_arr = py21cmcu.add_thermal_noise_3d(
-                        lc_arr,
-                        (lx, ly, lc_arr.shape[2] * cell),
-                        sigma_mk=task.noise_sigma_mk,
-                        redshift=mean_z,
-                        seed=int(inputs.random_seed) * 31 + 7,
-                        use_cuda=use_cuda,
-                    )
-                if task.wedge_filter:
-                    lc_arr = py21cmcu.apply_wedge_filter_3d(
-                        lc_arr,
-                        (lx, ly, lc_arr.shape[2] * cell),
-                        mean_z,
-                        los_axis=2,
-                        buffer_h_mpc=task.wedge_buffer,
-                        cosmo=inputs.cosmo_params.cosmo,
-                        use_cuda=use_cuda,
-                    )
+                needs_postproc = (
+                    task.instrument is not None
+                    or task.noise_sigma_mk is not None
+                    or task.wedge_filter
+                )
+                lc_arr = _apply_postprocessing(
+                    lc_arr,
+                    (lx, ly, lc_arr.shape[2] * cell),
+                    mean_z,
+                    task,
+                    cosmo=inputs.cosmo_params.cosmo,
+                    seed=int(inputs.random_seed) * 31 + 7,
+                    use_cuda=use_cuda,
+                )
 
-                if task.noise_sigma_mk is None and not task.wedge_filter:
+                if not needs_postproc:
                     chunk_res = py21cmcu.lightcone_chunk_power_spectra(
                         lc,
                         quantity=ps_qty,
@@ -304,6 +373,10 @@ def _execute_single_task(
                             )
                         ],
                     }
+                if task.compute_moments:
+                    moments_out = py21cmcu.field_moments_and_pdf(
+                        lc_arr, n_bins=task.moments_n_bins, use_cuda=use_cuda
+                    )
             else:
                 raise ValueError(f"Unsupported BatchTask mode: {task.mode!r}")
 
@@ -322,6 +395,8 @@ def _execute_single_task(
                 ps_1d=ps_1d,
                 ps_2d=ps_2d,
                 cuda_stats=stats,
+                moments=moments_out,
+                worker_pid=os.getpid(),
             )
     except Exception:
         wall_s = time.perf_counter() - t0
@@ -338,13 +413,16 @@ def _execute_single_task(
             ps_1d={},
             ps_2d=None,
             cuda_stats={},
+            moments=None,
+            worker_pid=os.getpid(),
         )
 
 
-def _gpu_worker_main(
+def _persistent_worker_main(
     device_id: int,
     use_cuda: bool,
     threads_per_worker: int | None,
+    clear_registry_every: int,
     task_queue: Any,
     result_queue: Any,
 ) -> None:
@@ -353,26 +431,46 @@ def _gpu_worker_main(
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
 
     import py21cmcu
+    from py21cmfast.c_21cmfast import lib as _lib
 
+    local_count = 0
     try:
         while True:
             item = task_queue.get()
             if item is None:
                 break
-            idx, task = item
+            job_id, task = item
             res = _execute_single_task(
                 task,
                 device_id=device_id,
                 use_cuda=use_cuda,
                 threads_per_worker=threads_per_worker,
             )
-            result_queue.put((idx, res))
+            local_count += 1
+            if use_cuda and clear_registry_every > 0 and (local_count % clear_registry_every == 0):
+                _lib.p21_cuda_registry_clear()
+            result_queue.put((job_id, res))
     finally:
-        py21cmcu.cleanup_cuda()
+        if use_cuda:
+            py21cmcu.cleanup_cuda()
+
+
+def _write_moments_group(grp: h5py.Group, mom: dict[str, Any]) -> None:
+    for k in ("mean", "std", "variance", "skewness", "kurtosis"):
+        if k in mom:
+            grp.attrs[k] = float(mom[k])
+
+
+def _read_moments_group(grp: h5py.Group) -> dict[str, Any]:
+    return {
+        k: float(grp.attrs[k])
+        for k in ("mean", "std", "variance", "skewness", "kurtosis")
+        if k in grp.attrs
+    }
 
 
 def save_batch_h5(path: str | Path, results: Sequence[BatchResult]) -> None:
-    """Persist compact global histories and 1D/2D power spectra from BatchResult list to HDF5."""
+    """Persist compact global histories, moments, and 1D/2D power spectra from BatchResult list."""
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with h5py.File(out_path, "w") as fl:
@@ -382,6 +480,7 @@ def save_batch_h5(path: str | Path, results: Sequence[BatchResult]) -> None:
             tg.attrs["ok"] = bool(res.ok)
             tg.attrs["wall_s"] = float(res.wall_s)
             tg.attrs["device_id"] = int(res.device_id)
+            tg.attrs["worker_pid"] = int(res.worker_pid)
             if res.error is not None:
                 tg.attrs["error"] = res.error
             tg.create_dataset("redshifts", data=res.redshifts)
@@ -405,6 +504,16 @@ def save_batch_h5(path: str | Path, results: Sequence[BatchResult]) -> None:
                     sg = ps2_grp.create_group(f"z_{i}")
                     for k, v in spec.items():
                         sg.create_dataset(k, data=v)
+
+            if res.moments is not None:
+                mg = tg.create_group("moments")
+                if isinstance(res.moments, list):
+                    mg.attrs["is_list"] = True
+                    for i, mom in enumerate(res.moments):
+                        _write_moments_group(mg.create_group(f"z_{i}"), mom)
+                else:
+                    mg.attrs["is_list"] = False
+                    _write_moments_group(mg, res.moments)
 
 
 def _load_batch_h5(path: Path) -> dict[str, BatchResult]:
@@ -441,6 +550,18 @@ def _load_batch_h5(path: Path) -> dict[str, BatchResult]:
                     specs2.append({k: sg[k][:] for k in sg})
                     i += 1
                 ps_2d = {"redshifts": p2g["redshifts"][:], "spectra": specs2}
+            moments: dict[str, Any] | list[dict[str, Any]] | None = None
+            if "moments" in tg:
+                mg = tg["moments"]
+                if bool(mg.attrs.get("is_list", False)):
+                    moms = []
+                    i = 0
+                    while f"z_{i}" in mg:
+                        moms.append(_read_moments_group(mg[f"z_{i}"]))
+                        i += 1
+                    moments = moms
+                else:
+                    moments = _read_moments_group(mg)
             loaded[tid] = BatchResult(
                 task_id=str(tid),
                 ok=True,
@@ -454,8 +575,197 @@ def _load_batch_h5(path: Path) -> dict[str, BatchResult]:
                 ps_1d=ps_1d,
                 ps_2d=ps_2d,
                 cuda_stats={},
+                moments=moments,
+                worker_pid=int(tg.attrs.get("worker_pid", 0)),
             )
     return loaded
+
+
+class BatchPool:
+    """Warm persistent multi-GPU / multi-worker pool for repeated SBI & ML sweeps.
+
+    Keeps worker processes, CUDA contexts, ``cuFFT`` plan caches, and ``CLASS`` tables
+    resident across multiple ``map`` / ``imap`` rounds without re-spawning processes.
+    """
+
+    def __init__(
+        self,
+        *,
+        devices: Sequence[int] = (0,),
+        workers_per_gpu: int = 1,
+        threads_per_worker: int | None = None,
+        use_cuda: bool = True,
+        in_process: bool | None = None,
+        clear_registry_every: int = 32,
+    ) -> None:
+        if workers_per_gpu < 1:
+            raise ValueError(f"workers_per_gpu must be >= 1, got {workers_per_gpu}")
+        if clear_registry_every < 0:
+            raise ValueError(f"clear_registry_every must be >= 0, got {clear_registry_every}")
+
+        dev_tuple = tuple(int(d) for d in devices) if devices else (0,)
+        self.devices = dev_tuple
+        self.workers_per_gpu = int(workers_per_gpu)
+        self.threads_per_worker = threads_per_worker
+        self.use_cuda = bool(use_cuda)
+        self.clear_registry_every = int(clear_registry_every)
+        self._worker_devices = [int(d) for d in dev_tuple for _ in range(self.workers_per_gpu)]
+        self._in_process = (
+            (len(self._worker_devices) == 1 and (not self.use_cuda or self._worker_devices[0] == 0))
+            if in_process is None
+            else bool(in_process)
+        )
+        self._closed = False
+        self._tasks_executed = 0
+        self._next_job_id = 0
+        self._procs: list[mp.Process] = []
+        self._task_q: Any = None
+        self._result_q: Any = None
+
+        if not self._in_process:
+            ctx = mp.get_context("spawn")
+            self._task_q = ctx.Queue()
+            self._result_q = ctx.Queue()
+            for dev in self._worker_devices:
+                proc = ctx.Process(
+                    target=_persistent_worker_main,
+                    args=(
+                        dev,
+                        self.use_cuda,
+                        self.threads_per_worker,
+                        self.clear_registry_every,
+                        self._task_q,
+                        self._result_q,
+                    ),
+                )
+                proc.start()
+                self._procs.append(proc)
+
+    @property
+    def n_workers(self) -> int:
+        return 1 if self._in_process else len(self._procs)
+
+    @property
+    def tasks_executed(self) -> int:
+        return self._tasks_executed
+
+    @property
+    def is_closed(self) -> bool:
+        return self._closed
+
+    def imap(self, tasks: Sequence[BatchTask], *, ordered: bool = True) -> Iterator[BatchResult]:
+        """Execute ``tasks`` on the warm pool and stream :class:`BatchResult` objects."""
+        if self._closed:
+            raise RuntimeError("BatchPool has already been closed")
+        task_list = list(tasks)
+        if not task_list:
+            return
+
+        if self._in_process:
+            from py21cmfast.c_21cmfast import lib as _lib
+
+            dev = self._worker_devices[0] if self._worker_devices else 0
+            for t in task_list:
+                res = _execute_single_task(
+                    t,
+                    device_id=dev,
+                    use_cuda=self.use_cuda,
+                    threads_per_worker=self.threads_per_worker,
+                )
+                self._tasks_executed += 1
+                if (
+                    self.use_cuda
+                    and self.clear_registry_every > 0
+                    and (self._tasks_executed % self.clear_registry_every == 0)
+                ):
+                    _lib.p21_cuda_registry_clear()
+                yield res
+            return
+
+        job_ids: list[int] = []
+        for t in task_list:
+            jid = self._next_job_id
+            self._next_job_id += 1
+            job_ids.append(jid)
+            self._task_q.put((jid, t))
+
+        if not ordered:
+            pending_set = set(job_ids)
+            while pending_set:
+                jid, res = self._result_q.get()
+                pending_set.discard(jid)
+                self._tasks_executed += 1
+                yield res
+            return
+
+        ready: dict[int, BatchResult] = {}
+        next_idx = 0
+        while next_idx < len(job_ids):
+            target_jid = job_ids[next_idx]
+            while target_jid not in ready:
+                jid, res = self._result_q.get()
+                ready[jid] = res
+            yield ready.pop(target_jid)
+            self._tasks_executed += 1
+            next_idx += 1
+
+    def map(
+        self,
+        tasks: Sequence[BatchTask],
+        *,
+        output_h5: str | Path | None = None,
+        checkpoint_h5: str | Path | None = None,
+        resume: bool = False,
+    ) -> list[BatchResult]:
+        """Execute ``tasks`` on the warm pool with optional resumable HDF5 checkpointing."""
+        if self._closed:
+            raise RuntimeError("BatchPool has already been closed")
+        ckpt = (
+            Path(checkpoint_h5)
+            if checkpoint_h5 is not None
+            else (Path(output_h5) if output_h5 is not None else None)
+        )
+        prior: dict[str, BatchResult] = _load_batch_h5(ckpt) if (resume and ckpt is not None) else {}
+        pending_tasks = [t for t in tasks if t.task_id not in prior]
+
+        ran = list(self.imap(pending_tasks, ordered=True)) if pending_tasks else []
+        by_id = dict(prior)
+        for res in ran:
+            by_id[res.task_id] = res
+        ordered = [by_id[t.task_id] for t in tasks]
+
+        if checkpoint_h5 is not None:
+            save_batch_h5(checkpoint_h5, ordered)
+        if output_h5 is not None and (checkpoint_h5 is None or Path(output_h5) != ckpt):
+            save_batch_h5(output_h5, ordered)
+        return ordered
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._procs:
+            for _ in self._procs:
+                self._task_q.put(None)
+            for proc in self._procs:
+                proc.join()
+            self._procs.clear()
+        elif self.use_cuda:
+            import py21cmcu
+
+            py21cmcu.cleanup_cuda()
+
+    def __enter__(self) -> BatchPool:
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 def run_batch(
@@ -469,82 +779,30 @@ def run_batch(
     resume: bool = False,
     use_cuda: bool = True,
     in_process: bool | None = None,
+    pool: BatchPool | None = None,
 ) -> list[BatchResult]:
     """Execute a sequence of BatchTasks concurrently across one or more GPUs."""
-    ckpt = Path(checkpoint_h5) if checkpoint_h5 is not None else (Path(output_h5) if output_h5 is not None else None)
-    prior: dict[str, BatchResult] = _load_batch_h5(ckpt) if (resume and ckpt is not None) else {}
-    pending_indices = [idx for idx, t in enumerate(tasks) if t.task_id not in prior]
+    if pool is not None:
+        return pool.map(
+            tasks,
+            output_h5=output_h5,
+            checkpoint_h5=checkpoint_h5,
+            resume=resume,
+        )
 
-    if not pending_indices:
-        ordered = [prior[t.task_id] for t in tasks]
-        if output_h5 is not None:
-            save_batch_h5(output_h5, ordered)
-        return ordered
-    if workers_per_gpu < 1:
-        raise ValueError(f"workers_per_gpu must be >= 1, got {workers_per_gpu}")
-    if not devices:
-        devices = (0,)
+    with BatchPool(
+        devices=devices,
+        workers_per_gpu=workers_per_gpu,
+        threads_per_worker=threads_per_worker,
+        use_cuda=use_cuda,
+        in_process=in_process,
+    ) as local_pool:
+        return local_pool.map(
+            tasks,
+            output_h5=output_h5,
+            checkpoint_h5=checkpoint_h5,
+            resume=resume,
+        )
 
-    pending_tasks = [tasks[idx] for idx in pending_indices]
-    worker_devices = [int(d) for d in devices for _ in range(workers_per_gpu)]
-    run_inline = (
-        (len(worker_devices) == 1 and len(pending_tasks) <= 1)
-        if in_process is None
-        else bool(in_process)
-    )
 
-    if run_inline:
-        import py21cmcu
-
-        try:
-            ran = [
-                _execute_single_task(
-                    t,
-                    device_id=worker_devices[0],
-                    use_cuda=use_cuda,
-                    threads_per_worker=threads_per_worker,
-                )
-                for t in pending_tasks
-            ]
-        finally:
-            py21cmcu.cleanup_cuda()
-    else:
-        ctx = mp.get_context("spawn")
-        task_q = ctx.Queue()
-        res_q = ctx.Queue()
-        for local_idx, t in enumerate(pending_tasks):
-            task_q.put((local_idx, t))
-        for _ in worker_devices:
-            task_q.put(None)
-
-        procs = [
-            ctx.Process(
-                target=_gpu_worker_main,
-                args=(dev, use_cuda, threads_per_worker, task_q, res_q),
-            )
-            for dev in worker_devices
-        ]
-        for p in procs:
-            p.start()
-
-        slots: list[BatchResult | None] = [None] * len(pending_tasks)
-        for _ in range(len(pending_tasks)):
-            local_idx, res = res_q.get()
-            slots[local_idx] = res
-
-        for p in procs:
-            p.join()
-        ran = [r for r in slots if r is not None]
-
-    by_id = dict(prior)
-    for res in ran:
-        by_id[res.task_id] = res
-    ordered = [by_id[t.task_id] for t in tasks]
-
-    if checkpoint_h5 is not None:
-        save_batch_h5(checkpoint_h5, ordered)
-    if output_h5 is not None and Path(output_h5) != ckpt:
-        save_batch_h5(output_h5, ordered)
-    elif output_h5 is not None and checkpoint_h5 is None:
-        save_batch_h5(output_h5, ordered)
-    return ordered
+__all__ = ["BatchPool", "BatchResult", "BatchTask", "run_batch", "save_batch_h5"]

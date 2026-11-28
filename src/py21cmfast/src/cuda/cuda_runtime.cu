@@ -218,6 +218,7 @@ void p21_cuda_cleanup(void) {
     p21_cuda_spin_temp_cleanup();
     p21_cuda_ionization_cleanup();
     p21_cuda_fft_clear_cache();
+    p21_mgpu_fft_clear_cache();
     p21_cuda_pool_trim();
 
     std::lock_guard<std::mutex> lock(g_runtime_mu);

@@ -4,6 +4,11 @@ All notable milestones in **21cmCU** are documented in this file.
 
 ## [Unreleased]
 ### Added & Improved
+- **Direction R (`v0.8.0-dev`) — Persistent Multi-GPU cuFFT Plan Cache, Warm `BatchPool` & Zero-Disk Online SBI Pipeline**:
+  - Added a 64-entry concurrency-safe per-device cuFFT LRU cache across Y-slab 2D R2C/C2R and 1D C2C transforms in [`src/py21cmfast/src/cuda/cuda_mgpu.cu`](src/py21cmfast/src/cuda/cuda_mgpu.cu) (`p21_mgpu_fft_clear_cache()` wired into `p21_cuda_cleanup()`).
+  - Added warm persistent [`BatchPool`](src/py21cmcu/batch.py) (`map`, `imap(ordered=...)`, context manager, periodic registry clearing) and extended `BatchTask` / `BatchResult` (`instrument`, `lazy_d2h`, `compute_moments`, `oblique_lightcone`, `worker_pid`, HDF5 moments persistence). Measured **`2.643×`** speedup across 4 repeated 4-task `128/64` `SKA1-Low` rounds (`20.439 s` cold / 16 PIDs → **`7.733 s`** warm / 4 PIDs; warm rounds `1.227–1.343 s` vs `5.332–5.647 s`).
+  - Added [`OnlineSBIDataset`](src/py21cmcu/inference.py) (`torch.utils.data.IterableDataset`-compatible when PyTorch is installed, zero hard dependency) and upgraded `SBISimulator` with `instrument` + `batch_pool` batching and zero-disk Sobol/Uniform Tensor/NumPy streaming.
+  - Added [`examples/07_online_sbi_zero_disk.py`](examples/07_online_sbi_zero_disk.py) and [`tests/native/test_21cmcu_phase11_batchpool_sbi.py`](tests/native/test_21cmcu_phase11_batchpool_sbi.py) (`81 passed, 53 skipped (GPU)` across 10 native suites; wired into [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 - **Bit-Exact CPU Backend Optimizations (`c010ce1` + Phase 10 Step 2)**:
   - Added a 32-entry thread-safe aligned FFTW plan LRU cache (`P21_FFTW_PLAN_CACHE=1`) and a 24-slot `fftwf_malloc` scratch pool (`P21_CPU_SCRATCH_POOL=1`, `P21_CPU_SCRATCH_POOL_MB=2048`) in [`src/py21cmfast/src/dft.c`](src/py21cmfast/src/dft.c) / `dft.h` wired into `IonisationBox.c`, `RadiationFields.c`, and `PerturbedField.c`, both cleaned in `clean_fftw()`.
   - Added hoisted-switch multi-box fused `k`-space filtering (`p21_filter_boxes_fused` in [`src/py21cmfast/src/filtering.c`](src/py21cmfast/src/filtering.c), `IonisationBox.c`, and `RadiationFields.c` `multi_shell_filter`, toggled via `P21_CPU_FILTER_FUSED=1`) and opt-in `-march=native` (`P21_CPU_NATIVE=1` in [`build_cffi.py`](build_cffi.py)).

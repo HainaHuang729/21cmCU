@@ -26,9 +26,32 @@ Back to [Home](Home.md) · Previous: [Residency & I/O](Residency-and-IO.md) · N
    - `apply_wedge_filter_3d(field, box_length, redshift, los_axis=2, buffer_h_mpc=0.0)`: GPU-accelerated (`23.86×` at `256³`) 3D Fourier wedge filter.
    - `add_thermal_noise_3d(field, box_length, sigma_mk=None, redshift=8.0, t_int_hours=1000.0, n_ant=350, seed=0)`: GPU Philox (`10.71×` at `256³`) deterministic Gaussian thermal noise.
    - `field_moments_and_pdf(field, n_bins=32)`: GPU-accelerated (`26.43×` at `256³`) mean, std, variance, skewness, excess kurtosis, and 1-point PDF.
-   - `SBISimulator` & `Likelihood21cm`: high-level wrappers for `sbi` posterior estimation (`"stats"`, `"ps1d"`, `"field"`) and `21CMMC` Gaussian likelihoods.
+   - `SBISimulator`, `OnlineSBIDataset` & `Likelihood21cm`: high-level wrappers for zero-disk PyTorch/NumPy streaming (`"stats"`, `"ps1d"`, `"field"`, finite Sobol or infinite Uniform, optional `SKA1-Low`/`HERA-350` interferometer mocks) and `21CMMC` Gaussian likelihoods.
 
-3. **Resumable Multi-GPU Worker Pool (`run_batch`)**:
+3. **Warm Persistent Worker Pool (`BatchPool`) & Resumable `run_batch`**:
+   ```python
+   with p21.BatchPool(devices=(0, 1), workers_per_gpu=2, threads_per_worker=4, use_cuda=True) as pool:
+       sim = p21.SBISimulator(
+           base_inputs=base_inputs,
+           param_names=("F_STAR10_ACG", "F_ESC10_ACG"),
+           summary="stats",
+           instrument="SKA1-Low",
+           batch_pool=pool,
+       )
+       dataset = p21.OnlineSBIDataset(
+           sim,
+           {"F_STAR10_ACG": (-1.6, -1.0), "F_ESC10_ACG": (-1.4, -0.7)},
+           n_samples=16,
+           batch_size=4,
+           sampling="sobol",
+           as_torch=True,
+       )
+       for theta_b, x_b in dataset:
+           ...  # train directly on GPU/CPU with zero HDF5 disk I/O
+   ```
+   - `BatchPool` (`map`, `imap(ordered=...)`) keeps worker processes, CUDA contexts, multi-GPU cuFFT plans, and `CLASS` tables warm across repeated SBI rounds (**`2.643×`** faster across 4 repeated `128/64` `SKA1-Low` rounds on 4 workers: `20.439 s` cold / 16 PIDs → **`7.733 s`** warm / 4 PIDs).
+   - For checkpointed archival sweeps:
+
    ```python
    tasks = [
        p21.BatchTask(

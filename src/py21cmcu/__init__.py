@@ -21,9 +21,9 @@ from .analysis import (
     power_spectrum_1d,
     power_spectrum_2d,
 )
-from .batch import BatchResult, BatchTask, run_batch, save_batch_h5
+from .batch import BatchPool, BatchResult, BatchTask, run_batch, save_batch_h5
 from .doctor import doctor
-from .inference import Likelihood21cm, SBISimulator
+from .inference import Likelihood21cm, OnlineSBIDataset, SBISimulator
 from .instrument import (
     INSTRUMENT_PRESETS,
     InterferometerConfig,
@@ -144,6 +144,7 @@ def use_mode(
 
 __all__ = [
     *_p21.__all__,
+    "BatchPool",
     "BatchResult",
     "BatchTask",
     "CudaFieldView",
@@ -151,6 +152,7 @@ __all__ = [
     "INSTRUMENT_PRESETS",
     "InterferometerConfig",
     "Likelihood21cm",
+    "OnlineSBIDataset",
     "SBISimulator",
     "add_thermal_noise_3d",
     "apply_wedge_filter_3d",
