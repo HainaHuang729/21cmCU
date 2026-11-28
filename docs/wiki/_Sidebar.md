@@ -1,4 +1,4 @@
-### 21cmCU Wiki (`v0.7.0`)
+### 21cmCU Wiki (`v0.9.0`)
 
 **Getting Started**
 - [Home](Home.md)

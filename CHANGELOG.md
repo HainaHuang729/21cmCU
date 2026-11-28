@@ -3,8 +3,16 @@
 All notable milestones in **21cmCU** are documented in this file.
 
 ## [Unreleased]
+
+## [0.9.0] — 2026-11-28 (Higher-Order Topology, CRN Fisher, Multi-Probe CIC, Online SBI & Modern Architecture)
 ### Added & Improved
-- **Phase 11 (`v0.9.0-dev`) — CRN Fisher Forecaster & Multi-Probe Cross-Correlations (`86` CUDA APIs)**:
+- **Architecture Modernization, Packaging & Automated Release**:
+  - Adopted PEP 621 dynamic single-source versioning (`src/py21cmcu/_version.py`), PEP 561 `py.typed` marker, modular runtime facade (`src/py21cmcu/_runtime.py` + `cuda_api_count()`), and PEP 562 lazy top-level imports in [`src/py21cmcu/__init__.py`](src/py21cmcu/__init__.py).
+  - Hardened [`src/py21cmcu/cli.py`](src/py21cmcu/cli.py) and [`src/py21cmcu/doctor.py`](src/py21cmcu/doctor.py) with `21cmcu version [--as-json]`, `api_count` reporting, and non-editable wheel guardrails in `21cmcu bench`.
+  - Added Python `3.12`/`3.13` CI matrix + `packaging-smoke` wheel job ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), tag-triggered wheel & release automation ([`.github/workflows/release.yml`](.github/workflows/release.yml)), and [`scripts/build_wheels.sh`](scripts/build_wheels.sh).
+  - Updated [`docs/paper/21cmcu_paper.tex`](docs/paper/21cmcu_paper.tex), [`docs/paper/21cmcu_paper.md`](docs/paper/21cmcu_paper.md), [`benchmarks/results_t4_v090.json`](benchmarks/results_t4_v090.json), [`benchmarks/reproduce_v090_tables.py`](benchmarks/reproduce_v090_tables.py), and [`notebooks/21cmCU_GPU_Verify.ipynb`](notebooks/21cmCU_GPU_Verify.ipynb) to `v0.9.0`.
+- **Phase 11 (`v0.9.0`) — CRN Fisher Forecaster & Multi-Probe Cross-Correlations (`86` CUDA APIs)**:
+  - Verified Colab Tesla T4 `256³` 1M-particle benchmarks: `cic_deposit_3d` `1.4336 s -> 0.0365 s` (**`39.29×`**, `max_abs_diff = 3.81e-6`), `cross_power_21cm_galaxy` `4.8076 s -> 0.2324 s` (**`20.68×`**, `max_abs_rk_diff = 2.91e-8`), `phase13` **`7 passed, 0 skipped`** on T4 & `97 passed, 64 skipped` in CPU CI.
   - Added native 86th CUDA API `p21_cuda_cic_deposit_3d` (`src/py21cmfast/src/cuda/cuda_analysis.cu`, `cuda_api.h`, `_functionprototypes_wrapper.h`, `cuda_stubs.c`) with periodic 3D Cloud-in-Cell deposition, optional overdensity normalization, $\mathrm{sinc}^2$ window deconvolution, and grid-stride loops for `256³+` volumes above `65535 × 256` threads.
   - Added [`src/py21cmcu/multiprobe.py`](src/py21cmcu/multiprobe.py): `cic_deposit_3d`, `load_gravitycu_halos` (GravityCU HDF5 + NumPy catalog support), `cross_power_21cm_galaxy`, `cross_power_21cm_galaxy_error`, and `ksz_momentum_map`.
   - Added [`src/py21cmcu/fisher.py`](src/py21cmcu/fisher.py) and [`src/py21cmcu/viz.py`](src/py21cmcu/viz.py): `FisherForecaster`, `FisherForecastResult`, `fisher_forecast_21cm` (Common-Random-Number low-variance derivatives + marginalized $1\sigma$ forecasts), and `plot_fisher_contours`.

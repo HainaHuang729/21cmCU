@@ -1,0 +1,98 @@
+name: Release Wheels & Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-wheels:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install native C build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgsl-dev libfftw3-dev gcc g++ pkg-config
+
+      - name: Build distribution artifacts
+        run: |
+          python -m pip install --upgrade pip build twine
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            USE_CUDA=0 python -m build
+          else
+            USE_CUDA=0 python -m build --wheel
+          fi
+          twine check dist/*
+
+      - name: Verify installed wheel in isolated venv
+        run: |
+          python -m venv /tmp/release-venv
+          /tmp/release-venv/bin/pip install --upgrade pip
+          /tmp/release-venv/bin/pip install dist/*.whl
+          /tmp/release-venv/bin/21cmcu version --as-json
+          /tmp/release-venv/bin/21cmcu doctor --as-json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.python-version }}
+          path: dist/*
+
+  publish-release:
+    needs: build-wheels
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Generate SHA256 checksums and extract release notes
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
+          cd ..
+          python - <<'PY' > release-notes.md
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ.get("GITHUB_REF_NAME", "").lstrip("v")
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = re.compile(
+              rf"^## \[{re.escape(tag)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = pattern.search(changelog)
+          if match:
+              body = match.group(1).strip()
+              print(f"## 21cmCU v{tag}\n\n{body}\n")
+          else:
+              print(f"## 21cmCU {os.environ.get('GITHUB_REF_NAME', '')}\n\nAutomated CPU wheel & sdist release.")
+          PY
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: |
+            release-assets/*.whl
+            release-assets/*.tar.gz
+            release-assets/SHA256SUMS.txt

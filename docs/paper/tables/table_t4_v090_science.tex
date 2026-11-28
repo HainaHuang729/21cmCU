@@ -1,0 +1,15 @@
+\begin{tabular}{@{}lrrrl@{}}
+\toprule
+Workload & Baseline [s] & T4 GPU [s] & Speedup & Parity / Notes \\
+\midrule
+Bispectrum 3D ($128^3$, equil.) & 0.8812 & 0.1420 & \textbf{6.21$\times$} & $\max|\Delta B|/|B|=1.31\times 10^{-6}$ \\
+Bispectrum 3D ($256^3$, equil.) & 11.3274 & 0.4252 & \textbf{26.64$\times$} & $\max|\Delta B|/|B|=8.21\times 10^{-7}$ \\
+MFP BSD ($128^3$, 200k rays) & 0.6947 & 0.0095 & \textbf{72.87$\times$} & $\langle R\rangle$ rel diff $3.66\times 10^{-3}$ \\
+MFP BSD ($256^3$, 200k rays) & 2.3150 & 0.0370 & \textbf{62.53$\times$} & $\langle R\rangle$ rel diff $5.0\times 10^{-4}$ \\
+Minkowski ($128^3$, 15 thresh.) & 0.2960 & 0.0357 & \textbf{8.28$\times$} & Exact Euler $\chi$ \\
+Minkowski ($256^3$, 15 thresh.) & 3.0784 & 0.3632 & \textbf{8.48$\times$} & Exact Euler $\chi$ \\
+\texttt{cic\_deposit\_3d} ($256^3$, 1M) & 1.4336 & 0.0365 & \textbf{39.29$\times$} & $\max|\Delta\delta|=3.81\times 10^{-6}$ \\
+\texttt{cross\_power\_21cm\_galaxy} ($256^3$, 1M) & 4.8076 & 0.2324 & \textbf{20.68$\times$} & $\max|\Delta r(k)|=2.91\times 10^{-8}$ \\
+\texttt{BatchPool} Warm ($4\times 2$, T4) & 26.7845 (cold) & 11.3101 (warm) & \textbf{2.368$\times$} & Round 4: 1.2729\,s; 1 PID \\
+\bottomrule
+\end{tabular}

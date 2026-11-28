@@ -182,7 +182,8 @@
 - **CRN Fisher Forecaster & Contour Visualization ([`src/py21cmcu/fisher.py`](../src/py21cmcu/fisher.py), [`src/py21cmcu/viz.py`](../src/py21cmcu/viz.py))**:
   - `FisherForecaster`, `FisherForecastResult`, `fisher_forecast_21cm`: Common-Random-Number (`CRN`) finite-difference Fisher matrix with shared per-evaluation `seed_base` across $\pm h$ parameter perturbations, inverse/SVD covariance marginalization, $1\sigma$ uncertainties, and `to_dict()`/`from_dict()`.
   - `plot_fisher_contours`: $1\sigma$/$2\sigma$ Gaussian corner-plot contours for parameter subsets.
-  - Runnable end-to-end showcase [`examples/09_fisher_and_multiprobe_forecast.py`](../examples/09_fisher_and_multiprobe_forecast.py) and test suite [`tests/native/test_21cmcu_phase13_fisher_multiprobe.py`](../tests/native/test_21cmcu_phase13_fisher_multiprobe.py) (`7 passed` on CPU & Colab T4 GPU).
+  - Runnable end-to-end showcase [`examples/09_fisher_and_multiprobe_forecast.py`](../examples/09_fisher_and_multiprobe_forecast.py) and test suite [`tests/native/test_21cmcu_phase13_fisher_multiprobe.py`](../tests/native/test_21cmcu_phase13_fisher_multiprobe.py) (`7 passed, 0 skipped` on Colab T4 GPU; `97 passed, 64 skipped` in GitHub `CPU CI`).
+  - **Colab Tesla T4 `256³` 1M-Particle Benchmarks (`benchmarks/results_t4_v090.json`)**: `cic_deposit_3d` `1.4336 s -> 0.0365 s` (**`39.29×`**, `max_abs_diff = 3.81e-6`), `cross_power_21cm_galaxy` `4.8076 s -> 0.2324 s` (**`20.68×`**, `max_abs_rk_diff = 2.91e-8`), `Example 09` `total SNR = 20.13`, `kSZ rms = 0.1391 uK`.
 
 ---
 
@@ -194,10 +195,7 @@
   - **Scope**: Extend distributed Y-slab decomposition to multi-GPU `1024³` full EoR evolution (`IonizedBox` / `TsBox`) and slab-streamed `<160 GiB` host-RAM `2048³` 2LPT IC on `3×–4× 24 GB` GPUs.
   - **Acceptance Criteria**: Numerical parity vs single-GPU/CPU at `256³` and `512³`, plus verified native `1024³` EoR & `2048³` 2LPT execution within 24 GB-per-GPU VRAM.
 
-### Release `v1.0.0` — Production Research Suite
-- Multi-GPU multi-probe forward modeling and joint EoR + galaxy + CMB secondary likelihood benchmarks across 256³–1024³ volumes.
-
-### Release `v1.0.0` — Ecosystem Packaging, Multi-Node NCCL & Methods Paper Finalization
-- **Packaging & CI Matrix**: Prebuilt CUDA 12 manylinux wheels / Conda build recipes, automated tag-triggered GitHub release workflow, and expanded CPU/GPU CI matrix.
+### Release `v1.0.0` — Multi-Node NCCL, Large-Volume Benchmarks & Paper Finalization
+- **Multi-GPU Multi-Probe Scaling**: Joint EoR + galaxy + CMB secondary likelihood benchmarks across `256³–1024³` volumes on multi-GPU nodes.
 - **Multi-Node / NVLink Scaling**: Optional NCCL all-to-all collective backend in `cuda_mgpu.cu` for `4×–8×` NVLink/NVSwitch nodes (`2048³–4096³` grids).
-- **Methods Paper & Reproducibility**: Finalize [`docs/paper/21cmcu_paper.tex`](paper/21cmcu_paper.tex) with `v0.7.0–v0.9.0` observables/interferometer/SBI benchmarks, Zenodo archival DOI, and frozen reproduction scripts.
+- **Methods Paper Archival**: Finalize [`docs/paper/21cmcu_paper.tex`](paper/21cmcu_paper.tex) with multi-GPU multi-probe benchmarks, Zenodo archival DOI, and frozen reproduction tables (`benchmarks/reproduce_v090_tables.py`). *(Packaging/wheel CI, `release.yml`, PEP 621/561/562 layout, and `21cmcu version` already shipped in `v0.9.0`.)*

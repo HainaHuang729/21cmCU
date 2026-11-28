@@ -1,10 +1,10 @@
 # 21cmCU: A Native C/CUDA and Multi-GPU Accelerated Engine for 21cmFAST v4
 
-**Version `0.6.0`** · Technical & Software Methods Report
+**Version `0.9.0`** · Technical & Software Methods Report (`86` Native CUDA APIs)
 
 ## Abstract
 
-Simulation-based inference (SBI), Bayesian MCMC parameter estimation (`21CMMC`), and large-volume forecasts for Epoch of Reionization (EoR) and Cosmic Dawn 21 cm surveys require tens of thousands of 3D semi-numerical realizations or multi-billion-voxel initial conditions. We present **21cmCU** (`py21cmcu`), a native C/CUDA and cuFFT drop-in GPU engine built directly into **21cmFAST v4**. Unlike Python/CuPy wrappers, 21cmCU compiles fused CUDA kernels and custom memory/FFT infrastructure directly inside the CFFI shared library (`c_21cmfast`), eliminating CuPy/Numba dependencies while preserving full bit-level structural compatibility with upstream v4 physical models (`E-INTEGRAL`, `L-INTEGRAL`, discrete halo samplers, `MCG`, spin-temperature evolution, `CLASS` baryon-CDM relative velocities, and rectilinear/angular lightcones). Across single-GPU benchmarks on an NVIDIA GeForce RTX 4090 compared against a 16-thread CPU baseline (`N_THREADS=16`), 21cmCU achieves **`492.74×`** speedup on standalone redshift-space distortion (`apply_rsds`), **`82.05×`** end-to-end on rectilinear lightcones (`3.032 s` vs `248.773 s`), **`20.65×`** on `AngularLightconer` (`4.698 s` vs `97.018 s`), and **`12.36×`** on 3-redshift `L-INTEGRAL + TS` coeval cubes (`4.456 s` vs `55.079 s`). With Direction K multi-GPU single-work-slab streaming and pinned-bounce sub-tiled transposes across **`3× RTX 4090`**, 21cmCU scales natively in-VRAM to **`2048³` (`8.590 B` voxels)** Zel'dovich initial conditions in **`58.467 s`** (`3.71×` faster than `v0.5.0` host fallback) and delivers up to **`9,782 tasks/h`** (`2 GPUs`) / **`9,544 tasks/h`** (`3 GPUs`) concurrent ensemble throughput for SBI lightcone pipelines with built-in horizon-wedge filtering, thermal noise, and `DeviceLZF` HDF5 checkpointing.
+Simulation-based inference (SBI), Bayesian MCMC parameter estimation (`21CMMC`), Fisher forecasting, and large-volume multi-probe surveys for Epoch of Reionization (EoR) and Cosmic Dawn 21 cm cosmology require tens of thousands of 3D semi-numerical realizations or multi-billion-voxel initial conditions. We present **21cmCU** (`py21cmcu` v0.9.0), a native C/CUDA and cuFFT drop-in GPU engine built directly into **21cmFAST v4** with **`86` native CUDA C APIs** and zero Python GPU wrapper dependencies. Retaining full algorithmic parity with discrete halo models, spin-temperature evolution, `CLASS` baryon--CDM relative velocities, and lightcone observables, 21cmCU achieves up to **`492.74×`** speedup on standalone redshift-space distortions (`apply_rsds`), **`82.05×`** end-to-end on rectilinear lightcones (`3.032 s` vs `248.773 s` on a 16-core CPU), **`71.65×–71.88×`** on `256³` single-pass interferometer mocks (`SKA1-Low`/`HERA-350`), **`20.65×`** on `AngularLightconer`, and **`12.36×`** on 3-redshift `L-INTEGRAL + TS` coeval cubes on an NVIDIA GeForce RTX 4090. Across `v0.7.0–v0.9.0`, 21cmCU adds zero-copy `__dlpack__` PyTorch tensor interop, anti-repetition `ObliqueRectilinearLightconer` traversal (`12.45×` path extension), warm `BatchPool` zero-disk `OnlineSBIDataset` streaming (`2.643×` on RTX 4090 / `2.368×` on Tesla T4), and CUDA-accelerated `bispectrum_3d` (`26.64×`), MFP bubble-size distributions (`62.53×–72.87×`), Minkowski functionals (`8.28×–8.48×`), CIC particle/galaxy gridding (`39.29×` for `1M` galaxies on `256³`), `21cm × galaxy` cross-power (`20.68×`), kSZ momentum maps, and Common-Random-Number (CRN) Fisher matrix forecasting, while scaling multi-GPU 1D Y-slab streaming across `3× RTX 4090` natively in-VRAM to `2048³` (`8.590 B` voxels) Zel'dovich initial conditions in `58.467 s`.
 
 ---
 
@@ -108,11 +108,19 @@ For likelihood-free parameter inference, 21cmCU provides an integrated Python/CL
 
 ---
 
-## 6. Verification Summary
+## 6. Higher-Order Statistics, Online SBI & Multi-Probe Forecasting (`v0.7.0–v0.9.0`)
 
-## 6. Verification Summary
+Extending beyond 2-point `P(k)` power spectra (`cuda_ps.cu`), `cuda_analysis.cu` and `src/py21cmcu/` implement an integrated GPU science stack validated on RTX 4090 and Colab Tesla T4 (`benchmarks/results_t4_v090.json`, reproducible via `benchmarks/reproduce_v090_tables.py`):
 
-Correctness, CPU-vs-GPU numerical parity, SBI pipeline functionality, and multi-GPU scaling for `21cmCU v0.6.0` were verified directly on cluster node `b1` (`3× NVIDIA GeForce RTX 4090`, CUDA 12.6, `sm_89`):
-- **Native GPU test suite**: **`168/168` tests passing** (`-k "not speed"`, zero skips, zero failures across all 12 suites: `test_21cmcu_phase0`, `phase1`, `phase2`, `phase3_d`, `phase3_e`, `phase4_h`, `phase4_i`, `phase5_g`, `phase6_lm`, and `test_cuda_phase1`, `phase2`, `phase3`).
-- **Lint & CI**: zero `ruff` violations across `src/py21cmcu`, `src/py21cmfast/_cfg.py`, `benchmarks`, `examples`, and `tests/native`.
-- **CLI & SBI end-to-end smoke checks**: `python -m py21cmcu.cli doctor --as-json` and `examples/sbi_lightcone_dataset.py` (`4D Sobol + L-INTEGRAL + TS + lightcone + wedge + noise + device-lzf` checkpointing) verified passing on `b1`.
+- **Interferometer Mocks & Zero-Copy Tensor Streaming (`v0.7.0`, Direction R)**: Single-pass `mock_observation_3d` (`SKA1-Low`/`HERA-350`/`MWA-II`/`LOFAR`) runs `256³` foreground-wedge + PSF + radiometer thermal noise mocks in `22.48–23.04 ms` (`71.65×–71.88×` vs 16T CPU). Pure-`ctypes` `__dlpack__` / `__cuda_array_interface__` (`CudaFieldView`, `to_torch`), warm persistent `BatchPool` (`2.643×` on `b1` / `2.368×` on T4), and `OnlineSBIDataset` stream GPU tensors directly into PyTorch without intermediate HDF5 disk writes (`h5_files_on_disk=0`).
+- **Non-Gaussian & Morphological Topology (Phase 10, `83–85` APIs)**: 3D FFT shell-product `bispectrum_3d` (`26.64×` at `256³`, `max_rel_diff_B = 8.21e-7`), Philox ray-traced `bubble_size_distribution_mfp` (`62.53×–72.87×`, `Mesinger & Furlanetto 2007`), and exact cubical-complex `minkowski_functionals_3d` (`8.28×–8.48×`, `Schmalzing & Buchert 1997`).
+- **Multi-Probe Cross-Correlations & CRN Fisher Forecasting (Phase 11, `86th` API)**: Periodic 3D Cloud-in-Cell gridding `p21_cuda_cic_deposit_3d` (`Hockney & Eastwood 1988`) with grid-stride loops above `65535 × 256` threads accelerates `256³` 1M-particle deposition by **`39.29×`** (`0.0365 s` vs `1.4336 s`, `max_abs_diff = 3.81e-6`), `cross_power_21cm_galaxy` by **`20.68×`** (`max_abs_rk_diff = 2.91e-8`), and pairs with `ksz_momentum_map` (`Sunyaev & Zeldovich 1980`) and Common-Random-Number `FisherForecaster`.
+
+---
+
+## 7. Verification Summary & Reproducibility
+
+Correctness, CPU-vs-GPU parity, packaging, and multi-probe scaling through `21cmCU v0.9.0` are verified across three tiers:
+- **Multi-GPU Cluster (`b1`, `3× RTX 4090`, CUDA 12.6, `sm_89`)**: **`168/168`** core native GPU tests passing (`-k "not speed"`), **`21/21`** `v0.7.0` Phase 7–9 tests passing, and **`61/61`** bit-exact C/OpenMP CPU optimization parity tests (`max_abs = 0.0`).
+- **Colab Tesla T4 GPU (`CUDA 13.0`)**: Phase 11+12 topology & online SBI (`10/10` passed), early warning/DLPack/Sobol suites (`71/71` passed), and Phase 13 Fisher + CIC multi-probe suite (`7/7` passed, `0` skipped) including `256³` tail-voxel parity.
+- **GitHub `CPU CI` & Packaging**: Python `3.12`/`3.13` CPU test matrix (`97 passed, 64 skipped (GPU)`), `ruff` lint, and non-editable wheel `packaging-smoke` validation. Tables are regenerated deterministically via `python benchmarks/reproduce_v090_tables.py --export-tables`.

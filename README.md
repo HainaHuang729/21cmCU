@@ -2,11 +2,12 @@
 
 **Native C/CUDA + cuFFT 21cm Cosmological Simulation Engine for 21cmFAST v4 — Zero CuPy or Numba Dependency**
 
-![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![Version](https://img.shields.io/badge/version-0.9.0-blue)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12-blue)
 ![CUDA](https://img.shields.io/badge/CUDA-12%2B-green)
 [![CPU CI](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml/badge.svg)](https://github.com/HainaHuang729/21cmCU/actions/workflows/ci.yml)
 ![Native GPU Tests](https://img.shields.io/badge/GPU%20tests-168%2B%20verified-brightgreen)
+![CUDA APIs](https://img.shields.io/badge/CUDA%20APIs-86-success)
 
 [Visual Showcase](#visual-showcase) · [Quickstart](#5-minute-quickstart) · [Wiki](docs/wiki/Home.md) · [User Guide](docs/USER_GUIDE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Upstream & CPU Opt](docs/UPSTREAM_AND_OPTIMIZATION.md) · [Methods Paper](docs/paper/21cmcu_paper.md) · [Examples](examples/)
 
@@ -79,17 +80,18 @@ cd 21cmCU
 ./scripts/install.sh
 
 # Option B: Docker
-docker build -f docker/Dockerfile -t 21cmcu:0.7.0 .
-docker run --rm --gpus all 21cmcu:0.7.0 doctor
+docker build -f docker/Dockerfile -t 21cmcu:0.9.0 .
+docker run --rm --gpus all 21cmcu:0.9.0 doctor
 
 # Option C: Apptainer / Singularity (Slurm clusters)
 apptainer build 21cmcu.sif docker/21cmcu.def
 apptainer run --nv 21cmcu.sif doctor
 ```
 
-Verify your GPU runtime, PCIe/NVLink topology, libraries, and grid sizing limits anytime with:
+Verify your version, GPU runtime, PCIe/NVLink topology, libraries, and grid sizing limits anytime with:
 
 ```bash
+21cmcu version
 21cmcu doctor
 ```
 

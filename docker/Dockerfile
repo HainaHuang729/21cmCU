@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.6.2-devel-ubuntu24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG CUDA_ARCHS="80,86,89,90"
+ARG CUDA_ARCHS="75,80,86,89,90"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \

@@ -185,8 +185,8 @@ def doctor_cmd(*, as_json: bool = False) -> None:
     tbl.add_row("Python / NumPy", f"{ver['python']} / {ver['numpy']} ({ver['cpu_count']} CPUs)")
     tbl.add_row(
         "CUDA Runtime",
-        f"compiled={cu['compiled']}, available={cu['available']}, devices={cu['device_count']}, "
-        f"active={cu['active_devices']}",
+        f"compiled={cu['compiled']}, available={cu['available']}, apis={cu['api_count']}, "
+        f"devices={cu['device_count']}, active={cu['active_devices']}",
     )
     tbl.add_row(
         "Mode / Lazy D2H",
@@ -216,6 +216,30 @@ def doctor_cmd(*, as_json: bool = False) -> None:
     _cns.print(sizing)
 
 
+@app.command(name="version")
+def version_cmd(*, as_json: bool = False) -> None:
+    """Display installed 21cmCU version and native CUDA capability summary."""
+    import py21cmcu
+
+    payload = {
+        "version": py21cmcu.__version__,
+        "cuda_compiled": bool(py21cmcu.cuda_compiled()),
+        "cuda_available": bool(py21cmcu.cuda_available()),
+        "cuda_api_count": int(py21cmcu.cuda_api_count()),
+        "cuda_device_count": int(py21cmcu.cuda_device_count()),
+    }
+    if as_json:
+        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        return
+    _cns.print(
+        f"21cmCU [bold]v{payload['version']}[/bold] "
+        f"(cuda_compiled={payload['cuda_compiled']}, "
+        f"cuda_available={payload['cuda_available']}, "
+        f"cuda_apis={payload['cuda_api_count']}, "
+        f"devices={payload['cuda_device_count']})"
+    )
+
+
 @app.command(name="bench")
 def bench_cmd(
     suite: str = "lightcone,batch",
@@ -224,6 +248,14 @@ def bench_cmd(
 ) -> None:
     """Run 21cmCU benchmark suites from the repository harness."""
     repo_root = Path(__file__).resolve().parents[2]
+    bench_script = repo_root / "benchmarks" / "bench_21cmcu.py"
+    if not bench_script.exists():
+        msg = (
+            f"Benchmark harness not found at {bench_script}. "
+            "Run `21cmcu bench` from a source checkout or run benchmarks/bench_21cmcu.py directly."
+        )
+        _cns.print(f"[red]{msg}[/red]")
+        raise FileNotFoundError(msg)
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     from benchmarks import bench_21cmcu
@@ -241,7 +273,7 @@ def bench_cmd(
         sys.argv = old_argv
 
 
-__all__ = ["app", "batch_cmd", "bench_cmd", "doctor_cmd"]
+__all__ = ["app", "batch_cmd", "bench_cmd", "doctor_cmd", "version_cmd"]
 
 
 if __name__ == "__main__":

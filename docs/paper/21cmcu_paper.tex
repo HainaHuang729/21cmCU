@@ -9,13 +9,13 @@
 
 \title{\textbf{21cmCU}: A Native C/CUDA and Multi-GPU Accelerated Simulation Engine for 21cmFAST v4}
 \author{Haina Huang \and 21cmCU Contributors}
-\date{November 2026 (v0.6.0)}
+\date{November 2026 (v0.9.0)}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We present \textbf{21cmCU} (\texttt{py21cmcu} v0.6.0), a native C/CUDA and cuFFT GPU engine compiled directly into the \textbf{21cmFAST v4} CFFI shared library with zero Python GPU wrapper dependencies. Retaining full algorithmic parity with discrete halo models, spin-temperature evolution, \texttt{CLASS} baryon--CDM relative velocities, and lightcone observables, 21cmCU achieves up to \textbf{492.74$\times$} speedup on standalone redshift-space distortions (\texttt{apply\_rsds}), \textbf{82.05$\times$} end-to-end on rectilinear lightcones (3.032\,s vs.\ 248.773\,s on a 16-core CPU), \textbf{20.65$\times$} on \texttt{AngularLightconer}, and \textbf{12.36$\times$} on multi-redshift \texttt{L-INTEGRAL + TS} coeval runs on an NVIDIA GeForce RTX 4090. Through opt-in \texttt{CUDA\_LAZY\_D2H} device residency, on-GPU \texttt{DeviceLZF} HDF5 compression (1.83$\times$ faster write than CPU LZF), pinned-bounce multi-GPU slab transposes, and single-work-slab streaming across $3\times$ RTX 4090, 21cmCU executes \textbf{$2048^3$ (8.590 billion voxels)} Zel'dovich initial conditions natively in-VRAM in \textbf{58.467\,s} (3.71$\times$ faster than v0.5.0 host fallback) and delivers up to \textbf{9,782 tasks/h} concurrent ensemble throughput for simulation-based inference (SBI).
+We present \textbf{21cmCU} (\texttt{py21cmcu} v0.9.0), a native C/CUDA and cuFFT GPU engine with \textbf{86 native CUDA C APIs} compiled directly into the \textbf{21cmFAST v4} CFFI shared library with zero Python GPU wrapper dependencies. Retaining full algorithmic parity with discrete halo models, spin-temperature evolution, \texttt{CLASS} baryon--CDM relative velocities, and lightcone observables, 21cmCU achieves up to \textbf{492.74$\times$} speedup on standalone redshift-space distortions (\texttt{apply\_rsds}), \textbf{82.05$\times$} end-to-end on rectilinear lightcones (3.032\,s vs.\ 248.773\,s on a 16-core CPU), \textbf{71.65$\times$--71.88$\times$} on $256^3$ single-pass interferometer mocks (\texttt{SKA1-Low}/\texttt{HERA-350}), \textbf{20.65$\times$} on \texttt{AngularLightconer}, and \textbf{12.36$\times$} on multi-redshift \texttt{L-INTEGRAL + TS} coeval runs on an NVIDIA GeForce RTX 4090. Through \texttt{v0.7.0--v0.9.0}, 21cmCU adds zero-copy \texttt{\_\_dlpack\_\_} PyTorch streaming (\texttt{OnlineSBIDataset} with warm persistent \texttt{BatchPool}), anti-repetition \texttt{ObliqueRectilinearLightconer} traversal ($12.45\times$ path extension), and CUDA-accelerated 3D bispectrum ($26.64\times$), MFP bubble-size distributions ($62.53\times$--$72.87\times$), exact Minkowski functionals ($8.28\times$--$8.48\times$), CIC particle/galaxy gridding ($39.29\times$ for $1\text{M}$ particles on $256^3$), $21\text{cm} \times \text{galaxy}$ cross-power ($20.68\times$), kSZ momentum maps, and Common-Random-Number (CRN) Fisher forecasting, while scaling multi-GPU slab streaming across $3\times$ RTX 4090 natively in-VRAM to \textbf{$2048^3$ (8.590 billion voxels)} Zel'dovich initial conditions in \textbf{58.467\,s}.
 \end{abstract}
 
 \section{Introduction}
@@ -89,7 +89,23 @@ To overcome the 24\,GB single-GPU limit above $1024^3$, \texttt{cuda\_mgpu.cu} s
 \section{SBI Data Pipeline, CLI, and Verification}
 Directions L and M integrate Fourier-space horizon wedge filtering \cite{Parsons2012}, radiometer thermal noise, scrambled Sobol parameter sampling (\texttt{py21cmcu.observables}), HDF5-checkpointed resumable worker pools (\texttt{run\_batch}, up to $9,782.0$ tasks/h on $2\times$ RTX 4090), \texttt{doctor} hardware diagnostics, and the \texttt{21cmcu} CLI (\texttt{run}, \texttt{batch}, \texttt{doctor}, \texttt{bench}).
 
-Across all 12 native GPU test suites (\texttt{test\_21cmcu\_phase0} through \texttt{phase6\_lm} and \texttt{test\_cuda\_phase1--3}, excluding \texttt{speed} micro-benchmarks), \texttt{21cmCU v0.6.0} passes \textbf{168/168 tests} on $3\times$ RTX 4090 (\texttt{cuda\_arch=sm\_89}) with zero failures and clean \texttt{ruff} lint checks across \texttt{src/py21cmcu}, \texttt{benchmarks}, \texttt{examples}, and \texttt{tests/native}.
+Across all 12 native GPU test suites (\texttt{test\_21cmcu\_phase0} through \texttt{phase6\_lm} and \texttt{test\_cuda\_phase1--3}, excluding \texttt{speed} micro-benchmarks), \texttt{21cmCU} passes \textbf{168/168 tests} on $3\times$ RTX 4090 (\texttt{cuda\_arch=sm\_89}) alongside \textbf{21/21} Phase 7--9 tests and \textbf{61/61} bit-exact C/OpenMP optimization parity tests.
+
+\section{Higher-Order Topology, Online SBI, and Multi-Probe Forecasting (v0.7.0--v0.9.0)}
+In \texttt{v0.7.0--v0.9.0}, \texttt{cuda\_analysis.cu} and \texttt{py21cmcu} extend the engine from 2-point power spectra to a complete multi-probe inference suite (Table~\ref{tab:t4v090}, reproducible via \texttt{benchmarks/reproduce\_v090\_tables.py}):
+\begin{itemize}
+  \item \textbf{Single-Pass Interferometer Mocks \& Zero-Copy DLPack}: \texttt{mock\_observation\_3d} combines UV coverage, PSF smoothing, channel response, horizon wedge filtering \cite{Parsons2012}, and radiometer thermal noise on $256^3$ cubes in $22.48\text{--}23.04$\,ms ($71.65\times\text{--}71.88\times$ vs.\ 16T CPU), while pure-\texttt{ctypes} \texttt{\_\_dlpack\_\_} views feed \texttt{OnlineSBIDataset} and warm \texttt{BatchPool} pipelines ($2.643\times$ on RTX 4090; $2.368\times$ on Tesla T4) with zero disk HDF5 writes.
+  \item \textbf{Non-Gaussian \& Morphological Topology}: \texttt{bispectrum\_3d} ($26.64\times$ at $256^3$), Philox ray-traced \texttt{bubble\_size\_distribution\_mfp} ($62.53\times\text{--}72.87\times$) \cite{Mesinger2007}, and exact cubical-complex \texttt{minkowski\_functionals\_3d} ($8.28\times\text{--}8.48\times$) \cite{Schmalzing1997}.
+  \item \textbf{Multi-Probe Cross-Correlations \& CRN Fisher}: Periodic 3D CIC gridding \texttt{p21\_cuda\_cic\_deposit\_3d} \cite{Hockney1988} with grid-stride loops for $>65535\times 256$ voxels accelerates $256^3$ 1M-particle gridding by \textbf{39.29$\times$} ($\max|\Delta\delta|=3.81\times 10^{-6}$), $21\text{cm} \times \text{galaxy}$ cross-power by \textbf{20.68$\times$} ($\max|\Delta r(k)|=2.91\times 10^{-8}$), and integrates with \texttt{ksz\_momentum\_map} \cite{Sunyaev1980} and Common-Random-Number \texttt{FisherForecaster}.
+\end{itemize}
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\input{tables/table_t4_v090_science.tex}
+\caption{Verified \texttt{v0.9.0} higher-order topology, warm \texttt{BatchPool}, and multi-probe CIC / cross-power benchmarks on Google Colab Tesla T4 (\texttt{benchmarks/results\_t4\_v090.json}).}
+\label{tab:t4v090}
+\end{table*}
 
 \bibliographystyle{unsrt}
 \bibliography{refs}

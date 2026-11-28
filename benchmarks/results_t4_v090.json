@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "version": "0.9.0",
+    "device": "Tesla T4",
+    "vram_mib": 15360,
+    "cuda_version": "13.0",
+    "python_version": "3.13.16",
+    "notes": "Verbatim verified timings captured on Google Colab Tesla T4 runtime across Phase 10, Direction R, and Phase 11 (commit 00d8c1a)."
+  },
+  "phase10_topology_128": {
+    "bispectrum_3d": {
+      "cpu_s": 0.8812,
+      "gpu_s": 0.1420,
+      "speedup": 6.21,
+      "max_rel_diff_B": 1.31e-06
+    },
+    "mfp_bsd_200k": {
+      "cpu_s": 0.6947,
+      "gpu_s": 0.0095,
+      "speedup": 72.87,
+      "mean_r_rel_diff": 0.00366
+    },
+    "minkowski_3d": {
+      "cpu_s": 0.2960,
+      "gpu_s": 0.0357,
+      "speedup": 8.28,
+      "euler_exact": true
+    }
+  },
+  "phase10_topology_256": {
+    "bispectrum_3d": {
+      "cpu_s": 11.3274,
+      "gpu_s": 0.4252,
+      "speedup": 26.64,
+      "max_rel_diff_B": 8.21e-07
+    },
+    "mfp_bsd_200k": {
+      "cpu_s": 2.3150,
+      "gpu_s": 0.0370,
+      "speedup": 62.53,
+      "mean_r_rel_diff": 0.0005
+    },
+    "minkowski_3d": {
+      "cpu_s": 3.0784,
+      "gpu_s": 0.3632,
+      "speedup": 8.48,
+      "euler_exact": true
+    }
+  },
+  "direction_r_batch_pool_4x2_128_64": {
+    "cold_total_s": 26.7845,
+    "cold_unique_pids": 4,
+    "warm_total_s": 11.3101,
+    "warm_round4_s": 1.2729,
+    "warm_unique_pids": 1,
+    "speedup": 2.368
+  },
+  "direction_r_online_sbi_zero_disk_cuda": {
+    "theta_shape": [2, 2],
+    "field_shape": [2, 64, 64, 64],
+    "is_cuda": true,
+    "h5_files_on_disk": 0
+  },
+  "phase11_multiprobe_256_1M": {
+    "cic_256_1M_particles": {
+      "cpu_s": 1.4336,
+      "gpu_s": 0.0365,
+      "speedup": 39.29,
+      "max_abs_diff": 3.814697265625e-06
+    },
+    "cross_power_256_1M": {
+      "cpu_s": 4.8076,
+      "gpu_s": 0.2324,
+      "speedup": 20.68,
+      "max_abs_rk_diff": 2.9102017073956432e-08
+    }
+  },
+  "phase11_example09_t4": {
+    "r_k": [-0.938, -0.959, -0.834, -0.741, -0.509, -0.338, -0.131, -0.002],
+    "total_snr": 20.13,
+    "ksz_rms_uk": 0.1391,
+    "ksz_max_dl_uk2": 0.0164
+  }
+}

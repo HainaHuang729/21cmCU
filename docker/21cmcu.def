@@ -3,11 +3,11 @@ From: nvidia/cuda:12.6.2-devel-ubuntu24.04
 
 %labels
     Author 21cmCU Contributors
-    Version 0.7.0
+    Version 0.9.0
     Description Native C/CUDA + cuFFT GPU engine for 21cmFAST v4
 
 %arguments
-    CUDA_ARCHS=80,86,89,90
+    CUDA_ARCHS=75,80,86,89,90
 
 %files
     . /opt/21cmcu

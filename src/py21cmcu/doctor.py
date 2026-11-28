@@ -106,6 +106,7 @@ def doctor(*, as_json: bool = False) -> dict[str, Any]:
         "cuda": {
             "compiled": bool(py21cmcu.cuda_compiled()),
             "available": bool(py21cmcu.cuda_available()),
+            "api_count": int(py21cmcu.cuda_api_count()),
             "device_count": int(py21cmcu.cuda_device_count()),
             "active_devices": list(py21cmcu.get_cuda_devices()),
             "use_cuda_config": bool(config["USE_CUDA"]),

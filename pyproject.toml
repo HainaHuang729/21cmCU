@@ -4,12 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "21cmCU"
-version = "0.7.0"
+dynamic = ["version"]
 description = "21cmCU: Native C/CUDA + cuFFT 21cm cosmological simulation engine"
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.12"
+keywords = ["cosmology", "21cm", "reionization", "cuda", "cufft", "simulation", "sbi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "click",
+    "rich",
     "numpy>=2.0",
     "pyyaml",
     "cffi>=1.0",
@@ -30,6 +44,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "build", "twine"]
+ml = ["torch"]
 legacy-cupy = ["cupy-cuda12x"]
 
 [project.scripts]
@@ -46,6 +62,12 @@ test = ["pytest>=8"]
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "py21cmcu._version.__version__"}
+
+[tool.setuptools.package-data]
+py21cmcu = ["py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -110,8 +132,6 @@ ignore = [
     "N815",
     # Docstring in imperative mood. This should *not* be the case for @property's, but can't ignore them atm.
 #    "D401",
-    # Module shadowing a builtin
-    "A005",
     "RUF009",
     "B008",
 ]

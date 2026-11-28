@@ -27,9 +27,11 @@ def _stats() -> dict[str, int]:
     return py21cmcu.cuda_stats()
 
 
-def test_py21cmcu_exports_and_no_cupy() -> None:
+def test_py21cmcu_exports_and_no_cupy(capsys: pytest.CaptureFixture[str]) -> None:
     """Verify ``py21cmcu`` exports core APIs and helpers without importing ``cupy``."""
-    assert py21cmcu.__version__ == "0.7.0"
+    assert py21cmcu.__version__ == "0.9.0"
+    assert py21cmcu.cuda_api_count() >= 86
+    assert (Path(py21cmcu.__file__).parent / "py.typed").is_file()
     for name in (
         "InputParameters",
         "RectilinearLightconer",
@@ -37,6 +39,7 @@ def test_py21cmcu_exports_and_no_cupy() -> None:
         "run_coeval",
         "run_lightcone",
         "config",
+        "cuda_api_count",
         "cuda_compiled",
         "cuda_available",
         "cuda_device_count",
@@ -48,8 +51,17 @@ def test_py21cmcu_exports_and_no_cupy() -> None:
         "get_cuda_mode",
         "set_cuda_mode",
         "use_mode",
+        "FisherForecaster",
+        "cic_deposit_3d",
+        "bispectrum_3d",
+        "plot_fisher_contours",
+        "BatchPool",
     ):
         assert hasattr(py21cmcu, name), f"Missing export: {name}"
+    assert "FisherForecaster" in dir(py21cmcu)
+    cu_cli.version_cmd(as_json=True)
+    ver_out = capsys.readouterr().out
+    assert '"version": "0.9.0"' in ver_out
     assert py21cmcu.cuda_compiled() == bool(lib.p21_cuda_is_compiled())
     assert py21cmcu.cuda_available() == bool(lib.p21_cuda_is_available())
     assert "cupy" not in sys.modules

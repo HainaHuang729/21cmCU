@@ -1,0 +1,18 @@
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Workload & CPU 16T [s] & GPU [s] & Speedup \\
+\midrule
+\texttt{apply\_rsds} (512 slices) & 37.6455 & 0.0764 & \textbf{492.74$\times$} \\
+Rectilinear LC ($z=6.5\text{--}11$) & 248.773 & 3.032 & \textbf{82.05$\times$} \\
+Angular LC ($z=7.8\text{--}9.8$) & 97.018 & 4.698 & \textbf{20.65$\times$} \\
+\texttt{include\_dvdr\_in\_tau21} & 0.305 & 0.0238 & \textbf{12.81$\times$} \\
+Perturb Field (2LPT, $256^3$) & 0.915 & 0.073 & \textbf{12.58$\times$} \\
+Coeval 3z (\texttt{L-INT+TS}, 512/256) & 55.079 & 4.456 & \textbf{12.36$\times$} \\
+Ionize Box ($256^3$, \texttt{E-INT}) & 2.851 & 0.264 & \textbf{10.81$\times$} \\
+\texttt{CLASS+FLUCTS} IC (256/128) & 2.827 & 0.295 & \textbf{9.57$\times$} \\
+EoR Coeval ($768^3$, $z=7.0$) & 110.209 & 16.435 & \textbf{6.71$\times$} \\
+2LPT IC (512/256) & 6.244 & 1.160 & \textbf{5.38$\times$} \\
+IC + PF (1024/512, 2LPT lo) & 54.245 & 10.495 & \textbf{5.17$\times$} \\
+Concurrent Batch ($4\times 192/96$) & 14.184 & 3.097 & \textbf{4.58$\times$} \\
+\bottomrule
+\end{tabular}

@@ -95,3 +95,27 @@ Direction G partitions 3D complex FFT volumes along Y-slabs across GPUs (`cuda_m
 | Uncompressed (`none`) | `256.00` | `1.00×` | `0.1662` | `1,540.3` | `0.1723` | `1,485.6` |
 | CPU `h5py` LZF (`lzf`) | `77.48` | `3.30×` | `0.9860` | `259.6` | `0.8207` | `311.9` |
 | GPU `DeviceLZF` (`device-lzf`) | `93.15` | `2.75×` | **`0.5375`** | **`476.3` (`1.83×` vs CPU LZF)** | `0.8653` | `295.8` |
+
+---
+
+## 4. `v0.9.0` Higher-Order Topology, Online SBI & Multi-Probe Benchmarks (Colab Tesla T4)
+
+Captured verbatim on a Google Colab **NVIDIA Tesla T4** (`15,360 MiB` VRAM, CUDA 13.0, Python 3.13.16) and stored in [`benchmarks/results_t4_v090.json`](../benchmarks/results_t4_v090.json). Regenerate paper tables or re-run live with:
+
+```bash
+python benchmarks/reproduce_v090_tables.py --export-tables
+python benchmarks/reproduce_v090_tables.py --run-live --out benchmarks/results_live_v090.json
+```
+
+| Workload (`v0.9.0`) | Grid / Setup | CPU Baseline [s] | Tesla T4 GPU [s] | Speedup | Verified Parity / Notes |
+| --- | --- | ---: | ---: | ---: | --- |
+| `bispectrum_3d` (`equilateral`, 8 bins) | `128³` | `0.8812` | `0.1420` | **`6.21×`** | `max_rel_diff_B = 1.31e-6` |
+| `bispectrum_3d` (`equilateral`, 8 bins) | `256³` | `11.3274` | `0.4252` | **`26.64×`** | `max_rel_diff_B = 8.21e-7` |
+| `bubble_size_distribution_mfp` (200k rays) | `128³` | `0.6947` | `0.0095` | **`72.87×`** | `mean_r_rel_diff = 0.00366` |
+| `bubble_size_distribution_mfp` (200k rays) | `256³` | `2.3150` | `0.0370` | **`62.53×`** | `mean_r_rel_diff = 0.00050` |
+| `minkowski_functionals_3d` (15 thresholds) | `128³` | `0.2960` | `0.0357` | **`8.28×`** | Exact cubical Euler $\chi$ |
+| `minkowski_functionals_3d` (15 thresholds) | `256³` | `3.0784` | `0.3632` | **`8.48×`** | Exact cubical Euler $\chi$ |
+| `cic_deposit_3d` (`1M` particles, overdensity) | `256³` | `1.4336` | `0.0365` | **`39.29×`** | `max_abs_diff = 3.81e-6` |
+| `cross_power_21cm_galaxy` (`1M` galaxies) | `256³` | `4.8076` | `0.2324` | **`20.68×`** | `max_abs_rk_diff = 2.91e-8` |
+| Persistent `BatchPool` (`4×2`, `128/64`) | `4` rounds T4 | `26.7845` (cold, 4 PIDs) | **`11.3101`** (warm, 1 PID) | **`2.368×`** | Round 4 warm: `1.2729 s`; `OnlineSBIDataset` zero-disk CUDA tensors |
+

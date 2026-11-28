@@ -17,9 +17,11 @@ Back to [Home](Home.md) · Previous: [SBI & Batch Pipeline](SBI-and-Batch-Pipeli
   ```
   Supports both v4 names (`F_STAR10_ACG`, `F_ESC10_ACG`, `ALPHA_STAR_ACG`, `LX_OVER_SFR_ACG`) and legacy aliases (`F_STAR10`, `F_ESC10`, `ALPHA_STAR`, `L_X`, `F_STAR7_MINI`, `F_ESC7_MINI`, `ALPHA_STAR_MINI`, `L_X_MINI`).
 - **`21cmcu doctor [--as-json]`**
-  Inspect runtime versions, CUDA compilation/availability, GPU properties, `nvidia-smi topo -m`, compiler/library detection, and 24 GB grid sizing limits.
+  Inspect runtime versions, CUDA compilation/availability, exported `p21_cuda_*` API count, GPU properties, `nvidia-smi topo -m`, compiler/library detection, and 24 GB grid sizing limits.
+- **`21cmcu version [--as-json]`**
+  Print installed `21cmcu` version (`0.9.0`) and native CUDA device/API summary.
 - **`21cmcu bench [--suite lightcone,batch] [--json out.json] [--resume]`**
-  Run `benchmarks/bench_21cmcu.py` suites directly from the CLI.
+  Run `benchmarks/bench_21cmcu.py` suites directly from a source checkout.
 
 ---
 
@@ -52,7 +54,7 @@ Back to [Home](Home.md) · Previous: [SBI & Batch Pipeline](SBI-and-Batch-Pipeli
 Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`, `ObliqueRectilinearLightconer`, `AngularLightconer`, `run_coeval`, `run_lightcone`, `compute_initial_conditions`, `perturb_field`, `compute_ionization_field`, `spin_temperature`, `brightness_temperature`, `config`, etc.), `py21cmcu` exports:
 
 - **Runtime & Device Control**:
-  `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`
+  `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `cuda_api_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`
 - **Analysis, Power Spectra & Non-Gaussian Topology**:
   `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`, `lightcone_chunk_power_spectra_2d()`, `field_moments_and_pdf()`, `bispectrum_3d()`, `bubble_size_distribution_mfp()`, `minkowski_functionals_3d()`
 - **I/O Compression**:

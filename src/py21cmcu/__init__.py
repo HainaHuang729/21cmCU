@@ -2,158 +2,172 @@
 
 from __future__ import annotations
 
-import contextlib
-from typing import Any, Literal
+import importlib
+from typing import TYPE_CHECKING, Any
 
 import py21cmfast as _p21
 from py21cmfast import *  # noqa: F403
 from py21cmfast import config
-from py21cmfast.c_21cmfast import ffi as _ffi
-from py21cmfast.c_21cmfast import lib as _lib
-from py21cmfast.lightconers import clear_lightconer_class_cache as _clear_lc_class_cache
-from py21cmfast.wrapper.inputs import (
-    clear_cosmo_tables_cache as _clear_cosmo_tables_cache,
+
+from ._runtime import (
+    CudaMode,
+    cleanup_cuda,
+    clear_class_cache,
+    cuda_api_count,
+    cuda_available,
+    cuda_compiled,
+    cuda_device_count,
+    cuda_stats,
+    get_cuda_devices,
+    get_cuda_mode,
+    reset_cuda_stats,
+    set_cuda_devices,
+    set_cuda_mode,
+    use_mode,
 )
+from ._version import __version__
 
-from .analysis import (
-    lightcone_chunk_power_spectra,
-    lightcone_chunk_power_spectra_2d,
-    power_spectrum_1d,
-    power_spectrum_2d,
-)
-from .batch import BatchPool, BatchResult, BatchTask, run_batch, save_batch_h5
-from .doctor import doctor
-from .fisher import FisherForecastResult, FisherForecaster, fisher_forecast_21cm
-from .inference import Likelihood21cm, OnlineSBIDataset, SBISimulator
-from .instrument import (
-    INSTRUMENT_PRESETS,
-    InterferometerConfig,
-    baseline_density_uv,
-    forecast_power_spectrum_2d_error,
-    forecast_power_spectrum_error,
-    get_instrument_preset,
-    mock_observation_3d,
-    thermal_noise_power_spectrum,
-)
-from .interop import CudaFieldView, lightcone_to_cuda_views, to_cuda_view, to_torch
-from .io import save_lightcone
-from .multiprobe import (
-    cic_deposit_3d,
-    cross_power_21cm_galaxy,
-    cross_power_21cm_galaxy_error,
-    ksz_momentum_map,
-    load_gravitycu_halos,
-)
-from .observables import (
-    add_thermal_noise_3d,
-    apply_wedge_filter_3d,
-    field_moments_and_pdf,
-    generate_sobol_parameter_grid,
-    horizon_slope,
-    horizon_wedge_mask,
-)
-from .shortcuts import quick_coeval, quick_lightcone
-from .topology import bispectrum_3d, bubble_size_distribution_mfp, minkowski_functionals_3d
-from .viz import (
-    export_lightcone_3d_html,
-    export_volume_3d_html,
-    plot_coeval_slices,
-    plot_fisher_contours,
-    plot_lightcone_summary,
-    plot_mock_comparison,
-)
+if TYPE_CHECKING:
+    from .analysis import (
+        lightcone_chunk_power_spectra,
+        lightcone_chunk_power_spectra_2d,
+        power_spectrum_1d,
+        power_spectrum_2d,
+    )
+    from .batch import BatchPool, BatchResult, BatchTask, run_batch, save_batch_h5
+    from .doctor import doctor
+    from .fisher import FisherForecastResult, FisherForecaster, fisher_forecast_21cm
+    from .inference import Likelihood21cm, OnlineSBIDataset, SBISimulator
+    from .instrument import (
+        INSTRUMENT_PRESETS,
+        InterferometerConfig,
+        baseline_density_uv,
+        forecast_power_spectrum_2d_error,
+        forecast_power_spectrum_error,
+        get_instrument_preset,
+        mock_observation_3d,
+        thermal_noise_power_spectrum,
+    )
+    from .interop import CudaFieldView, lightcone_to_cuda_views, to_cuda_view, to_torch
+    from .io import save_lightcone
+    from .multiprobe import (
+        cic_deposit_3d,
+        cross_power_21cm_galaxy,
+        cross_power_21cm_galaxy_error,
+        ksz_momentum_map,
+        load_gravitycu_halos,
+    )
+    from .observables import (
+        add_thermal_noise_3d,
+        apply_wedge_filter_3d,
+        field_moments_and_pdf,
+        generate_sobol_parameter_grid,
+        horizon_slope,
+        horizon_wedge_mask,
+    )
+    from .shortcuts import quick_coeval, quick_lightcone
+    from .topology import (
+        bispectrum_3d,
+        bubble_size_distribution_mfp,
+        minkowski_functionals_3d,
+    )
+    from .viz import (
+        export_lightcone_3d_html,
+        export_volume_3d_html,
+        plot_coeval_slices,
+        plot_fisher_contours,
+        plot_lightcone_summary,
+        plot_mock_comparison,
+    )
 
-__version__ = "0.7.0"
-
-CudaMode = Literal["strict", "fast"]
-
-
-def cuda_compiled() -> bool:
-    """Return True if the C extension was compiled with native CUDA support."""
-    return bool(_lib.p21_cuda_is_compiled())
-
-
-def cuda_available() -> bool:
-    """Return True if a CUDA-capable GPU device is available at runtime."""
-    return bool(_lib.p21_cuda_is_available())
-
-
-def cuda_device_count() -> int:
-    """Return the number of visible CUDA devices."""
-    return int(_lib.p21_cuda_device_count())
-
-
-def get_cuda_devices() -> tuple[int, ...]:
-    """Return the active CUDA device IDs used by native multi-GPU operations."""
-    n = int(_lib.p21_cuda_get_num_devices())
-    if n <= 0:
-        return ()
-    buf = _ffi.new("int[]", n)
-    _lib.p21_cuda_get_devices(buf, n)
-    return tuple(int(buf[i]) for i in range(n))
-
-
-def set_cuda_devices(devices: Any) -> None:
-    """Set active CUDA device IDs (e.g. ``(0, 1, 2, 3)``, ``'all'``, or ``None``)."""
-    config["CUDA_DEVICES"] = devices
-
-
-def cuda_stats() -> dict[str, int]:
-    """Return a snapshot of the native CUDA backend runtime counters."""
-    stats = _ffi.new("P21CudaStats *")
-    _lib.p21_cuda_get_stats(stats)
-    return {
-        name: int(getattr(stats, name))
-        for name, _ in _ffi.typeof("P21CudaStats").fields
-    }
-
-
-def reset_cuda_stats() -> None:
-    """Reset the native CUDA backend runtime counters."""
-    _lib.p21_cuda_reset_stats()
-
-
-def cleanup_cuda() -> None:
-    """Release cached CUDA device memory, cuFFT plans, and registry buffers."""
-    _lib.p21_cuda_cleanup()
-
-
-def clear_class_cache() -> None:
-    """Clear in-memory CLASS transfer-table and lightconer caches."""
-    _clear_cosmo_tables_cache()
-    _clear_lc_class_cache()
-
-
-def get_cuda_mode() -> CudaMode:
-    """Return the active CUDA execution precision mode (``strict`` or ``fast``)."""
-    return config["CUDA_MODE"]
-
-
-def set_cuda_mode(mode: CudaMode) -> None:
-    """Set the global CUDA execution precision mode (``strict`` or ``fast``)."""
-    config["CUDA_MODE"] = mode
+_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
+    # analysis
+    "lightcone_chunk_power_spectra": (".analysis", "lightcone_chunk_power_spectra"),
+    "lightcone_chunk_power_spectra_2d": (".analysis", "lightcone_chunk_power_spectra_2d"),
+    "power_spectrum_1d": (".analysis", "power_spectrum_1d"),
+    "power_spectrum_2d": (".analysis", "power_spectrum_2d"),
+    # batch
+    "BatchPool": (".batch", "BatchPool"),
+    "BatchResult": (".batch", "BatchResult"),
+    "BatchTask": (".batch", "BatchTask"),
+    "run_batch": (".batch", "run_batch"),
+    "save_batch_h5": (".batch", "save_batch_h5"),
+    # doctor
+    "doctor": (".doctor", "doctor"),
+    # fisher
+    "FisherForecastResult": (".fisher", "FisherForecastResult"),
+    "FisherForecaster": (".fisher", "FisherForecaster"),
+    "fisher_forecast_21cm": (".fisher", "fisher_forecast_21cm"),
+    # inference
+    "Likelihood21cm": (".inference", "Likelihood21cm"),
+    "OnlineSBIDataset": (".inference", "OnlineSBIDataset"),
+    "SBISimulator": (".inference", "SBISimulator"),
+    # instrument
+    "INSTRUMENT_PRESETS": (".instrument", "INSTRUMENT_PRESETS"),
+    "InterferometerConfig": (".instrument", "InterferometerConfig"),
+    "baseline_density_uv": (".instrument", "baseline_density_uv"),
+    "forecast_power_spectrum_2d_error": (".instrument", "forecast_power_spectrum_2d_error"),
+    "forecast_power_spectrum_error": (".instrument", "forecast_power_spectrum_error"),
+    "get_instrument_preset": (".instrument", "get_instrument_preset"),
+    "mock_observation_3d": (".instrument", "mock_observation_3d"),
+    "thermal_noise_power_spectrum": (".instrument", "thermal_noise_power_spectrum"),
+    # interop
+    "CudaFieldView": (".interop", "CudaFieldView"),
+    "lightcone_to_cuda_views": (".interop", "lightcone_to_cuda_views"),
+    "to_cuda_view": (".interop", "to_cuda_view"),
+    "to_torch": (".interop", "to_torch"),
+    # io
+    "save_lightcone": (".io", "save_lightcone"),
+    # multiprobe
+    "cic_deposit_3d": (".multiprobe", "cic_deposit_3d"),
+    "cross_power_21cm_galaxy": (".multiprobe", "cross_power_21cm_galaxy"),
+    "cross_power_21cm_galaxy_error": (".multiprobe", "cross_power_21cm_galaxy_error"),
+    "ksz_momentum_map": (".multiprobe", "ksz_momentum_map"),
+    "load_gravitycu_halos": (".multiprobe", "load_gravitycu_halos"),
+    # observables
+    "add_thermal_noise_3d": (".observables", "add_thermal_noise_3d"),
+    "apply_wedge_filter_3d": (".observables", "apply_wedge_filter_3d"),
+    "field_moments_and_pdf": (".observables", "field_moments_and_pdf"),
+    "generate_sobol_parameter_grid": (".observables", "generate_sobol_parameter_grid"),
+    "horizon_slope": (".observables", "horizon_slope"),
+    "horizon_wedge_mask": (".observables", "horizon_wedge_mask"),
+    # shortcuts
+    "quick_coeval": (".shortcuts", "quick_coeval"),
+    "quick_lightcone": (".shortcuts", "quick_lightcone"),
+    # topology
+    "bispectrum_3d": (".topology", "bispectrum_3d"),
+    "bubble_size_distribution_mfp": (".topology", "bubble_size_distribution_mfp"),
+    "minkowski_functionals_3d": (".topology", "minkowski_functionals_3d"),
+    # viz
+    "export_lightcone_3d_html": (".viz", "export_lightcone_3d_html"),
+    "export_volume_3d_html": (".viz", "export_volume_3d_html"),
+    "plot_coeval_slices": (".viz", "plot_coeval_slices"),
+    "plot_fisher_contours": (".viz", "plot_fisher_contours"),
+    "plot_lightcone_summary": (".viz", "plot_lightcone_summary"),
+    "plot_mock_comparison": (".viz", "plot_mock_comparison"),
+}
 
 
-@contextlib.contextmanager
-def use_mode(
-    mode: CudaMode,
-    *,
-    use_cuda: bool = True,
-    lazy_d2h: bool | None = None,
-    devices: Any = None,
-    **extra: Any,
-):
-    """Temporarily run under the requested CUDA precision mode and config overrides."""
-    if lazy_d2h is not None:
-        extra["CUDA_LAZY_D2H"] = bool(lazy_d2h)
-    if devices is not None:
-        extra["CUDA_DEVICES"] = devices
-    with config.use(USE_CUDA=use_cuda, CUDA_MODE=mode, **extra) as cfg:
-        yield cfg
+def __getattr__(name: str) -> Any:
+    """Lazily resolve public submodule symbols on first attribute access (PEP 562)."""
+    target = _LAZY_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    mod_name, attr_name = target
+    module = importlib.import_module(mod_name, __name__)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Return sorted public attributes including lazy exports."""
+    return sorted(set(globals()) | set(__all__))
 
 
 __all__ = [
     *_p21.__all__,
+    "__version__",
     "BatchPool",
     "BatchResult",
     "BatchTask",
@@ -174,8 +188,10 @@ __all__ = [
     "cic_deposit_3d",
     "cleanup_cuda",
     "clear_class_cache",
+    "config",
     "cross_power_21cm_galaxy",
     "cross_power_21cm_galaxy_error",
+    "cuda_api_count",
     "cuda_available",
     "cuda_compiled",
     "cuda_device_count",
