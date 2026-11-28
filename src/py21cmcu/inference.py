@@ -581,7 +581,7 @@ class OnlineSBIDataset(_IterableDatasetBase):
             buf = np.empty((0, ndim), dtype=np.float64)
             while True:
                 while buf.shape[0] < self.batch_size:
-                    buf = np.concatenate([buf, sobol.random_base2(chunk_m)], axis=0)
+                    buf = np.concatenate([buf, sobol.random(1 << chunk_m)], axis=0)
                 unit_batch = buf[: self.batch_size]
                 buf = buf[self.batch_size :]
                 yield self._emit_batch(qmc.scale(unit_batch, self._lo, self._hi))

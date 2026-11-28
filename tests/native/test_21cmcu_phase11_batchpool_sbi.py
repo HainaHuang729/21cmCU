@@ -408,3 +408,45 @@ def test_gpu_warm_batchpool_and_online_torch_field_stream(tmp_path: Path) -> Non
                 py21cmcu.cleanup_cuda()
         except ImportError:
             pass
+
+
+def test_online_sbi_dataset_infinite_sobol_multi_batch_and_parity() -> None:
+    """Verify infinite Sobol streaming survives many refills with zero warnings and exact parity."""
+    import warnings
+
+    from scipy.stats import qmc
+
+    class _DummySim:
+        param_names = ("F_STAR10_ACG", "F_ESC10_ACG")
+
+        def __call__(self, thetas: np.ndarray) -> np.ndarray:
+            return np.asarray(thetas, dtype=np.float32)
+
+    bounds = {"F_STAR10_ACG": (-1.5, -1.1), "F_ESC10_ACG": (-1.3, -0.8)}
+    lo = np.array([-1.5, -1.3], dtype=np.float64)
+    hi = np.array([-1.1, -0.8], dtype=np.float64)
+    sim = _DummySim()
+
+    for batch_size in (1, 3, 8):
+        ds = py21cmcu.OnlineSBIDataset(
+            sim,  # type: ignore[arg-type]
+            bounds,
+            n_samples=None,
+            batch_size=batch_size,
+            sampling="sobol",
+            seed=77,
+            as_torch=False,
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            it = iter(ds)
+            batches = [next(it) for _ in range(12)]
+        assert not caught, [f"{w.category.__name__}: {w.message}" for w in caught]
+        assert all(th.shape == (batch_size, 2) for th, _ in batches)
+        got = np.concatenate([th for th, _ in batches], axis=0)
+
+        n_total = 12 * batch_size
+        ref_m = (n_total - 1).bit_length()
+        ref_unit = qmc.Sobol(d=2, scramble=True, seed=77).random_base2(ref_m)[:n_total]
+        expected = qmc.scale(ref_unit, lo, hi).astype(np.float32)
+        np.testing.assert_allclose(got, expected, rtol=0.0, atol=1e-6)
