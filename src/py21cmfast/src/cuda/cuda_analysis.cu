@@ -2917,56 +2917,56 @@ __global__ void cic_deposit_3d_kernel(const float *__restrict__ pos_xyz,
                                       double inv_dx, double inv_dy, double inv_dz,
                                       float *__restrict__ grid) {
     unsigned long long idx = (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n_particles) {
-        return;
+    unsigned long long stride = (unsigned long long)gridDim.x * blockDim.x;
+    for (; idx < n_particles; idx += stride) {
+        double ux = fmod((double)pos_xyz[3 * idx + 0] * inv_dx, (double)nx);
+        double uy = fmod((double)pos_xyz[3 * idx + 1] * inv_dy, (double)ny);
+        double uz = fmod((double)pos_xyz[3 * idx + 2] * inv_dz, (double)nz);
+        if (ux < 0.0) ux += (double)nx;
+        if (uy < 0.0) uy += (double)ny;
+        if (uz < 0.0) uz += (double)nz;
+
+        double fx_floor = floor(ux);
+        double fy_floor = floor(uy);
+        double fz_floor = floor(uz);
+        int ix0 = (((int)fx_floor) % nx + nx) % nx;
+        int iy0 = (((int)fy_floor) % ny + ny) % ny;
+        int iz0 = (((int)fz_floor) % nz + nz) % nz;
+        int ix1 = (ix0 + 1) % nx;
+        int iy1 = (iy0 + 1) % ny;
+        int iz1 = (iz0 + 1) % nz;
+
+        float fx = (float)(ux - fx_floor);
+        float fy = (float)(uy - fy_floor);
+        float fz = (float)(uz - fz_floor);
+        float wx0 = 1.0f - fx;
+        float wy0 = 1.0f - fy;
+        float wz0 = 1.0f - fz;
+        float w = weights ? weights[idx] : 1.0f;
+
+        size_t row_x0 = (size_t)ix0 * (size_t)ny;
+        size_t row_x1 = (size_t)ix1 * (size_t)ny;
+        float w00 = w * wx0 * wy0;
+        float w01 = w * wx0 * fy;
+        float w10 = w * fx * wy0;
+        float w11 = w * fx * fy;
+
+        atomicAdd(&grid[(row_x0 + (size_t)iy0) * (size_t)nz + (size_t)iz0], w00 * wz0);
+        atomicAdd(&grid[(row_x0 + (size_t)iy0) * (size_t)nz + (size_t)iz1], w00 * fz);
+        atomicAdd(&grid[(row_x0 + (size_t)iy1) * (size_t)nz + (size_t)iz0], w01 * wz0);
+        atomicAdd(&grid[(row_x0 + (size_t)iy1) * (size_t)nz + (size_t)iz1], w01 * fz);
+        atomicAdd(&grid[(row_x1 + (size_t)iy0) * (size_t)nz + (size_t)iz0], w10 * wz0);
+        atomicAdd(&grid[(row_x1 + (size_t)iy0) * (size_t)nz + (size_t)iz1], w10 * fz);
+        atomicAdd(&grid[(row_x1 + (size_t)iy1) * (size_t)nz + (size_t)iz0], w11 * wz0);
+        atomicAdd(&grid[(row_x1 + (size_t)iy1) * (size_t)nz + (size_t)iz1], w11 * fz);
     }
-
-    double ux = fmod((double)pos_xyz[3 * idx + 0] * inv_dx, (double)nx);
-    double uy = fmod((double)pos_xyz[3 * idx + 1] * inv_dy, (double)ny);
-    double uz = fmod((double)pos_xyz[3 * idx + 2] * inv_dz, (double)nz);
-    if (ux < 0.0) ux += (double)nx;
-    if (uy < 0.0) uy += (double)ny;
-    if (uz < 0.0) uz += (double)nz;
-
-    double fx_floor = floor(ux);
-    double fy_floor = floor(uy);
-    double fz_floor = floor(uz);
-    int ix0 = (((int)fx_floor) % nx + nx) % nx;
-    int iy0 = (((int)fy_floor) % ny + ny) % ny;
-    int iz0 = (((int)fz_floor) % nz + nz) % nz;
-    int ix1 = (ix0 + 1) % nx;
-    int iy1 = (iy0 + 1) % ny;
-    int iz1 = (iz0 + 1) % nz;
-
-    float fx = (float)(ux - fx_floor);
-    float fy = (float)(uy - fy_floor);
-    float fz = (float)(uz - fz_floor);
-    float wx0 = 1.0f - fx;
-    float wy0 = 1.0f - fy;
-    float wz0 = 1.0f - fz;
-    float w = weights ? weights[idx] : 1.0f;
-
-    size_t row_x0 = (size_t)ix0 * (size_t)ny;
-    size_t row_x1 = (size_t)ix1 * (size_t)ny;
-    float w00 = w * wx0 * wy0;
-    float w01 = w * wx0 * fy;
-    float w10 = w * fx * wy0;
-    float w11 = w * fx * fy;
-
-    atomicAdd(&grid[(row_x0 + (size_t)iy0) * (size_t)nz + (size_t)iz0], w00 * wz0);
-    atomicAdd(&grid[(row_x0 + (size_t)iy0) * (size_t)nz + (size_t)iz1], w00 * fz);
-    atomicAdd(&grid[(row_x0 + (size_t)iy1) * (size_t)nz + (size_t)iz0], w01 * wz0);
-    atomicAdd(&grid[(row_x0 + (size_t)iy1) * (size_t)nz + (size_t)iz1], w01 * fz);
-    atomicAdd(&grid[(row_x1 + (size_t)iy0) * (size_t)nz + (size_t)iz0], w10 * wz0);
-    atomicAdd(&grid[(row_x1 + (size_t)iy0) * (size_t)nz + (size_t)iz1], w10 * fz);
-    atomicAdd(&grid[(row_x1 + (size_t)iy1) * (size_t)nz + (size_t)iz0], w11 * wz0);
-    atomicAdd(&grid[(row_x1 + (size_t)iy1) * (size_t)nz + (size_t)iz1], w11 * fz);
 }
 
 __global__ void cic_to_overdensity_kernel(float *__restrict__ grid, size_t n_tot,
                                           double inv_mean_w) {
     size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n_tot) {
+    size_t stride = (size_t)gridDim.x * blockDim.x;
+    for (; idx < n_tot; idx += stride) {
         grid[idx] = (float)((double)grid[idx] * inv_mean_w - 1.0);
     }
 }

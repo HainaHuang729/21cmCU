@@ -168,7 +168,21 @@
 - **Verification (`b1` `USE_CUDA=1` CUDA 12.6 build + 16-core CPU)**:
   - `USE_CUDA=1 CUDA_ARCHS="86;89"` wheel compiled cleanly (`CUDA: True`, all 85 native CUDA symbols verified).
   - **`85 passed, 54 skipped (GPU)`** across [`tests/native/test_21cmcu_phase12_topology.py`](../tests/native/test_21cmcu_phase12_topology.py) and all 10 prior native suites: verified Gaussian $Q \approx 0$, local quadratic $Q \approx 2\lambda = 0.50$ (`equilateral`/`squeezed`/`folded` within `<15%`), isolated sphere MFP $\langle R \rangle \approx \frac{3}{4} R_0$ (`<5%`), exact cubical Euler numbers ($\chi = 1$ ball, $2$ shell, $0$ torus), `<2%` sphere $V_0,V_1,V_2$, resolved GRF parity, and EoR `SBISimulator(summary="nongaussian")` `(2, 34)` output.
-  - `128³` 16-core CPU timings: `bispectrum_3d` (equilateral, 8 bins) `0.523 s`, `bubble_size_distribution_mfp` (50k rays) `0.037 s`, `minkowski_functionals_3d` (15 thresholds) `0.173 s`. *(Live GPU parity/speedup benchmark at `256³` remains to be run once cluster GPU nodes are free.)*
+  - `128³` 16-core CPU timings: `bispectrum_3d` (equilateral, 8 bins) `0.523 s`, `bubble_size_distribution_mfp` (50k rays) `0.037 s`, `minkowski_functionals_3d` (15 thresholds) `0.173 s`.
+  - **Colab Tesla T4 Live GPU Parity & Speedup (`10 passed`, `0 skipped` across `phase11` + `phase12`)**:
+    - `128³`: `bispectrum_3d` `0.8812 s -> 0.1420 s` (`6.21×`, `max_rel_diff_B = 1.31e-6`), `bubble_size_distribution_mfp` (200k rays) `0.6947 s -> 0.0095 s` (`72.87×`, `mean_r_rel_diff = 0.00366`), `minkowski_functionals_3d` `0.2960 s -> 0.0357 s` (`8.28×`, exact Euler $\chi$).
+    - `256³`: `bispectrum_3d` `11.3274 s -> 0.4252 s` (`26.64×`, `max_rel_diff_B = 8.21e-7`), `bubble_size_distribution_mfp` (200k rays) `2.3150 s -> 0.0370 s` (`62.53×`, `mean_r_rel_diff = 0.00050`), `minkowski_functionals_3d` `3.0784 s -> 0.3632 s` (`8.48×`, exact Euler $\chi$).
+    - `BatchPool` (`4×2`, `128/64` E-INTEGRAL + `SKA1-Low` + `moments` on T4): cold `26.7845 s` (`4` PIDs) -> warm `11.3101 s` (`1` PID, round 4 `1.2729 s`, `2.368×` overall); `OnlineSBIDataset` zero-disk PyTorch CUDA tensor streaming (`theta=(2,2)`, `field=(2,64,64,64)`, `is_cuda=True`, `h5_files_on_disk=0`).
+
+### Completed: Phase 11 — CRN Fisher Forecaster & Multi-Probe Cross-Correlations (`v0.9.0-dev`)
+- **86th Native CUDA API + Multi-Probe Gridding ([`src/py21cmcu/multiprobe.py`](../src/py21cmcu/multiprobe.py))**:
+  - `p21_cuda_cic_deposit_3d` in [`cuda_analysis.cu`](../src/py21cmfast/src/cuda/cuda_analysis.cu) (exposed across `cuda_api.h`, `_functionprototypes_wrapper.h`, `cuda_stubs.c`) + vectorized CPU fallback `cic_deposit_3d` (periodic CIC deposition, optional overdensity normalization $\delta = \rho/\bar{\rho} - 1$, optional $\mathrm{sinc}^2$ window deconvolution, and grid-stride loops supporting `256³+` volumes above `65535 × 256` threads).
+  - `load_gravitycu_halos`: normalized reader for GravityCU HDF5 (`halos/*`, `halo_*`), `.npz`/`.npy`, and structured catalog inputs.
+  - `cross_power_21cm_galaxy`, `cross_power_21cm_galaxy_error`, `ksz_momentum_map`: 3D `21cm × galaxy` cross-power $P_{21,g}(k)$ & correlation coefficient $r(k)$ with per-bin cosmic+thermal+shot-noise uncertainties, and kinematic Sunyaev-Zel'dovich momentum proxy map $p_\mathrm{los} = (1+\delta)\,v_\mathrm{los}$ + transverse $\tau$-weighted integral.
+- **CRN Fisher Forecaster & Contour Visualization ([`src/py21cmcu/fisher.py`](../src/py21cmcu/fisher.py), [`src/py21cmcu/viz.py`](../src/py21cmcu/viz.py))**:
+  - `FisherForecaster`, `FisherForecastResult`, `fisher_forecast_21cm`: Common-Random-Number (`CRN`) finite-difference Fisher matrix with shared per-evaluation `seed_base` across $\pm h$ parameter perturbations, inverse/SVD covariance marginalization, $1\sigma$ uncertainties, and `to_dict()`/`from_dict()`.
+  - `plot_fisher_contours`: $1\sigma$/$2\sigma$ Gaussian corner-plot contours for parameter subsets.
+  - Runnable end-to-end showcase [`examples/09_fisher_and_multiprobe_forecast.py`](../examples/09_fisher_and_multiprobe_forecast.py) and test suite [`tests/native/test_21cmcu_phase13_fisher_multiprobe.py`](../tests/native/test_21cmcu_phase13_fisher_multiprobe.py) (`7 passed` on CPU & Colab T4 GPU).
 
 ---
 
@@ -180,12 +194,8 @@
   - **Scope**: Extend distributed Y-slab decomposition to multi-GPU `1024³` full EoR evolution (`IonizedBox` / `TsBox`) and slab-streamed `<160 GiB` host-RAM `2048³` 2LPT IC on `3×–4× 24 GB` GPUs.
   - **Acceptance Criteria**: Numerical parity vs single-GPU/CPU at `256³` and `512³`, plus verified native `1024³` EoR & `2048³` 2LPT execution within 24 GB-per-GPU VRAM.
 
-### Release `v0.9.0` — Higher-Order Non-Gaussian Science & Multi-Probe Inference (Phases 10 & 11)
-- **Phase 10 GPU Verification Addendum**: Run live GPU parity & `≥20×` `256³` speedup benchmarks for `p21_cuda_bispectrum_3d`, `p21_cuda_mfp_bsd`, and `p21_cuda_minkowski_3d` on an uncontended GPU node.
-- **Phase 11 — CRN Fisher Matrix Forecaster & Multi-Probe Cross-Correlations**:
-  - **Targets**: `src/py21cmcu/inference.py`, `src/py21cmcu/observables.py`, `src/py21cmcu/viz.py`.
-  - **Scope**: Common-Random-Number (CRN) low-variance Fisher matrix forecaster (`21cm` 1D/2D PS + interferometer mocks + `viz` sensitivity contour plots) and GPU CIC halo/galaxy gridding for `21cm × galaxy` cross-power $r(k)$ & kSZ proxy cross-correlations.
-  - **Acceptance Criteria**: Step-size convergence test for CRN derivatives and an end-to-end SKA1-Low + galaxy survey forecast example.
+### Release `v1.0.0` — Production Research Suite
+- Multi-GPU multi-probe forward modeling and joint EoR + galaxy + CMB secondary likelihood benchmarks across 256³–1024³ volumes.
 
 ### Release `v1.0.0` — Ecosystem Packaging, Multi-Node NCCL & Methods Paper Finalization
 - **Packaging & CI Matrix**: Prebuilt CUDA 12 manylinux wheels / Conda build recipes, automated tag-triggered GitHub release workflow, and expanded CPU/GPU CI matrix.

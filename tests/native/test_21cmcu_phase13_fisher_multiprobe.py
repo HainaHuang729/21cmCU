@@ -314,4 +314,16 @@ def test_phase11_cic_and_cross_power_gpu_cpu_parity() -> None:
     valid = np.isfinite(c_cpu["r_k"])
     np.testing.assert_allclose(c_gpu["pk_cross"][valid], c_cpu["pk_cross"][valid], rtol=1e-4, atol=1e-4)
     np.testing.assert_allclose(c_gpu["r_k"][valid], c_cpu["r_k"][valid], rtol=1e-4, atol=1e-4)
+
+    # Guard > 65535 * 256 (16,776,960) voxel grid-stride boundary at 256^3 = 16,777,216.
+    shape_256 = (256, 256, 256)
+    tail_pos = np.tile(np.array([[255.2, 255.3, 255.4]], dtype=np.float32), (16, 1))
+    cpu_256 = py21cmcu.cic_deposit_3d(
+        tail_pos, shape_256, (256.0, 256.0, 256.0), overdensity=True, deconvolve=False, use_cuda=False
+    )
+    gpu_256 = py21cmcu.cic_deposit_3d(
+        tail_pos, shape_256, (256.0, 256.0, 256.0), overdensity=True, deconvolve=False, use_cuda=True
+    )
+    np.testing.assert_allclose(gpu_256[-2:, -2:, -2:], cpu_256[-2:, -2:, -2:], rtol=1e-4, atol=1e-4)
+    assert abs(float(gpu_256.mean())) < 1e-4
     py21cmcu.cleanup_cuda()

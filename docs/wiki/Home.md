@@ -17,7 +17,7 @@
 | SBI Batch Sweep (`16 × 192/96`, `2× 4090`) | — | `5.888 s` (`9,782.0 tasks/h`) | **`1.41×` vs 1 GPU** |
 | Zero-D2H Lightcone (`256/128`, 12z `L-INTEGRAL`) | `1.496 s` (`lazy_d2h=False`) | `1.169 s` (`1× 4090`, `lazy_d2h=True`) | **`-21.9%` time / `-8.5%` D2H** |
 
-All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native suites), **`21/21`** `v0.7.0` feature tests (Phases 7–9 across `test_21cmcu_phase7_oq.py`, `test_21cmcu_phase8_instrument.py`, and `test_21cmcu_phase9_lightcone_viz.py`), **`61/61`** bit-exact CPU optimization parity tests (`test_21cmcu_phase10_cpu_opt.py`, `max_abs = 0.0`), plus `v0.8.0-dev` Direction R (`BatchPool`, `OnlineSBIDataset`, `2.643×` 4-round warm-pool speedup) and `v0.9.0-dev` Phase 10 (`bispectrum_3d`, `bubble_size_distribution_mfp`, `minkowski_functionals_3d`, **`85 passed, 54 skipped (GPU)`** across 11 CPU-run suites) are verified.
+All **`168/168`** `v0.6.0` native GPU tests (`-k "not speed"` across 12 native suites), **`21/21`** `v0.7.0` feature tests (Phases 7–9 across `test_21cmcu_phase7_oq.py`, `test_21cmcu_phase8_instrument.py`, and `test_21cmcu_phase9_lightcone_viz.py`), **`61/61`** bit-exact CPU optimization parity tests (`test_21cmcu_phase10_cpu_opt.py`, `max_abs = 0.0`), **`71/71`** Colab T4 warning/interop/Sobol suite checks, plus `v0.8.0-dev` Direction R (`BatchPool`, `OnlineSBIDataset`, `2.643×` warm-pool speedup on `b1` / `2.368×` on T4), `v0.9.0-dev` Phase 10 (`bispectrum_3d`, `bubble_size_distribution_mfp`, `minkowski_functionals_3d`, `6.21×–72.87×` on T4), and Phase 11 (`cic_deposit_3d`, `cross_power_21cm_galaxy`, `ksz_momentum_map`, `FisherForecaster`) are implemented and verified.
 
 ---
 

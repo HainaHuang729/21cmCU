@@ -4,6 +4,14 @@ All notable milestones in **21cmCU** are documented in this file.
 
 ## [Unreleased]
 ### Added & Improved
+- **Phase 11 (`v0.9.0-dev`) — CRN Fisher Forecaster & Multi-Probe Cross-Correlations (`86` CUDA APIs)**:
+  - Added native 86th CUDA API `p21_cuda_cic_deposit_3d` (`src/py21cmfast/src/cuda/cuda_analysis.cu`, `cuda_api.h`, `_functionprototypes_wrapper.h`, `cuda_stubs.c`) with periodic 3D Cloud-in-Cell deposition, optional overdensity normalization, $\mathrm{sinc}^2$ window deconvolution, and grid-stride loops for `256³+` volumes above `65535 × 256` threads.
+  - Added [`src/py21cmcu/multiprobe.py`](src/py21cmcu/multiprobe.py): `cic_deposit_3d`, `load_gravitycu_halos` (GravityCU HDF5 + NumPy catalog support), `cross_power_21cm_galaxy`, `cross_power_21cm_galaxy_error`, and `ksz_momentum_map`.
+  - Added [`src/py21cmcu/fisher.py`](src/py21cmcu/fisher.py) and [`src/py21cmcu/viz.py`](src/py21cmcu/viz.py): `FisherForecaster`, `FisherForecastResult`, `fisher_forecast_21cm` (Common-Random-Number low-variance derivatives + marginalized $1\sigma$ forecasts), and `plot_fisher_contours`.
+  - Added runnable [`examples/09_fisher_and_multiprobe_forecast.py`](examples/09_fisher_and_multiprobe_forecast.py) and [`tests/native/test_21cmcu_phase13_fisher_multiprobe.py`](tests/native/test_21cmcu_phase13_fisher_multiprobe.py), wired into exports and GitHub `CPU CI`.
+- **Phase 10 & Direction R GPU Verification + Early Unit-Test / Warning Fixes**:
+  - Verified Phase 10 (`bispectrum_3d` `6.21×` at `128³` / `26.64×` at `256³`, `bubble_size_distribution_mfp` `72.87×` at `128³` / `62.53×` at `256³`, `minkowski_functionals_3d` `8.28×`–`8.48×`) and Direction R (`BatchPool` `2.368×` overall / `1.27 s` warm round 4; zero-disk `OnlineSBIDataset` CUDA tensor stream) on Colab Tesla T4 (`10 passed`, `0 skipped`).
+  - Fixed `OnlineSBIDataset` infinite Sobol stream refill (`sobol.random(1 << chunk_m)`), `observables.py` Sobol power-of-two sampling, `interop.py` `PyCapsule_*` ctypes isolation (zero `PytestUnraisableExceptionWarning`), and `cli.py` `| None` type mapping for Click.
 - **Phase 10 (`v0.9.0-dev`) — Higher-Order Non-Gaussian & Morphological Topology**:
   - Added native CUDA APIs `#83–#85` (`p21_cuda_bispectrum_3d`, `p21_cuda_mfp_bsd`, `p21_cuda_minkowski_3d`) in [`src/py21cmfast/src/cuda/cuda_analysis.cu`](src/py21cmfast/src/cuda/cuda_analysis.cu), `cuda_api.h`, `_functionprototypes_wrapper.h`, and `cuda_stubs.c`.
   - Added [`src/py21cmcu/topology.py`](src/py21cmcu/topology.py) exporting `bispectrum_3d` (`equilateral`/`squeezed`/`folded`/`isosceles`/custom triangles with 3-slot shell caching), `bubble_size_distribution_mfp` (warp-compacted Philox ray-traced MFP BSD + vectorized CPU fallback), and `minkowski_functionals_3d` (exact cubical-complex $V_0, V_1, V_2, V_3$ & Euler $\chi$).

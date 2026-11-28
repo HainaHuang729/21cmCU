@@ -58,8 +58,10 @@ Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`,
 - **I/O Compression**:
   `save_lightcone()` (`compression="device-lzf" | "lzf" | "none"`)
 - **Observables, Interferometers & Forecasts**:
-  `horizon_slope()`, `horizon_wedge_mask()`, `apply_wedge_filter_3d()`, `add_thermal_noise_3d()`, `InterferometerConfig`, `INSTRUMENT_PRESETS`, `get_instrument_preset()`, `baseline_density_uv()`, `thermal_noise_power_spectrum()`, `mock_observation_3d()`, `forecast_power_spectrum_error()`, `forecast_power_spectrum_2d_error()`
+  `horizon_slope()`, `horizon_wedge_mask()`, `apply_wedge_filter_3d()`, `add_thermal_noise_3d()`, `InterferometerConfig`, `INSTRUMENT_PRESETS`, `get_instrument_preset()`, `baseline_density_uv()`, `thermal_noise_power_spectrum()`, `mock_observation_3d()`, `forecast_power_spectrum_error()`, `forecast_power_spectrum_2d_error()`, `FisherForecaster`, `FisherForecastResult`, `fisher_forecast_21cm()`
+- **Multi-Probe Cross-Correlations & Topology**:
+  `cic_deposit_3d()`, `load_gravitycu_halos()`, `cross_power_21cm_galaxy()`, `cross_power_21cm_galaxy_error()`, `ksz_momentum_map()`, `bispectrum_3d()`, `bubble_size_distribution_mfp()`, `minkowski_functionals_3d()`
 - **Ergonomic Workflows & Visualization**:
-  `quick_coeval()`, `quick_lightcone()`, `export_volume_3d_html()`, `export_lightcone_3d_html()`, `plot_lightcone_summary()`, `plot_coeval_slices()`, `plot_mock_comparison()`
+  `quick_coeval()`, `quick_lightcone()`, `export_volume_3d_html()`, `export_lightcone_3d_html()`, `plot_lightcone_summary()`, `plot_coeval_slices()`, `plot_mock_comparison()`, `plot_fisher_contours()`
 - **Zero-Copy Interop & SBI / Batch**:
   `CudaFieldView`, `to_cuda_view()`, `lightcone_to_cuda_views()`, `to_torch()`, `SBISimulator`, `OnlineSBIDataset`, `Likelihood21cm`, `BatchPool`, `BatchTask`, `BatchResult`, `run_batch()`, `save_batch_h5()`, `generate_sobol_parameter_grid()`
