@@ -1,3 +1,3 @@
 include LICENSE.upstream README.md CHANGELOG.md pyproject.toml setup.py build_cffi.py
-recursive-include src *.py *.c *.h *.cu *.cuh *.yaml *.yml *.json *.txt *.csv py.typed
+recursive-include src *.py *.c *.h *.cu *.cuh *.dat *.toml *.yaml *.yml *.json *.txt *.csv py.typed
 global-exclude __pycache__ *.py[cod] *.so *.o *.dylib *.dll

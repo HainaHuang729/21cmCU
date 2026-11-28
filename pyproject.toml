@@ -68,6 +68,7 @@ version = {attr = "py21cmcu._version.__version__"}
 
 [tool.setuptools.package-data]
 py21cmcu = ["py.typed"]
+py21cmfast = ["templates/*.toml", "_data/*.dat", "_data/x_int_tables/*.dat"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
