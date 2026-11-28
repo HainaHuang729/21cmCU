@@ -23,6 +23,7 @@ from .analysis import (
 )
 from .batch import BatchPool, BatchResult, BatchTask, run_batch, save_batch_h5
 from .doctor import doctor
+from .fisher import FisherForecastResult, FisherForecaster, fisher_forecast_21cm
 from .inference import Likelihood21cm, OnlineSBIDataset, SBISimulator
 from .instrument import (
     INSTRUMENT_PRESETS,
@@ -36,6 +37,13 @@ from .instrument import (
 )
 from .interop import CudaFieldView, lightcone_to_cuda_views, to_cuda_view, to_torch
 from .io import save_lightcone
+from .multiprobe import (
+    cic_deposit_3d,
+    cross_power_21cm_galaxy,
+    cross_power_21cm_galaxy_error,
+    ksz_momentum_map,
+    load_gravitycu_halos,
+)
 from .observables import (
     add_thermal_noise_3d,
     apply_wedge_filter_3d,
@@ -50,6 +58,7 @@ from .viz import (
     export_lightcone_3d_html,
     export_volume_3d_html,
     plot_coeval_slices,
+    plot_fisher_contours,
     plot_lightcone_summary,
     plot_mock_comparison,
 )
@@ -150,6 +159,8 @@ __all__ = [
     "BatchTask",
     "CudaFieldView",
     "CudaMode",
+    "FisherForecastResult",
+    "FisherForecaster",
     "INSTRUMENT_PRESETS",
     "InterferometerConfig",
     "Likelihood21cm",
@@ -160,8 +171,11 @@ __all__ = [
     "baseline_density_uv",
     "bispectrum_3d",
     "bubble_size_distribution_mfp",
+    "cic_deposit_3d",
     "cleanup_cuda",
     "clear_class_cache",
+    "cross_power_21cm_galaxy",
+    "cross_power_21cm_galaxy_error",
     "cuda_available",
     "cuda_compiled",
     "cuda_device_count",
@@ -170,6 +184,7 @@ __all__ = [
     "export_lightcone_3d_html",
     "export_volume_3d_html",
     "field_moments_and_pdf",
+    "fisher_forecast_21cm",
     "forecast_power_spectrum_2d_error",
     "forecast_power_spectrum_error",
     "generate_sobol_parameter_grid",
@@ -178,12 +193,15 @@ __all__ = [
     "get_instrument_preset",
     "horizon_slope",
     "horizon_wedge_mask",
+    "ksz_momentum_map",
     "lightcone_chunk_power_spectra",
     "lightcone_chunk_power_spectra_2d",
     "lightcone_to_cuda_views",
+    "load_gravitycu_halos",
     "minkowski_functionals_3d",
     "mock_observation_3d",
     "plot_coeval_slices",
+    "plot_fisher_contours",
     "plot_lightcone_summary",
     "plot_mock_comparison",
     "power_spectrum_1d",

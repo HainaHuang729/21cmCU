@@ -316,6 +316,9 @@ int p21_cuda_minkowski_3d(const float *h_field, int nx, int ny, int nz, double l
                           double lz, int n_thresholds, const double *h_thresholds,
                           double *h_v0_out, double *h_v1_out, double *h_v2_out, double *h_v3_out,
                           long long *h_euler_out);
+int p21_cuda_cic_deposit_3d(const float *h_pos_xyz, const float *h_weights,
+                            unsigned long long n_particles, int nx, int ny, int nz, double lx,
+                            double ly, double lz, int overdensity, float *h_grid_out);
 
 #ifdef __cplusplus
 }

@@ -882,6 +882,23 @@ int p21_cuda_minkowski_3d(const float *h_field, int nx, int ny, int nz, double l
     return -1;
 }
 
+int p21_cuda_cic_deposit_3d(const float *h_pos_xyz, const float *h_weights,
+                            unsigned long long n_particles, int nx, int ny, int nz, double lx,
+                            double ly, double lz, int overdensity, float *h_grid_out) {
+    (void)h_pos_xyz;
+    (void)h_weights;
+    (void)n_particles;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)lx;
+    (void)ly;
+    (void)lz;
+    (void)overdensity;
+    (void)h_grid_out;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

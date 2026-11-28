@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import html
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 import zlib
@@ -705,10 +706,129 @@ def plot_mock_comparison(
     return fig
 
 
+def plot_fisher_contours(
+    results: Any,
+    *,
+    labels: Sequence[str] | None = None,
+    colors: Sequence[str] | None = None,
+    n_sigma: float = 3.5,
+    out_path: str | Path | None = None,
+    show: bool = False,
+) -> Any:
+    """Plot a corner triangle of 1D posteriors and 68%/95% 2D Fisher confidence ellipses."""
+    from matplotlib.patches import Ellipse
+
+    plt = _require_matplotlib()
+    res_list = list(results) if isinstance(results, (list, tuple)) else [results]
+    if not res_list:
+        raise ValueError("results must be non-empty")
+
+    param_names = res_list[0].param_names
+    n_p = len(param_names)
+    for r in res_list[1:]:
+        if r.param_names != param_names:
+            raise ValueError("All FisherForecastResult entries must share matching param_names")
+
+    default_colors = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e"]
+    palette = list(colors) if colors is not None else default_colors
+    lbls = (
+        list(labels)
+        if labels is not None
+        else [r.metadata.get("instrument", f"Forecast {k + 1}") for k, r in enumerate(res_list)]
+    )
+
+    # 2D Gaussian delta-chi^2 levels for 68.3% and 95.4% confidence regions
+    chi2_levels = (2.2957489, 6.1800743)
+    fig, axes = plt.subplots(n_p, n_p, figsize=(3.2 * n_p, 3.2 * n_p), constrained_layout=True)
+    if n_p == 1:
+        axes = np.array([[axes]])
+
+    for i in range(n_p):
+        for j in range(n_p):
+            ax = axes[i, j]
+            if j > i:
+                ax.set_visible(False)
+                continue
+
+            if i == j:
+                max_sig = max(float(r.sigma_marginalized[i]) for r in res_list if np.isfinite(r.sigma_marginalized[i]))
+                mu0 = float(res_list[0].fiducial[i])
+                span = max(n_sigma * max_sig, 1e-6)
+                xs = np.linspace(mu0 - span, mu0 + span, 300)
+                for idx, res in enumerate(res_list):
+                    sig = float(res.sigma_marginalized[i])
+                    mu = float(res.fiducial[i])
+                    col = palette[idx % len(palette)]
+                    ys = np.exp(-0.5 * ((xs - mu) / max(sig, 1e-12)) ** 2)
+                    ax.plot(xs, ys, color=col, lw=1.8, label=lbls[idx] if i == 0 else None)
+                    ax.fill_between(xs, 0.0, ys, color=col, alpha=0.14)
+                ax.set_ylim(0.0, 1.08)
+                ax.set_yticks([])
+            else:
+                for idx, res in enumerate(res_list):
+                    col = palette[idx % len(palette)]
+                    sub_cov = res.covariance_matrix[np.ix_([j, i], [j, i])]
+                    eigvals, eigvecs = np.linalg.eigh(sub_cov)
+                    eigvals = np.maximum(eigvals, 0.0)
+                    order = np.argsort(eigvals)[::-1]
+                    eigvals = eigvals[order]
+                    eigvecs = eigvecs[:, order]
+                    angle_deg = float(np.degrees(np.arctan2(eigvecs[1, 0], eigvecs[0, 0])))
+                    center = (float(res.fiducial[j]), float(res.fiducial[i]))
+                    for lvl_idx, c2 in enumerate(chi2_levels):
+                        w = 2.0 * np.sqrt(c2 * float(eigvals[0]))
+                        h = 2.0 * np.sqrt(c2 * float(eigvals[1]))
+                        ell = Ellipse(
+                            xy=center,
+                            width=w,
+                            height=h,
+                            angle=angle_deg,
+                            facecolor=col if lvl_idx == 0 else "none",
+                            edgecolor=col,
+                            alpha=0.22 if lvl_idx == 0 else 0.9,
+                            lw=1.5 if lvl_idx == 0 else 1.2,
+                            ls="-" if lvl_idx == 0 else "--",
+                        )
+                        ax.add_patch(ell)
+                    ax.plot(center[0], center[1], "+", color=col, ms=7, mew=1.5)
+
+                sx_max = max(float(r.sigma_marginalized[j]) for r in res_list)
+                sy_max = max(float(r.sigma_marginalized[i]) for r in res_list)
+                ax.set_xlim(
+                    float(res_list[0].fiducial[j]) - n_sigma * sx_max,
+                    float(res_list[0].fiducial[j]) + n_sigma * sx_max,
+                )
+                ax.set_ylim(
+                    float(res_list[0].fiducial[i]) - n_sigma * sy_max,
+                    float(res_list[0].fiducial[i]) + n_sigma * sy_max,
+                )
+
+            if i == n_p - 1:
+                ax.set_xlabel(param_names[j])
+            else:
+                ax.tick_params(labelbottom=False)
+            if j == 0 and i > 0:
+                ax.set_ylabel(param_names[i])
+            elif j > 0:
+                ax.tick_params(labelleft=False)
+
+    if len(lbls) >= 1:
+        axes[0, 0].legend(loc="upper right", frameon=False, fontsize=8.5)
+
+    if out_path is not None:
+        p = Path(out_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(p, dpi=180, bbox_inches="tight")
+    if show:
+        plt.show()
+    return fig
+
+
 __all__ = [
     "export_lightcone_3d_html",
     "export_volume_3d_html",
     "plot_coeval_slices",
+    "plot_fisher_contours",
     "plot_lightcone_summary",
     "plot_mock_comparison",
 ]
