@@ -312,7 +312,8 @@ def generate_sobol_parameter_grid(
         raise ValueError("All parameter bounds must satisfy upper >= lower")
 
     sampler = qmc.Sobol(d=len(names), scramble=True, seed=int(seed))
-    unit = sampler.random(n_samples)
+    m = (n_samples - 1).bit_length()
+    unit = sampler.random_base2(m)[:n_samples]
     scaled = qmc.scale(unit, lo, hi)
 
     rows: list[dict[str, float | int]] = []

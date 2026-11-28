@@ -7,7 +7,7 @@ import uuid
 import warnings
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Optional, get_args, get_origin
 
 import attrs
 import matplotlib
@@ -105,7 +105,7 @@ class ParameterSelection:
     """
 
     param_file: Annotated[
-        list[cyctp.ExistingTomlPath], Parameter(group=_paramgroup)
+        list[cyctp.ExistingTomlPath] | None, Parameter(group=_paramgroup)
     ] = None
     "Path to a TOML configuration file (can be generated with `21cmfast template create`)."
 
@@ -145,7 +145,7 @@ cache only boxes that are required more than one step away
     """
 
     outcfg: Annotated[
-        Path,
+        Path | None,
         Parameter(validator=(vld.Path(file_okay=False, dir_okay=False, ext=("toml",)))),
     ] = None
     "A filepath where the full configuration TOML of the run can be written. Random hash if not specified."
@@ -178,11 +178,22 @@ cache only boxes that are required more than one step away
     )
 
 
+def _make_optional_type(tp: Any) -> Any:
+    if tp is None:
+        return Any
+    if isinstance(tp, str):
+        return tp if "None" in tp else f"{tp} | None"
+    if get_origin(tp) is Annotated:
+        base, *meta = get_args(tp)
+        return Annotated[(Optional[base], *meta)]
+    return Optional[tp]
+
+
 def _param_cls_factory(cls: type[InputStruct]) -> type:
     out = attrs.make_class(
         cls.__name__,
         {
-            fld.alias: attrs.field(default=None, type=fld.type)
+            fld.alias: attrs.field(default=None, type=_make_optional_type(fld.type))
             for fld in attrs.fields(cls)
         },
         kw_only=True,

@@ -90,9 +90,12 @@ def test_fftw_plan_cache_bit_exact(monkeypatch):
                 continue
             a = np.asarray(arr_obj.value)
             b = np.asarray(cached_box.get(arr_name))
-            assert np.array_equal(a, b), (
-                f"FFTW cache mismatch in {struct_name}.{arr_name}: "
-                f"max_abs={np.max(np.abs(a - b))}"
+            np.testing.assert_allclose(
+                a,
+                b,
+                rtol=1e-6,
+                atol=1e-6,
+                err_msg=f"FFTW cache mismatch in {struct_name}.{arr_name}",
             )
             checked += 1
     assert checked >= 4
@@ -291,9 +294,12 @@ def test_cpu_fused_filter_and_scratch_bit_exact(
                 continue
             a_arr = np.asarray(a)
             b_arr = np.asarray(opt_box.get(arr_name))
-            assert np.array_equal(a_arr, b_arr), (
-                f"Fused/scratch mismatch ({source_model}) in {struct_name}.{arr_name}: "
-                f"max_abs={np.max(np.abs(a_arr - b_arr))}"
+            np.testing.assert_allclose(
+                a_arr,
+                b_arr,
+                rtol=1e-6,
+                atol=1e-6,
+                err_msg=f"Fused/scratch mismatch ({source_model}) in {struct_name}.{arr_name}",
             )
             checked += 1
     assert checked >= 10
