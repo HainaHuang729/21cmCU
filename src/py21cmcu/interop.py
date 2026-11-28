@@ -16,15 +16,17 @@ if TYPE_CHECKING:
 _K_DL_CUDA = 2
 _K_DL_FLOAT = 2
 
-_PYCAPSULE_NEW = ctypes.pythonapi.PyCapsule_New
+_PYTHON_API = ctypes.PyDLL(ctypes.pythonapi._name)
+
+_PYCAPSULE_NEW = _PYTHON_API.PyCapsule_New
 _PYCAPSULE_NEW.restype = ctypes.py_object
 _PYCAPSULE_NEW.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
 
-_PYCAPSULE_IS_VALID = ctypes.pythonapi.PyCapsule_IsValid
+_PYCAPSULE_IS_VALID = _PYTHON_API.PyCapsule_IsValid
 _PYCAPSULE_IS_VALID.restype = ctypes.c_int
 _PYCAPSULE_IS_VALID.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-_PYCAPSULE_GET_POINTER = ctypes.pythonapi.PyCapsule_GetPointer
+_PYCAPSULE_GET_POINTER = _PYTHON_API.PyCapsule_GetPointer
 _PYCAPSULE_GET_POINTER.restype = ctypes.c_void_p
 _PYCAPSULE_GET_POINTER.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
@@ -82,14 +84,11 @@ def _dlpack_managed_deleter(managed_ptr: int) -> None:
 def _dlpack_capsule_destructor(capsule_void: int) -> None:
     if not capsule_void:
         return
-    try:
-        if not _PYCAPSULE_IS_VALID(capsule_void, b"dltensor"):
-            return
-        managed_ptr = _PYCAPSULE_GET_POINTER(capsule_void, b"dltensor")
-        if managed_ptr:
-            _dlpack_managed_deleter(int(managed_ptr))
-    except Exception:
+    if not _PYCAPSULE_IS_VALID(capsule_void, b"dltensor"):
         return
+    managed_ptr = _PYCAPSULE_GET_POINTER(capsule_void, b"dltensor")
+    if managed_ptr:
+        _dlpack_managed_deleter(int(managed_ptr))
 
 
 class CudaFieldView:

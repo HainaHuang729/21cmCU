@@ -252,11 +252,12 @@ def test_dlpack_capsule_destructor_handles_consumed_and_invalid_capsules() -> No
     """Verify DLPack capsule destructor cleanly skips consumed/non-capsule pointers without error."""
     from py21cmcu import interop
 
-    capsule_new = ctypes.pythonapi.PyCapsule_New
+    api = ctypes.PyDLL(ctypes.pythonapi._name)
+    capsule_new = api.PyCapsule_New
     capsule_new.restype = ctypes.py_object
     capsule_new.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
 
-    capsule_set_name = ctypes.pythonapi.PyCapsule_SetName
+    capsule_set_name = api.PyCapsule_SetName
     capsule_set_name.restype = ctypes.c_int
     capsule_set_name.argtypes = [ctypes.py_object, ctypes.c_char_p]
 
@@ -264,9 +265,13 @@ def test_dlpack_capsule_destructor_handles_consumed_and_invalid_capsules() -> No
     addr_unconsumed = 0xDEADBEEF0001
     addr_consumed = 0xDEADBEEF0002
 
+    orig_argtypes = ctypes.pythonapi.PyCapsule_IsValid.argtypes
     interop._ACTIVE_MANAGED[addr_unconsumed] = (None, None, None, None, 0)  # type: ignore[assignment]
     interop._ACTIVE_MANAGED[addr_consumed] = (None, None, None, None, 0)  # type: ignore[assignment]
     try:
+        # Mutating the global ctypes.pythonapi singleton must not affect interop's private PyDLL
+        ctypes.pythonapi.PyCapsule_IsValid.argtypes = [ctypes.py_object, ctypes.c_char_p]
+
         cap_unconsumed = capsule_new(ctypes.c_void_p(addr_unconsumed), b"dltensor", destructor_ptr)
         del cap_unconsumed
         gc.collect()
@@ -282,5 +287,6 @@ def test_dlpack_capsule_destructor_handles_consumed_and_invalid_capsules() -> No
         dummy = object()
         interop._dlpack_capsule_destructor(id(dummy))
     finally:
+        ctypes.pythonapi.PyCapsule_IsValid.argtypes = orig_argtypes
         interop._ACTIVE_MANAGED.pop(addr_unconsumed, None)
         interop._ACTIVE_MANAGED.pop(addr_consumed, None)
