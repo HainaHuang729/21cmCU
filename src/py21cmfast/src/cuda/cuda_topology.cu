@@ -252,6 +252,8 @@ __global__ void mfp_trace_rays_kernel(const float *__restrict__ d_in,
 }
 
 
+constexpr int kMkChunk = 8;
+
 __global__ void minkowski_chunk_kernel(const float *__restrict__ d_in, int nx, int ny, int nz,
                                        const double *__restrict__ d_thr, int n_thr,
                                        unsigned long long *d_counts) {
@@ -631,8 +633,6 @@ int p21_cuda_mfp_bsd(const float *h_field, int nx, int ny, int nz, double lx, do
     *std_r_out = sqrt(var_r);
     return 0;
 }
-
-constexpr int kMkChunk = 8;
 
 
 int p21_cuda_minkowski_3d(const float *h_field, int nx, int ny, int nz, double lx, double ly,
