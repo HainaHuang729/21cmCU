@@ -363,7 +363,7 @@ class FisherForecaster:
                             z,
                             self.instrument,
                             signal_field=tb,
-                            k_edges=ps["k_edges"],
+                            n_bins=self.ps_n_bins,
                             include_sample_variance=self.include_sample_variance,
                             apply_uv_mask=self.apply_uv_mask,
                             apply_wedge=self.apply_wedge,

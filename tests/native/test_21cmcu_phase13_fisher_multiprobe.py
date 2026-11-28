@@ -52,8 +52,8 @@ def test_cic_deposit_mass_conservation_periodic_and_deconvolution() -> None:
     w = 1.0 + 0.5 * np.cos(k_mode * u[:, 0])
     raw = py21cmcu.cic_deposit_3d(u, (n, n, n), L, weights=w, overdensity=True, deconvolve=False, use_cuda=False)
     dec = py21cmcu.cic_deposit_3d(u, (n, n, n), L, weights=w, overdensity=True, deconvolve=True, use_cuda=False)
-    amp_raw = 2.0 * abs(float(np.fft.rfftn(raw)[6, 0, 0])) / raw.size
-    amp_dec = 2.0 * abs(float(np.fft.rfftn(dec)[6, 0, 0])) / dec.size
+    amp_raw = 2.0 * float(np.abs(np.fft.rfftn(raw)[6, 0, 0])) / raw.size
+    amp_dec = 2.0 * float(np.abs(np.fft.rfftn(dec)[6, 0, 0])) / dec.size
     assert abs(amp_dec - 0.5) < abs(amp_raw - 0.5)
     assert abs(amp_dec - 0.5) < 0.03
 
