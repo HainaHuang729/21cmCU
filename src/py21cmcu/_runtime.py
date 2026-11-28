@@ -32,7 +32,7 @@ def cuda_device_count() -> int:
 
 
 def cuda_api_count() -> int:
-    """Return the number of exported ``p21_cuda_*`` symbols on the CFFI backend."""
+    """Return the number of CFFI-exported ``p21_cuda_*`` symbols on the backend."""
     return sum(1 for name in dir(_lib) if name.startswith("p21_cuda_"))
 
 

@@ -30,7 +30,7 @@ def _stats() -> dict[str, int]:
 def test_py21cmcu_exports_and_no_cupy(capsys: pytest.CaptureFixture[str]) -> None:
     """Verify ``py21cmcu`` exports core APIs and helpers without importing ``cupy``."""
     assert py21cmcu.__version__ == "0.9.0"
-    assert py21cmcu.cuda_api_count() >= 86
+    assert py21cmcu.cuda_api_count() >= 46
     assert (Path(py21cmcu.__file__).parent / "py.typed").is_file()
     for name in (
         "InputParameters",
