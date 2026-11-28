@@ -564,7 +564,10 @@ class OnlineSBIDataset(_IterableDatasetBase):
 
         if self.n_samples is not None:
             if self.sampling == "sobol":
-                unit = qmc.Sobol(d=ndim, scramble=True, seed=epoch_seed).random(self.n_samples)
+                m = (self.n_samples - 1).bit_length()
+                unit = qmc.Sobol(d=ndim, scramble=True, seed=epoch_seed).random_base2(m)[
+                    : self.n_samples
+                ]
             else:
                 unit = np.random.default_rng(epoch_seed).random((self.n_samples, ndim))
             scaled = qmc.scale(unit, self._lo, self._hi)
@@ -574,8 +577,14 @@ class OnlineSBIDataset(_IterableDatasetBase):
 
         if self.sampling == "sobol":
             sobol = qmc.Sobol(d=ndim, scramble=True, seed=epoch_seed)
+            chunk_m = max(1, (self.batch_size - 1).bit_length())
+            buf = np.empty((0, ndim), dtype=np.float64)
             while True:
-                yield self._emit_batch(qmc.scale(sobol.random(self.batch_size), self._lo, self._hi))
+                while buf.shape[0] < self.batch_size:
+                    buf = np.concatenate([buf, sobol.random_base2(chunk_m)], axis=0)
+                unit_batch = buf[: self.batch_size]
+                buf = buf[self.batch_size :]
+                yield self._emit_batch(qmc.scale(unit_batch, self._lo, self._hi))
         else:
             rng = np.random.default_rng(epoch_seed)
             while True:

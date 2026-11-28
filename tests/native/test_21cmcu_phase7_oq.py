@@ -246,3 +246,41 @@ def test_likelihood_21cm_and_sbi_simulator_cpu_and_gpu(tmp_path: Path) -> None:
         assert ll_off <= ll_true
     if use_gpu:
         py21cmcu.cleanup_cuda()
+
+
+def test_dlpack_capsule_destructor_handles_consumed_and_invalid_capsules() -> None:
+    """Verify DLPack capsule destructor cleanly skips consumed/non-capsule pointers without error."""
+    from py21cmcu import interop
+
+    capsule_new = ctypes.pythonapi.PyCapsule_New
+    capsule_new.restype = ctypes.py_object
+    capsule_new.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
+
+    capsule_set_name = ctypes.pythonapi.PyCapsule_SetName
+    capsule_set_name.restype = ctypes.c_int
+    capsule_set_name.argtypes = [ctypes.py_object, ctypes.c_char_p]
+
+    destructor_ptr = ctypes.cast(interop._dlpack_capsule_destructor, ctypes.c_void_p)
+    addr_unconsumed = 0xDEADBEEF0001
+    addr_consumed = 0xDEADBEEF0002
+
+    interop._ACTIVE_MANAGED[addr_unconsumed] = (None, None, None, None, 0)  # type: ignore[assignment]
+    interop._ACTIVE_MANAGED[addr_consumed] = (None, None, None, None, 0)  # type: ignore[assignment]
+    try:
+        cap_unconsumed = capsule_new(ctypes.c_void_p(addr_unconsumed), b"dltensor", destructor_ptr)
+        del cap_unconsumed
+        gc.collect()
+        assert addr_unconsumed not in interop._ACTIVE_MANAGED
+
+        cap_consumed = capsule_new(ctypes.c_void_p(addr_consumed), b"dltensor", destructor_ptr)
+        assert capsule_set_name(cap_consumed, b"used_dltensor") == 0
+        del cap_consumed
+        gc.collect()
+        assert addr_consumed in interop._ACTIVE_MANAGED
+
+        # Non-capsule PyObject* must safely no-op without raising ValueError
+        dummy = object()
+        interop._dlpack_capsule_destructor(id(dummy))
+    finally:
+        interop._ACTIVE_MANAGED.pop(addr_unconsumed, None)
+        interop._ACTIVE_MANAGED.pop(addr_consumed, None)

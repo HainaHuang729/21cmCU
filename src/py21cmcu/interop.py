@@ -20,9 +20,9 @@ _PYCAPSULE_NEW = ctypes.pythonapi.PyCapsule_New
 _PYCAPSULE_NEW.restype = ctypes.py_object
 _PYCAPSULE_NEW.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
 
-_PYCAPSULE_GET_NAME = ctypes.pythonapi.PyCapsule_GetName
-_PYCAPSULE_GET_NAME.restype = ctypes.c_char_p
-_PYCAPSULE_GET_NAME.argtypes = [ctypes.c_void_p]
+_PYCAPSULE_IS_VALID = ctypes.pythonapi.PyCapsule_IsValid
+_PYCAPSULE_IS_VALID.restype = ctypes.c_int
+_PYCAPSULE_IS_VALID.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
 _PYCAPSULE_GET_POINTER = ctypes.pythonapi.PyCapsule_GetPointer
 _PYCAPSULE_GET_POINTER.restype = ctypes.c_void_p
@@ -82,11 +82,14 @@ def _dlpack_managed_deleter(managed_ptr: int) -> None:
 def _dlpack_capsule_destructor(capsule_void: int) -> None:
     if not capsule_void:
         return
-    name = _PYCAPSULE_GET_NAME(capsule_void)
-    if name == b"dltensor":
+    try:
+        if not _PYCAPSULE_IS_VALID(capsule_void, b"dltensor"):
+            return
         managed_ptr = _PYCAPSULE_GET_POINTER(capsule_void, b"dltensor")
         if managed_ptr:
             _dlpack_managed_deleter(int(managed_ptr))
+    except Exception:
+        return
 
 
 class CudaFieldView:
