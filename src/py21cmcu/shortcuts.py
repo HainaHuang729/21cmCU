@@ -22,7 +22,7 @@ from py21cmfast.drivers.single_field import compute_initial_conditions
 from py21cmfast.lightconers import ObliqueRectilinearLightconer, RectilinearLightconer
 from py21cmfast.wrapper.inputs import InputParameters
 
-from .inference import _ALIAS_MAP
+from ._internal import PARAM_ALIAS_MAP as _ALIAS_MAP
 
 if TYPE_CHECKING:
     from py21cmfast.drivers.coeval import Coeval

@@ -8,12 +8,12 @@ from typing import Any, Literal
 
 import numpy as np
 
+from ._internal import evolve_from_vector as _evolve_from_vector
+from ._internal import normalize_box_length as _normalize_box_length
 from .analysis import (
-    _normalize_box_length,
     power_spectrum_1d,
     power_spectrum_2d,
 )
-from .inference import _evolve_from_vector
 from .instrument import (
     InterferometerConfig,
     forecast_power_spectrum_2d_error,

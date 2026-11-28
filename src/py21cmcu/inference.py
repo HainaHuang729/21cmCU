@@ -9,7 +9,9 @@ from typing import Any, Literal
 import numpy as np
 from scipy.stats import qmc
 
-from .analysis import _normalize_box_length, lightcone_chunk_power_spectra, power_spectrum_1d
+from ._internal import evolve_from_vector as _evolve_from_vector
+from ._internal import normalize_box_length as _normalize_box_length
+from .analysis import lightcone_chunk_power_spectra, power_spectrum_1d
 from .batch import BatchPool, BatchTask, run_batch
 from .instrument import mock_observation_3d
 from .interop import to_cuda_view, to_torch
@@ -20,40 +22,6 @@ try:
     from torch.utils.data import IterableDataset as _IterableDatasetBase
 except ImportError:
     _IterableDatasetBase = object  # type: ignore[assignment,misc]
-
-_ALIAS_MAP = {
-    "F_STAR10": "F_STAR10_ACG",
-    "F_ESC10": "F_ESC10_ACG",
-    "F_STAR7_MINI": "F_STAR7_MCG",
-    "F_ESC7_MINI": "F_ESC7_MCG",
-    "ALPHA_STAR": "ALPHA_STAR_ACG",
-    "ALPHA_STAR_MINI": "ALPHA_STAR_MCG",
-    "L_X": "LX_OVER_SFR_ACG",
-    "L_X_MINI": "LX_OVER_SFR_MCG",
-}
-
-
-def _evolve_from_vector(
-    base_inputs: Any,
-    param_names: Sequence[str],
-    theta: Sequence[float] | np.ndarray,
-    *,
-    seed_offset: int = 0,
-) -> Any:
-    vals = np.asarray(theta, dtype=np.float64).ravel()
-    if vals.size != len(param_names):
-        raise ValueError(
-            f"Expected {len(param_names)} parameters ({list(param_names)}), got shape {vals.shape}"
-        )
-    overrides = {_ALIAS_MAP.get(name, name): float(v) for name, v in zip(param_names, vals, strict=True)}
-    if "random_seed" in overrides:
-        seed = round(overrides.pop("random_seed"))
-        cloned = base_inputs.clone(random_seed=seed)
-    elif seed_offset:
-        cloned = base_inputs.clone(random_seed=int(base_inputs.random_seed) + int(seed_offset))
-    else:
-        cloned = base_inputs
-    return cloned.evolve_input_structs(**overrides) if overrides else cloned
 
 
 class Likelihood21cm:

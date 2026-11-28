@@ -389,6 +389,8 @@ def _compile_cuda_objects(
         *(f"-I{inc}" for inc in nvcc_includes),
     ]
 
+    from concurrent.futures import ThreadPoolExecutor
+
     obj_dir.mkdir(parents=True, exist_ok=True)
     stamp_file = obj_dir / ".flags.stamp"
     stamp_text = "\n".join([str(nvcc), cuda_host_cxx, *nvcc_flags])
@@ -402,10 +404,26 @@ def _compile_cuda_objects(
     max_header_mtime = max((h.stat().st_mtime for h in header_files), default=0.0)
 
     obj_paths: list[str] = []
-    rebuilt_any = flags_changed
+    compile_jobs: list[tuple[Path, Path, list[str]]] = []
+    compile_db: list[dict[str, object]] = []
     for cu_file in cu_files:
         obj_file = obj_dir / f"{cu_file.stem}.o"
         obj_paths.append(str(obj_file))
+        cmd = [
+            str(nvcc),
+            "-c",
+            *nvcc_flags,
+            str(cu_file),
+            "-o",
+            str(obj_file),
+        ]
+        compile_db.append(
+            {
+                "directory": str(LOCATION),
+                "arguments": cmd,
+                "file": str(cu_file),
+            }
+        )
         src_mtime = max(cu_file.stat().st_mtime, max_header_mtime)
         needs_build = (
             flags_changed
@@ -413,17 +431,27 @@ def _compile_cuda_objects(
             or obj_file.stat().st_mtime < src_mtime
         )
         if needs_build:
-            cmd = [
-                str(nvcc),
-                "-c",
-                *nvcc_flags,
-                str(cu_file),
-                "-o",
-                str(obj_file),
-            ]
-            print(" ".join(cmd))
+            compile_jobs.append((cu_file, obj_file, cmd))
+
+    compile_db_path = LOCATION / "build" / "compile_commands.json"
+    compile_db_path.parent.mkdir(parents=True, exist_ok=True)
+    import json
+
+    compile_db_path.write_text(json.dumps(compile_db, indent=2) + "\n", encoding="utf-8")
+
+    rebuilt_any = flags_changed
+    if compile_jobs:
+        default_workers = min(len(compile_jobs), max(1, os.cpu_count() or 1))
+        max_workers = max(1, int(os.environ.get("P21_NVCC_JOBS", default_workers)))
+
+        def _compile_one(job: tuple[Path, Path, list[str]]) -> None:
+            _cu, _obj, cmd = job
+            print(" ".join(cmd), flush=True)
             subprocess.run(cmd, check=True)
-            rebuilt_any = True
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            list(pool.map(_compile_one, compile_jobs))
+        rebuilt_any = True
 
     dlink_obj = obj_dir / "cuda_dlink.o"
     if rebuilt_any or not dlink_obj.exists():

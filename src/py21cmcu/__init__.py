@@ -28,6 +28,16 @@ from ._runtime import (
 from ._version import __version__
 
 if TYPE_CHECKING:
+    from ._results import (
+        BispectrumResult,
+        CrossPowerResult,
+        KSZMapResult,
+        MFPResult,
+        MinkowskiResult,
+        PowerSpectrum1DResult,
+        PowerSpectrum2DResult,
+        ResultMapping,
+    )
     from .analysis import (
         lightcone_chunk_power_spectra,
         lightcone_chunk_power_spectra_2d,
@@ -81,6 +91,15 @@ if TYPE_CHECKING:
     )
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
+    # results
+    "BispectrumResult": ("._results", "BispectrumResult"),
+    "CrossPowerResult": ("._results", "CrossPowerResult"),
+    "KSZMapResult": ("._results", "KSZMapResult"),
+    "MFPResult": ("._results", "MFPResult"),
+    "MinkowskiResult": ("._results", "MinkowskiResult"),
+    "PowerSpectrum1DResult": ("._results", "PowerSpectrum1DResult"),
+    "PowerSpectrum2DResult": ("._results", "PowerSpectrum2DResult"),
+    "ResultMapping": ("._results", "ResultMapping"),
     # analysis
     "lightcone_chunk_power_spectra": (".analysis", "lightcone_chunk_power_spectra"),
     "lightcone_chunk_power_spectra_2d": (".analysis", "lightcone_chunk_power_spectra_2d"),
@@ -171,14 +190,22 @@ __all__ = [
     "BatchPool",
     "BatchResult",
     "BatchTask",
+    "BispectrumResult",
+    "CrossPowerResult",
     "CudaFieldView",
     "CudaMode",
     "FisherForecastResult",
     "FisherForecaster",
     "INSTRUMENT_PRESETS",
     "InterferometerConfig",
+    "KSZMapResult",
     "Likelihood21cm",
+    "MFPResult",
+    "MinkowskiResult",
     "OnlineSBIDataset",
+    "PowerSpectrum1DResult",
+    "PowerSpectrum2DResult",
+    "ResultMapping",
     "SBISimulator",
     "add_thermal_noise_3d",
     "apply_wedge_filter_3d",

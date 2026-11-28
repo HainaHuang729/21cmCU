@@ -15,7 +15,10 @@ from astropy.cosmology import Planck18
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
-from .analysis import _cuda_ready, _normalize_box_length, power_spectrum_1d
+from ._internal import cuda_ready as _cuda_ready
+from ._internal import normalize_box_length as _normalize_box_length
+from ._results import CrossPowerResult, KSZMapResult
+from .analysis import power_spectrum_1d
 
 
 def _cpu_cic_deposit_3d(
@@ -416,23 +419,23 @@ def cross_power_21cm_galaxy(
         )
         r_k_sub = np.where(np.isfinite(r_k_sub), np.clip(r_k_sub, -1.0, 1.0), np.nan)
 
-    return {
-        "k": ps_21["k"],
-        "k_edges": edges,
-        "counts": ps_21["counts"],
-        "pk_21": pk_21,
-        "delta_sq_21": ps_21["delta_sq"],
-        "pk_gal": pk_gal,
-        "pk_gal_shot_sub": pk_gal_sub,
-        "delta_sq_gal": ps_gal["delta_sq"],
-        "pk_cross": pk_cross,
-        "delta_sq_cross": ps_cross["delta_sq"],
-        "shot_noise_pk": shot_noise,
-        "r_k": r_k,
-        "r_k_shot_sub": r_k_sub,
-        "galaxy_field": gal,
-        "n_galaxies": n_gal,
-    }
+    return CrossPowerResult(
+        k=ps_21["k"],
+        k_edges=edges,
+        counts=ps_21["counts"],
+        pk_21=pk_21,
+        delta_sq_21=ps_21["delta_sq"],
+        pk_gal=pk_gal,
+        pk_gal_shot_sub=pk_gal_sub,
+        delta_sq_gal=ps_gal["delta_sq"],
+        pk_cross=pk_cross,
+        delta_sq_cross=ps_cross["delta_sq"],
+        shot_noise_pk=shot_noise,
+        r_k=r_k,
+        r_k_shot_sub=r_k_sub,
+        galaxy_field=gal,
+        n_galaxies=n_gal,
+    )
 
 
 def cross_power_21cm_galaxy_error(
@@ -607,19 +610,19 @@ def ksz_momentum_map(
         cl_mean = np.where(counts > 0, cl_sum / counts, np.nan)
         dl_mean = ell_mean * (ell_mean + 1.0) * cl_mean / (2.0 * np.pi)
 
-    return {
-        "delta_T_uK": delta_t_uk.astype(np.float32),
-        "q_los": q_los.astype(np.float32),
-        "rms_uK": float(np.sqrt(np.mean(delta_t_uk**2))),
-        "mean_uK": float(np.mean(delta_t_uk)),
-        "ell": ell_mean,
-        "ell_edges": ell_edges,
-        "cl_uK2": cl_mean,
-        "dl_uK2": dl_mean,
-        "counts": counts,
-        "redshift": z,
-        "theta_box_rad": (theta0, theta1),
-    }
+    return KSZMapResult(
+        delta_T_uK=delta_t_uk.astype(np.float32),
+        q_los=q_los.astype(np.float32),
+        rms_uK=float(np.sqrt(np.mean(delta_t_uk**2))),
+        mean_uK=float(np.mean(delta_t_uk)),
+        ell=ell_mean,
+        ell_edges=ell_edges,
+        cl_uK2=cl_mean,
+        dl_uK2=dl_mean,
+        counts=counts,
+        redshift=z,
+        theta_box_rad=(theta0, theta1),
+    )
 
 
 __all__ = [

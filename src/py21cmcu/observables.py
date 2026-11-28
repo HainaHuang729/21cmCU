@@ -12,7 +12,8 @@ from scipy.stats import qmc
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
-from .analysis import _cuda_ready, _normalize_box_length
+from ._internal import cuda_ready as _cuda_ready
+from ._internal import normalize_box_length as _normalize_box_length
 
 _C_KMS = 299792.458
 _REST_FREQ_21CM_MHZ = 1420.40575177

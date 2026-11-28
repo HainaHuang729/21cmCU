@@ -6,58 +6,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from py21cmfast._cfg import config
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
+from ._internal import cuda_ready as _cuda_ready
+from ._internal import default_k_edges as _default_k_edges
+from ._internal import normalize_box_length as _normalize_box_length
+from ._results import PowerSpectrum1DResult, PowerSpectrum2DResult
+
 if TYPE_CHECKING:
     from py21cmfast.drivers.lightcone import LightCone
-
-
-def _cuda_ready(use_cuda: bool | None) -> bool:
-    enabled = bool(config["USE_CUDA"]) if use_cuda is None else bool(use_cuda)
-    return bool(
-        enabled
-        and _lib.p21_cuda_is_compiled()
-        and _lib.p21_cuda_is_available()
-    )
-
-
-def _normalize_box_length(
-    box_length: float | tuple[float, float, float],
-) -> tuple[float, float, float]:
-    if np.ndim(box_length) == 0:
-        L = float(box_length)
-        return (L, L, L)
-    vals = tuple(float(v) for v in box_length)
-    if len(vals) != 3:
-        raise ValueError(f"box_length must be scalar or 3-tuple, got {box_length!r}")
-    return vals
-
-
-def _default_k_edges(
-    nx: int,
-    ny: int,
-    nz: int,
-    lx: float,
-    ly: float,
-    lz: float,
-    n_bins: int,
-    k_min: float | None,
-    k_max: float | None,
-    log_bins: bool,
-) -> np.ndarray:
-    k_lo = (2.0 * np.pi / max(lx, ly, lz)) if k_min is None else float(k_min)
-    k_hi = (
-        (np.pi * min(nx / lx, ny / ly, nz / lz) * (1.0 + 1e-6))
-        if k_max is None
-        else float(k_max)
-    )
-    if log_bins:
-        if k_lo <= 0.0:
-            raise ValueError("k_min must be > 0 when log_bins=True")
-        return np.geomspace(k_lo, k_hi, n_bins + 1, dtype=np.float64)
-    return np.linspace(k_lo, k_hi, n_bins + 1, dtype=np.float64)
 
 
 def _numpy_power_spectrum_1d(
@@ -118,13 +76,13 @@ def _numpy_power_spectrum_1d(
         pk = np.where(counts > 0, pk_sum / counts, np.nan)
         delta_sq = (k_mean**3) * pk / (2.0 * np.pi**2)
 
-    return {
-        "k": k_mean,
-        "pk": pk,
-        "delta_sq": delta_sq,
-        "counts": counts,
-        "k_edges": k_edges.copy(),
-    }
+    return PowerSpectrum1DResult(
+        k=k_mean,
+        pk=pk,
+        delta_sq=delta_sq,
+        counts=counts,
+        k_edges=k_edges.copy(),
+    )
 
 
 def _numpy_power_spectrum_2d(
@@ -206,14 +164,14 @@ def _numpy_power_spectrum_2d(
         k_para_mean = np.where(counts > 0, kz_sum / counts, np.nan).reshape(n_kp, n_kz)
         pk = np.where(counts > 0, pk_sum / counts, np.nan).reshape(n_kp, n_kz)
 
-    return {
-        "k_perp": k_perp_mean,
-        "k_para": k_para_mean,
-        "pk": pk,
-        "counts": counts.reshape(n_kp, n_kz),
-        "kperp_edges": kperp_edges.copy(),
-        "kpara_edges": kpara_edges.copy(),
-    }
+    return PowerSpectrum2DResult(
+        k_perp=k_perp_mean,
+        k_para=k_para_mean,
+        pk=pk,
+        counts=counts.reshape(n_kp, n_kz),
+        kperp_edges=kperp_edges.copy(),
+        kpara_edges=kpara_edges.copy(),
+    )
 
 
 def power_spectrum_1d(
@@ -284,13 +242,13 @@ def power_spectrum_1d(
             _ffi.cast("unsigned long long *", _ffi.from_buffer(counts)),
         )
         if rc == 0:
-            return {
-                "k": k_mean,
-                "pk": pk,
-                "delta_sq": delta_sq,
-                "counts": counts,
-                "k_edges": edges.copy(),
-            }
+            return PowerSpectrum1DResult(
+                k=k_mean,
+                pk=pk,
+                delta_sq=delta_sq,
+                counts=counts,
+                k_edges=edges.copy(),
+            )
 
     return _numpy_power_spectrum_1d(
         arr_a, arr_b, lx, ly, lz, edges, skip_dc=bool(remove_mean)
@@ -390,14 +348,14 @@ def power_spectrum_2d(
             _ffi.cast("unsigned long long *", _ffi.from_buffer(counts)),
         )
         if rc == 0:
-            return {
-                "k_perp": kp_mean,
-                "k_para": kz_mean,
-                "pk": pk,
-                "counts": counts,
-                "kperp_edges": kp_edges.copy(),
-                "kpara_edges": kz_edges.copy(),
-            }
+            return PowerSpectrum2DResult(
+                k_perp=kp_mean,
+                k_para=kz_mean,
+                pk=pk,
+                counts=counts,
+                kperp_edges=kp_edges.copy(),
+                kpara_edges=kz_edges.copy(),
+            )
 
     return _numpy_power_spectrum_2d(
         arr_a,

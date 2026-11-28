@@ -92,6 +92,7 @@ def batch_cmd(
 ) -> None:
     """Run a GPU-accelerated parameter sweep from CSV/JSON or Sobol bounds and save HDF5 summaries."""
     import py21cmcu
+    from ._internal import PARAM_ALIAS_MAP
 
     rows = _load_param_rows(
         params_path=params,
@@ -103,21 +104,11 @@ def batch_cmd(
         z_list = [8.0]
     dev_tuple = tuple(int(d.strip()) for d in devices.split(",") if d.strip()) or (0,)
 
-    _alias_map = {
-        "F_STAR10": "F_STAR10_ACG",
-        "F_ESC10": "F_ESC10_ACG",
-        "F_STAR7_MINI": "F_STAR7_MCG",
-        "F_ESC7_MINI": "F_ESC7_MCG",
-        "ALPHA_STAR": "ALPHA_STAR_ACG",
-        "ALPHA_STAR_MINI": "ALPHA_STAR_MCG",
-        "L_X": "LX_OVER_SFR_ACG",
-        "L_X_MINI": "LX_OVER_SFR_MCG",
-    }
     tasks: list[py21cmcu.BatchTask] = []
     for idx, row in enumerate(rows):
         seed = int(row.get("random_seed", 1000 + idx))
         extra_params: dict[str, Any] = {
-            _alias_map.get(k, k): v for k, v in row.items() if k != "random_seed"
+            PARAM_ALIAS_MAP.get(k, k): v for k, v in row.items() if k != "random_seed"
         }
         inp = py21cmcu.InputParameters(
             random_seed=seed,

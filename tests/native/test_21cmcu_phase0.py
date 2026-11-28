@@ -67,6 +67,38 @@ def test_py21cmcu_exports_and_no_cupy(capsys: pytest.CaptureFixture[str]) -> Non
     assert "cupy" not in sys.modules
 
 
+def test_typed_results_and_cuda_abi_parity() -> None:
+    """Verify typed Mapping result containers and CUDA header/stub/source parity."""
+    from collections.abc import Mapping
+    import subprocess
+
+    for cls_name in (
+        "PowerSpectrum1DResult",
+        "PowerSpectrum2DResult",
+        "BispectrumResult",
+        "MFPResult",
+        "MinkowskiResult",
+        "CrossPowerResult",
+        "KSZMapResult",
+        "ResultMapping",
+    ):
+        assert hasattr(py21cmcu, cls_name), f"Missing result class export: {cls_name}"
+
+    rng = np.random.default_rng(42)
+    box = rng.normal(0.0, 1.0, size=(16, 16, 16)).astype(np.float32)
+    ps = py21cmcu.power_spectrum_1d(box, 32.0, n_bins=4, use_cuda=False)
+    assert isinstance(ps, Mapping)
+    assert isinstance(ps, py21cmcu.PowerSpectrum1DResult)
+    assert ps["pk"] is ps.pk
+    assert set(ps.keys()) == {"k", "pk", "delta_sq", "counts", "k_edges"}
+    assert dict(ps)["k"] is ps.k
+
+    abi_script = Path(__file__).resolve().parents[2] / "scripts" / "check_cuda_abi.py"
+    if abi_script.is_file():
+        res = subprocess.run([sys.executable, str(abi_script)], capture_output=True, text=True, check=False)
+        assert res.returncode == 0, f"check_cuda_abi.py failed:\n{res.stdout}\n{res.stderr}"
+
+
 def test_cuda_mode_config_and_runtime_sync() -> None:
     """Verify ``CUDA_MODE`` strict/fast synchronization and context restoration."""
     orig_cuda = config["USE_CUDA"]

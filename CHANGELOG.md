@@ -3,6 +3,10 @@
 All notable milestones in **21cmCU** are documented in this file.
 
 ## [Unreleased]
+### Architecture Modernization
+- Split `cuda_analysis.cu` (`3,056` lines) into four domain translation units (`cuda_lightcone_ps.cu`, `cuda_observables.cu`, `cuda_topology.cu`, `cuda_multiprobe.cu`) backed by shared RAII + grid-stride header [`cuda_analysis_common.cuh`](src/py21cmfast/src/cuda/cuda_analysis_common.cuh).
+- Upgraded [`build_cffi.py`](build_cffi.py) with concurrent `nvcc` compilation (`P21_NVCC_JOBS`) and `build/compile_commands.json` generation, and added [`scripts/check_cuda_abi.py`](scripts/check_cuda_abi.py) (`--stub-skeleton`) wired into CI for 1:1 `cuda_api.h` / `cuda_stubs.c` / `cuda/*.cu` parity.
+- Consolidated cross-module Python helpers into [`src/py21cmcu/_internal.py`](src/py21cmcu/_internal.py) and upgraded spectral/topological/multi-probe outputs to `Mapping`-compatible frozen dataclasses in [`src/py21cmcu/_results.py`](src/py21cmcu/_results.py) (`res["k"]` and `res.k`).
 
 ## [0.9.0] — 2026-11-28 (Higher-Order Topology, CRN Fisher, Multi-Probe CIC, Online SBI & Modern Architecture)
 ### Added & Improved

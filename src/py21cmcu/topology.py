@@ -10,7 +10,9 @@ import numpy as np
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
-from .analysis import _cuda_ready, _normalize_box_length
+from ._internal import cuda_ready as _cuda_ready
+from ._internal import normalize_box_length as _normalize_box_length
+from ._results import BispectrumResult, MFPResult, MinkowskiResult
 
 BispectrumConfig = Literal["equilateral", "squeezed", "folded", "isosceles"]
 
@@ -285,19 +287,19 @@ def bispectrum_3d(
             _ffi.cast("double *", _ffi.from_buffer(ntri_out)),
         )
         if rc == 0:
-            return {
-                "k1": k1,
-                "k2": k2,
-                "k3": k3,
-                "B": b_out,
-                "Q": q_out,
-                "pk1": pk1_out,
-                "pk2": pk2_out,
-                "pk3": pk3_out,
-                "n_triangles": ntri_out,
-                "dk": dk_arr,
-                "config": config,
-            }
+            return BispectrumResult(
+                k1=k1,
+                k2=k2,
+                k3=k3,
+                B=b_out,
+                Q=q_out,
+                pk1=pk1_out,
+                pk2=pk2_out,
+                pk3=pk3_out,
+                n_triangles=ntri_out,
+                dk=dk_arr,
+                config=config,
+            )
 
     b_out, q_out, pk1_out, pk2_out, pk3_out, ntri_out = _numpy_bispectrum_3d(
         raw,
@@ -312,19 +314,19 @@ def bispectrum_3d(
         k3_lo,
         k3_hi,
     )
-    return {
-        "k1": k1,
-        "k2": k2,
-        "k3": k3,
-        "B": b_out,
-        "Q": q_out,
-        "pk1": pk1_out,
-        "pk2": pk2_out,
-        "pk3": pk3_out,
-        "n_triangles": ntri_out,
-        "dk": dk_arr,
-        "config": config,
-    }
+    return BispectrumResult(
+        k1=k1,
+        k2=k2,
+        k3=k3,
+        B=b_out,
+        Q=q_out,
+        pk1=pk1_out,
+        pk2=pk2_out,
+        pk3=pk3_out,
+        n_triangles=ntri_out,
+        dk=dk_arr,
+        config=config,
+    )
 
 
 def _numpy_mfp_bsd(
@@ -502,17 +504,17 @@ def bubble_size_distribution_mfp(
     dr = np.diff(r_edges)
     pdf = counts.astype(np.float64) / (tot_binned * dr) if tot_binned > 0.0 else np.zeros_like(dr)
     rdp_dr = r_centers * pdf
-    return {
-        "r_edges": r_edges,
-        "r_centers": r_centers,
-        "counts": counts,
-        "pdf": pdf,
-        "rdp_dr": rdp_dr,
-        "mean_r": mean_r,
-        "std_r": std_r,
-        "ionized_fraction": float(n_ion) / float(nx * ny * nz),
-        "n_rays": int(n_rays),
-    }
+    return MFPResult(
+        r_edges=r_edges,
+        r_centers=r_centers,
+        counts=counts,
+        pdf=pdf,
+        rdp_dr=rdp_dr,
+        mean_r=mean_r,
+        std_r=std_r,
+        ionized_fraction=float(n_ion) / float(nx * ny * nz),
+        n_rays=int(n_rays),
+    )
 
 
 def _numpy_minkowski_3d(
@@ -629,26 +631,26 @@ def minkowski_functionals_3d(
             _ffi.cast("long long *", _ffi.from_buffer(euler)),
         )
         if rc == 0:
-            return {
-                "thresholds": thr,
-                "V0": v0,
-                "V1": v1,
-                "V2": v2,
-                "V3": v3,
-                "euler": euler,
-                "standardized": bool(standardize),
-            }
+            return MinkowskiResult(
+                thresholds=thr,
+                V0=v0,
+                V1=v1,
+                V2=v2,
+                V3=v3,
+                euler=euler,
+                standardized=bool(standardize),
+            )
 
     v0, v1, v2, v3, euler = _numpy_minkowski_3d(arr, lx, ly, lz, thr)
-    return {
-        "thresholds": thr,
-        "V0": v0,
-        "V1": v1,
-        "V2": v2,
-        "V3": v3,
-        "euler": euler,
-        "standardized": bool(standardize),
-    }
+    return MinkowskiResult(
+        thresholds=thr,
+        V0=v0,
+        V1=v1,
+        V2=v2,
+        V3=v3,
+        euler=euler,
+        standardized=bool(standardize),
+    )
 
 
 __all__ = [

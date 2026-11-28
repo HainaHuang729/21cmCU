@@ -12,10 +12,10 @@ from astropy.cosmology import Planck18
 from py21cmfast.c_21cmfast import ffi as _ffi
 from py21cmfast.c_21cmfast import lib as _lib
 
+from ._internal import cuda_ready as _cuda_ready
+from ._internal import default_k_edges as _default_k_edges
+from ._internal import normalize_box_length as _normalize_box_length
 from .analysis import (
-    _cuda_ready,
-    _default_k_edges,
-    _normalize_box_length,
     power_spectrum_1d,
     power_spectrum_2d,
 )
