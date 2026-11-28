@@ -18,6 +18,14 @@ def _get_fftw_cache_stats() -> tuple[int, int, int]:
     return int(hits[0]), int(misses[0]), int(entries[0])
 
 
+def _get_fftw_scratch_stats() -> tuple[int, int, int]:
+    hits = ffi.new("unsigned long long *")
+    misses = ffi.new("unsigned long long *")
+    pooled = ffi.new("int *")
+    lib.p21_dft_get_scratch_stats(hits, misses, pooled)
+    return int(hits[0]), int(misses[0]), int(pooled[0])
+
+
 def test_fftw_plan_cache_lifecycle():
     """clean_fftw destroys cached plans and resets stats safely."""
     lib.clean_fftw()
@@ -184,3 +192,139 @@ def test_cpu_apply_rsds_3d_bit_exact(
         f"apply_rsds mismatch (dtype={dtype}, periodic={periodic}, S={n_rsd_subcells}): "
         f"max_abs={np.max(np.abs(out_nat - out_ref))}"
     )
+
+
+def test_cpu_scratch_pool_lifecycle(monkeypatch):
+    """clean_fftw frees pooled fftwf_malloc scratch arrays and resets stats."""
+    monkeypatch.setitem(p21.config, "USE_CUDA", False)
+    monkeypatch.setenv("P21_CPU_SCRATCH_POOL", "1")
+    lib.clean_fftw()
+    assert _get_fftw_scratch_stats() == (0, 0, 0)
+
+    inputs = p21.InputParameters(
+        random_seed=77,
+        node_redshifts=(13.0, 10.0, 8.0),
+        cosmo_params=p21.CosmoParams(),
+        simulation_options=p21.SimulationOptions(
+            HII_DIM=16,
+            DIM=32,
+            BOX_LEN=32.0,
+            N_THREADS=2,
+            Z_HEAT_MAX=12.0,
+        ),
+        matter_options=p21.MatterOptions(SOURCE_MODEL="E-INTEGRAL"),
+        astro_options=p21.AstroOptions(
+            USE_TS_FLUCT=True,
+            RECOMB_MODEL="inhomogeneous",
+            USE_EXP_FILTER=False,
+            USE_UPPER_STELLAR_TURNOVER=False,
+        ),
+        astro_params=p21.AstroParams(),
+    )
+    p21.run_coeval(inputs=inputs, out_redshifts=(8.0,), write=False)
+    hits, misses, pooled = _get_fftw_scratch_stats()
+    assert hits > 0
+    assert misses > 0
+    assert pooled > 0
+
+    lib.clean_fftw()
+    assert _get_fftw_scratch_stats() == (0, 0, 0)
+
+
+@pytest.mark.parametrize(
+    ("source_model", "use_exp_filter", "use_mcgs"),
+    [
+        ("E-INTEGRAL", False, False),
+        ("L-INTEGRAL", True, True),
+    ],
+)
+def test_cpu_fused_filter_and_scratch_bit_exact(
+    monkeypatch,
+    source_model: str,
+    use_exp_filter: bool,
+    use_mcgs: bool,
+):
+    """Fused k-space filtering + scratch pool match disabled CPU path with max_abs == 0.0."""
+    monkeypatch.setitem(p21.config, "USE_CUDA", False)
+    inputs = p21.InputParameters(
+        random_seed=101,
+        node_redshifts=(13.0, 10.0, 8.0),
+        cosmo_params=p21.CosmoParams(),
+        simulation_options=p21.SimulationOptions(
+            HII_DIM=16,
+            DIM=32,
+            BOX_LEN=32.0,
+            N_THREADS=2,
+            Z_HEAT_MAX=12.0,
+        ),
+        matter_options=p21.MatterOptions(SOURCE_MODEL=source_model),
+        astro_options=p21.AstroOptions(
+            USE_TS_FLUCT=True,
+            RECOMB_MODEL="inhomogeneous",
+            USE_EXP_FILTER=use_exp_filter,
+            USE_MCGS=use_mcgs,
+            USE_UPPER_STELLAR_TURNOVER=False,
+        ),
+        astro_params=p21.AstroParams(),
+    )
+
+    monkeypatch.setenv("P21_CPU_FILTER_FUSED", "0")
+    monkeypatch.setenv("P21_CPU_SCRATCH_POOL", "0")
+    lib.clean_fftw()
+    ref = p21.run_coeval(inputs=inputs, out_redshifts=(8.0,), write=False)[0]
+    assert _get_fftw_scratch_stats() == (0, 0, 0)
+
+    monkeypatch.setenv("P21_CPU_FILTER_FUSED", "1")
+    monkeypatch.setenv("P21_CPU_SCRATCH_POOL", "1")
+    lib.clean_fftw()
+    opt = p21.run_coeval(inputs=inputs, out_redshifts=(8.0,), write=False)[0]
+    hits, misses, _ = _get_fftw_scratch_stats()
+    assert hits > 0
+    assert misses > 0
+
+    checked = 0
+    for struct_name, ref_box in ref.output_structs.items():
+        opt_box = getattr(opt, struct_name)
+        for arr_name in ref_box.arrays:
+            a = ref_box.get(arr_name)
+            if a is None:
+                continue
+            a_arr = np.asarray(a)
+            b_arr = np.asarray(opt_box.get(arr_name))
+            assert np.array_equal(a_arr, b_arr), (
+                f"Fused/scratch mismatch ({source_model}) in {struct_name}.{arr_name}: "
+                f"max_abs={np.max(np.abs(a_arr - b_arr))}"
+            )
+            checked += 1
+    assert checked >= 10
+
+    # Also check all 5 filter kernels directly via test_filter
+    rng = np.random.default_rng(555)
+    box_in = np.ascontiguousarray(rng.normal(1.0, 0.2, size=(16, 16, 16)), dtype=np.float32)
+    out_ref = np.empty((16, 16, 16), dtype=np.float64)
+    out_opt = np.empty((16, 16, 16), dtype=np.float64)
+    for f_flag in (0, 1, 2, 3, 4, 5):
+        monkeypatch.setenv("P21_CPU_FILTER_FUSED", "0")
+        rc0 = lib.test_filter(
+            ffi.cast("float *", ffi.from_buffer(box_in)),
+            4.0,
+            8.0,
+            2.0,
+            int(f_flag),
+            ffi.cast("double *", ffi.from_buffer(out_ref)),
+        )
+        monkeypatch.setenv("P21_CPU_FILTER_FUSED", "1")
+        rc1 = lib.test_filter(
+            ffi.cast("float *", ffi.from_buffer(box_in)),
+            4.0,
+            8.0,
+            2.0,
+            int(f_flag),
+            ffi.cast("double *", ffi.from_buffer(out_opt)),
+        )
+        assert rc0 == 0 and rc1 == 0
+        assert np.array_equal(out_opt, out_ref), (
+            f"test_filter flag={f_flag} mismatch: max_abs={np.max(np.abs(out_opt - out_ref))}"
+        )
+
+    lib.clean_fftw()

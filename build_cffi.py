@@ -108,6 +108,8 @@ if "DEBUG" in os.environ:
     extra_compile_args += ["-g", "-O0"]
 else:
     extra_compile_args += ["-Ofast"]
+    if os.environ.get("P21_CPU_NATIVE", "").strip().lower() in {"1", "true", "yes", "on"}:
+        extra_compile_args.append("-march=native")
 
 libraries = ["m", "gsl", "gslcblas", "fftw3f_omp", "fftw3f"]
 

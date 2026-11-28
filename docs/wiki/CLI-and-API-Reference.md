@@ -40,7 +40,10 @@ Back to [Home](Home.md) · Previous: [SBI & Batch Pipeline](SBI-and-Batch-Pipeli
 | `P21_CUDA_ION_SPILL_KSPACE` | Force host spill for ionization k-space arrays | Auto |
 | `P21_CLASS_CACHE` / `P21_CLASS_DISK_CACHE` | Toggle memory / `.npz` disk cache for `CLASS` tables | Enabled |
 | `P21_FFTW_PLAN_CACHE` | Toggle 32-entry bit-exact FFTW plan LRU cache in `dft.c` (`0` to disable) | Enabled (`1`) |
+| `P21_CPU_SCRATCH_POOL` / `P21_CPU_SCRATCH_POOL_MB` | Toggle 24-slot `fftwf_malloc` scratch pool & max MiB budget (`0` disables) | Enabled (`1`, `2048` MiB) |
+| `P21_CPU_FILTER_FUSED` | Toggle hoisted-switch multi-box `k`-space filtering in `filtering.c` | Enabled (`1`) |
 | `P21_CPU_RSDS_NATIVE` | Toggle bit-exact C/OpenMP CPU `apply_rsds` / `rsds_shift` (`0` to use Python/SciPy fallback) | Enabled (`1`) |
+| `P21_CPU_NATIVE` | Opt-in `-march=native` host compiler flag in `build_cffi.py` | Off |
 
 ---
 

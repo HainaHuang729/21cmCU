@@ -255,6 +255,9 @@ int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out)
 void p21_dft_clear_plan_cache(void);
 void p21_dft_get_cache_stats(unsigned long long *hits_out, unsigned long long *misses_out,
                              int *entries_out);
+void p21_dft_clear_scratch_pool(void);
+void p21_dft_get_scratch_stats(unsigned long long *hits_out, unsigned long long *misses_out,
+                               int *pooled_out);
 int p21_cpu_rsds_shift_f32(const float *f_in, const double *d_in, int n_los, int nz,
                            int n_rsd_subcells, int periodic, int disp_prescaled, float *f_out);
 int p21_cpu_rsds_shift_f64(const double *f_in, const double *d_in, int n_los, int nz,

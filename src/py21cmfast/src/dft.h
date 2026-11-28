@@ -5,6 +5,7 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <omp.h>
+#include <stddef.h>
 
 #include "InputParameters.h"
 
@@ -13,5 +14,10 @@ int dft_r2c_cube(bool use_wisdom, int dim, int dim_los, int n_threads, fftwf_com
 int CreateFFTWWisdoms();
 void clean_fftw();
 int test_dft_cube(int dim, int n_threads, int n_repeat);
+void *p21_dft_scratch_acquire(size_t n_bytes);
+void p21_dft_scratch_release(void *ptr, size_t n_bytes);
+void p21_dft_clear_scratch_pool(void);
+void p21_dft_get_scratch_stats(unsigned long long *hits_out, unsigned long long *misses_out,
+                               int *pooled_out);
 
 #endif

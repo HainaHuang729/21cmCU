@@ -30,11 +30,11 @@ All primary simulation stages run natively on GPU (`InitialConditions`, `Perturb
 
 ## 3. CPU Backend (`C / OpenMP / FFTW3f`) Optimization Opportunities
 
-1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — Implemented (`max_abs = 0.0`)**: 32-entry thread-safe LRU cache keyed by `(is_c2r, use_wisdom, dim, dim_los, n_threads, align64)` using `fftwf_execute_dft_*` (`P21_FFTW_PLAN_CACHE=1`). Verified **`589` hits / `9` misses** and bit-exact `max_abs = 0.0` across all 25 `OutputStruct` arrays on `256/128` 16T Coeval (`19.4612 s → 19.3780 s`).
+1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — Implemented (`max_abs = 0.0`)**: 32-entry thread-safe LRU cache keyed by `(is_c2r, use_wisdom, dim, dim_los, n_threads, align64)` using `fftwf_execute_dft_*` (`P21_FFTW_PLAN_CACHE=1`). Verified **`589` hits / `9` misses** (`max_abs = 0.0` across all 25 arrays) on `256/128` 16T Coeval.
 2. **Native C/OpenMP `apply_rsds` (`src/py21cmfast/src/rsds_cpu.c`, `src/py21cmfast/rsds.py`) — Implemented (`395.26×`, `max_abs = 0.0`)**: Column-parallel OpenMP kernel compiled with `#pragma STDC FP_CONTRACT OFF` and `no-fast-math` (`P21_CPU_RSDS_NATIVE=1`). Accelerates `128×128×512` 16-core CPU `apply_rsds` from **`38.2230 s` → `0.0967 s`** (**`395.26×`**) with zero per-pixel error (`max_abs = 0.0`).
-3. **SIMD + OpenMP Fusion (`build_cffi.py`, `IonisationBox.c`)**: Optional `-march=native`, `#pragma omp simd`, loop fusion, and NUMA first-touch initialization.
-4. **Fast Host RNG & `k^2 R^2` Filtering (`rng.c`, `filtering.c`)**: Host Philox/`xoshiro256++` RNG and avoiding inner-loop `sqrtf` calls.
-5. **Scratch-Buffer Reuse**: Persist `fftwf_malloc` buffers across filter radii to eliminate repeated kernel page faults.
+3. **Opt-In `-march=native` (`build_cffi.py`) & Multi-Box Filter Fusion (`IonisationBox.c`, `RadiationFields.c`, `filtering.c`) — Implemented (`max_abs = 0.0`)**: Added `P21_CPU_NATIVE=1` (`-march=native`), hoisted `switch (filter_type)` out of the OpenMP 3D loop in `p21_filter_boxes_fused()`, and grouped shared-filter boxes across radii and spherical radiation shells (`P21_CPU_FILTER_FUSED=1`).
+4. **FFTW `fftwf_malloc` Scratch Pool (`src/py21cmfast/src/dft.c`, `IonisationBox.c`, `RadiationFields.c`, `PerturbedField.c`) — Implemented (`max_abs = 0.0`)**: 24-slot mutex-guarded scratch pool (`P21_CPU_SCRATCH_POOL=1`, `P21_CPU_SCRATCH_POOL_MB=2048`), eliminating repeated `mmap`/`munmap` page-fault churn and yielding **`1.227×`** (`256/128` `E-INTEGRAL+TS`, `9.0989 s → 7.4172 s`), **`1.205×`** (`256/128` `L-INTEGRAL+TS+MCGS`, `11.6838 s → 9.6985 s`), and **`1.114×`** (`512/256` `E-INTEGRAL+TS`, `63.2424 s → 56.7649 s`) full 16T CPU speedups with **`max_abs = 0.0`**.
+5. **Optional Fast Host RNG (`rng.c`)**: Replacing CPU GSL streams with a host Philox RNG remains intentionally opt-in/future since it changes random sequences relative to upstream CPU.
 
 ---
 

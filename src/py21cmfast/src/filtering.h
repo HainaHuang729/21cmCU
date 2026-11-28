@@ -7,6 +7,10 @@
 
 void filter_box(fftwf_complex *box, int box_dim[3], int filter_type, float R, float R_param,
                 float R_star);
+int p21_cpu_filter_fused_enabled(void);
+void p21_filter_boxes_fused(int n_boxes, fftwf_complex **dsts, fftwf_complex *const *srcs,
+                            int box_dim[3], int filter_type, float R, float R_param, float R_star,
+                            float pre_div);
 int test_filter(float *input_box, double R, double R_param, double R_star, int filter_flag,
                 double *result);
 double filter_function(double k, int filter_type);

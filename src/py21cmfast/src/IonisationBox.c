@@ -212,97 +212,90 @@ void set_ionbox_constants(double redshift, double prev_redshift, struct IonBoxCo
 }
 
 void allocate_fftw_grids(struct FilteredGrids **fg_struct) {
+    const size_t grid_bytes = sizeof(fftwf_complex) * (size_t)HII_KSPACE_NUM_PIXELS;
     *fg_struct = malloc(sizeof(**fg_struct));
 
-    (*fg_struct)->deltax_unfiltered =
-        (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-    (*fg_struct)->deltax_filtered =
-        (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+    (*fg_struct)->deltax_unfiltered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
+    (*fg_struct)->deltax_filtered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
 
     if (source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL)) {
         if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
             (*fg_struct)->log10_mturn_acg_grid_unfiltered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
             (*fg_struct)->log10_mturn_acg_grid_filtered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
         }
         if (astro_options_global->USE_MCGS) {
             (*fg_struct)->prev_deltax_unfiltered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
             (*fg_struct)->prev_deltax_filtered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
 
             (*fg_struct)->log10_mturn_mcg_grid_unfiltered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
             (*fg_struct)->log10_mturn_mcg_grid_filtered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
         }
     }
 
     if (astro_options_global->USE_TS_FLUCT) {
-        (*fg_struct)->xe_unfiltered =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        (*fg_struct)->xe_filtered =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        (*fg_struct)->xe_unfiltered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
+        (*fg_struct)->xe_filtered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
     }
 
     if (uses_recombination(astro_options_global->RECOMB_MODEL) &&
         !astro_options_global->CELL_RECOMB) {
-        (*fg_struct)->N_rec_unfiltered = (fftwf_complex *)fftwf_malloc(
-            sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);  // cumulative number of recombinations
-        (*fg_struct)->N_rec_filtered =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        (*fg_struct)->N_rec_unfiltered =
+            (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);  // cumulative number of recombinations
+        (*fg_struct)->N_rec_filtered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
     }
 
     if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL)) {
-        (*fg_struct)->stars_unfiltered =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        (*fg_struct)->stars_filtered =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        (*fg_struct)->stars_unfiltered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
+        (*fg_struct)->stars_filtered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
 
         if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
-            (*fg_struct)->sfr_unfiltered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-            (*fg_struct)->sfr_filtered =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            (*fg_struct)->sfr_unfiltered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
+            (*fg_struct)->sfr_filtered = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
         }
     }
     // TODO: check for null pointers and throw errors
 }
 
 void free_fftw_grids(struct FilteredGrids *fg_struct) {
-    fftwf_free(fg_struct->deltax_unfiltered);
-    fftwf_free(fg_struct->deltax_filtered);
+    const size_t grid_bytes = sizeof(fftwf_complex) * (size_t)HII_KSPACE_NUM_PIXELS;
+    p21_dft_scratch_release(fg_struct->deltax_unfiltered, grid_bytes);
+    p21_dft_scratch_release(fg_struct->deltax_filtered, grid_bytes);
 
     if (source_model_uses_eulerian_grids(matter_options_global->SOURCE_MODEL)) {
         if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
-            fftwf_free(fg_struct->log10_mturn_acg_grid_unfiltered);
-            fftwf_free(fg_struct->log10_mturn_acg_grid_filtered);
+            p21_dft_scratch_release(fg_struct->log10_mturn_acg_grid_unfiltered, grid_bytes);
+            p21_dft_scratch_release(fg_struct->log10_mturn_acg_grid_filtered, grid_bytes);
         }
         if (astro_options_global->USE_MCGS) {
-            fftwf_free(fg_struct->prev_deltax_unfiltered);
-            fftwf_free(fg_struct->prev_deltax_filtered);
+            p21_dft_scratch_release(fg_struct->prev_deltax_unfiltered, grid_bytes);
+            p21_dft_scratch_release(fg_struct->prev_deltax_filtered, grid_bytes);
 
-            fftwf_free(fg_struct->log10_mturn_mcg_grid_unfiltered);
-            fftwf_free(fg_struct->log10_mturn_mcg_grid_filtered);
+            p21_dft_scratch_release(fg_struct->log10_mturn_mcg_grid_unfiltered, grid_bytes);
+            p21_dft_scratch_release(fg_struct->log10_mturn_mcg_grid_filtered, grid_bytes);
         }
     }
     if (astro_options_global->USE_TS_FLUCT) {
-        fftwf_free(fg_struct->xe_unfiltered);
-        fftwf_free(fg_struct->xe_filtered);
+        p21_dft_scratch_release(fg_struct->xe_unfiltered, grid_bytes);
+        p21_dft_scratch_release(fg_struct->xe_filtered, grid_bytes);
     }
     if (uses_recombination(astro_options_global->RECOMB_MODEL) &&
         !astro_options_global->CELL_RECOMB) {
-        fftwf_free(fg_struct->N_rec_unfiltered);
-        fftwf_free(fg_struct->N_rec_filtered);
+        p21_dft_scratch_release(fg_struct->N_rec_unfiltered, grid_bytes);
+        p21_dft_scratch_release(fg_struct->N_rec_filtered, grid_bytes);
     }
 
     if (source_model_uses_lagrangian_grids(matter_options_global->SOURCE_MODEL)) {
-        fftwf_free(fg_struct->stars_unfiltered);
-        fftwf_free(fg_struct->stars_filtered);
+        p21_dft_scratch_release(fg_struct->stars_unfiltered, grid_bytes);
+        p21_dft_scratch_release(fg_struct->stars_filtered, grid_bytes);
         if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
-            fftwf_free(fg_struct->sfr_unfiltered);
-            fftwf_free(fg_struct->sfr_filtered);
+            p21_dft_scratch_release(fg_struct->sfr_unfiltered, grid_bytes);
+            p21_dft_scratch_release(fg_struct->sfr_filtered, grid_bytes);
         }
     }
 
@@ -578,64 +571,149 @@ void copy_filter_transform(struct FilteredGrids *fg_struct, struct IonBoxConstan
     int box_dim[3] = {simulation_options_global->HII_DIM, simulation_options_global->HII_DIM,
                       HII_D_PARA};
 
-    memcpy(fg_struct->deltax_filtered, fg_struct->deltax_unfiltered,
-           sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-    if (astro_options_global->USE_TS_FLUCT) {
-        memcpy(fg_struct->xe_filtered, fg_struct->xe_unfiltered,
-               sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-    }
-    if (consts->filter_recombinations) {
-        memcpy(fg_struct->N_rec_filtered, fg_struct->N_rec_unfiltered,
-               sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-    }
-    if (consts->lagrangian_source_grids) {
-        memcpy(fg_struct->stars_filtered, fg_struct->stars_unfiltered,
-               sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
-            memcpy(fg_struct->sfr_filtered, fg_struct->sfr_unfiltered,
-                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        }
-    } else {
-        if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
-            memcpy(fg_struct->log10_mturn_acg_grid_filtered,
-                   fg_struct->log10_mturn_acg_grid_unfiltered,
-                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        }
-        if (astro_options_global->USE_MCGS) {
-            memcpy(fg_struct->prev_deltax_filtered, fg_struct->prev_deltax_unfiltered,
-                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-            memcpy(fg_struct->log10_mturn_mcg_grid_filtered,
-                   fg_struct->log10_mturn_mcg_grid_unfiltered,
-                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
-        }
-    }
+    if (p21_cpu_filter_fused_enabled()) {
+        fftwf_complex *dsts_main[8];
+        fftwf_complex *srcs_main[8];
+        fftwf_complex *dsts_hf[4];
+        fftwf_complex *srcs_hf[4];
+        int n_main = 0;
+        int n_hf = 0;
 
-    if (rspec.R_index > 0) {
-        double R = rspec.R;
-        filter_box(fg_struct->deltax_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+        dsts_main[n_main] = fg_struct->deltax_filtered;
+        srcs_main[n_main] = fg_struct->deltax_unfiltered;
+        n_main++;
         if (astro_options_global->USE_TS_FLUCT) {
-            filter_box(fg_struct->xe_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+            dsts_main[n_main] = fg_struct->xe_filtered;
+            srcs_main[n_main] = fg_struct->xe_unfiltered;
+            n_main++;
         }
         if (consts->filter_recombinations) {
-            filter_box(fg_struct->N_rec_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+            dsts_main[n_main] = fg_struct->N_rec_filtered;
+            srcs_main[n_main] = fg_struct->N_rec_unfiltered;
+            n_main++;
         }
         if (consts->lagrangian_source_grids) {
-            int filter_hf =
-                astro_options_global->USE_EXP_FILTER ? FILTER_EXP_MFP : consts->hii_filter;
-            filter_box(fg_struct->stars_filtered, box_dim, filter_hf, R, consts->mfp_meandens, 0.);
-            if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
-                filter_box(fg_struct->sfr_filtered, box_dim, filter_hf, R, consts->mfp_meandens,
-                           0.);
+            if (astro_options_global->USE_EXP_FILTER) {
+                dsts_hf[n_hf] = fg_struct->stars_filtered;
+                srcs_hf[n_hf] = fg_struct->stars_unfiltered;
+                n_hf++;
+                if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                    dsts_hf[n_hf] = fg_struct->sfr_filtered;
+                    srcs_hf[n_hf] = fg_struct->sfr_unfiltered;
+                    n_hf++;
+                }
+            } else {
+                dsts_main[n_main] = fg_struct->stars_filtered;
+                srcs_main[n_main] = fg_struct->stars_unfiltered;
+                n_main++;
+                if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                    dsts_main[n_main] = fg_struct->sfr_filtered;
+                    srcs_main[n_main] = fg_struct->sfr_unfiltered;
+                    n_main++;
+                }
             }
         } else {
             if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
-                filter_box(fg_struct->log10_mturn_acg_grid_filtered, box_dim, consts->hii_filter, R,
-                           0., 0.);
+                dsts_main[n_main] = fg_struct->log10_mturn_acg_grid_filtered;
+                srcs_main[n_main] = fg_struct->log10_mturn_acg_grid_unfiltered;
+                n_main++;
             }
             if (astro_options_global->USE_MCGS) {
-                filter_box(fg_struct->prev_deltax_filtered, box_dim, consts->hii_filter, R, 0., 0.);
-                filter_box(fg_struct->log10_mturn_mcg_grid_filtered, box_dim, consts->hii_filter, R,
-                           0., 0.);
+                dsts_main[n_main] = fg_struct->prev_deltax_filtered;
+                srcs_main[n_main] = fg_struct->prev_deltax_unfiltered;
+                n_main++;
+                dsts_main[n_main] = fg_struct->log10_mturn_mcg_grid_filtered;
+                srcs_main[n_main] = fg_struct->log10_mturn_mcg_grid_unfiltered;
+                n_main++;
+            }
+        }
+
+        if (rspec.R_index > 0) {
+            double R = rspec.R;
+            p21_filter_boxes_fused(n_main, dsts_main, srcs_main, box_dim, consts->hii_filter, R,
+                                   0., 0., 0.0f);
+            if (n_hf > 0) {
+                p21_filter_boxes_fused(n_hf, dsts_hf, srcs_hf, box_dim, FILTER_EXP_MFP, R,
+                                       consts->mfp_meandens, 0., 0.0f);
+            }
+        } else {
+            for (int i = 0; i < n_hf; i++) {
+                dsts_main[n_main] = dsts_hf[i];
+                srcs_main[n_main] = srcs_hf[i];
+                n_main++;
+            }
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+            {
+#pragma omp for
+                for (index_huge idx = 0; idx < HII_KSPACE_NUM_PIXELS; idx++) {
+                    for (int b = 0; b < n_main; b++) {
+                        dsts_main[b][idx] = srcs_main[b][idx];
+                    }
+                }
+            }
+        }
+    } else {
+        memcpy(fg_struct->deltax_filtered, fg_struct->deltax_unfiltered,
+               sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        if (astro_options_global->USE_TS_FLUCT) {
+            memcpy(fg_struct->xe_filtered, fg_struct->xe_unfiltered,
+                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        }
+        if (consts->filter_recombinations) {
+            memcpy(fg_struct->N_rec_filtered, fg_struct->N_rec_unfiltered,
+                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        }
+        if (consts->lagrangian_source_grids) {
+            memcpy(fg_struct->stars_filtered, fg_struct->stars_unfiltered,
+                   sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                memcpy(fg_struct->sfr_filtered, fg_struct->sfr_unfiltered,
+                       sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            }
+        } else {
+            if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
+                memcpy(fg_struct->log10_mturn_acg_grid_filtered,
+                       fg_struct->log10_mturn_acg_grid_unfiltered,
+                       sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            }
+            if (astro_options_global->USE_MCGS) {
+                memcpy(fg_struct->prev_deltax_filtered, fg_struct->prev_deltax_unfiltered,
+                       sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+                memcpy(fg_struct->log10_mturn_mcg_grid_filtered,
+                       fg_struct->log10_mturn_mcg_grid_unfiltered,
+                       sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            }
+        }
+
+        if (rspec.R_index > 0) {
+            double R = rspec.R;
+            filter_box(fg_struct->deltax_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+            if (astro_options_global->USE_TS_FLUCT) {
+                filter_box(fg_struct->xe_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+            }
+            if (consts->filter_recombinations) {
+                filter_box(fg_struct->N_rec_filtered, box_dim, consts->hii_filter, R, 0., 0.);
+            }
+            if (consts->lagrangian_source_grids) {
+                int filter_hf =
+                    astro_options_global->USE_EXP_FILTER ? FILTER_EXP_MFP : consts->hii_filter;
+                filter_box(fg_struct->stars_filtered, box_dim, filter_hf, R, consts->mfp_meandens,
+                           0.);
+                if (uses_recombination(astro_options_global->RECOMB_MODEL)) {
+                    filter_box(fg_struct->sfr_filtered, box_dim, filter_hf, R,
+                               consts->mfp_meandens, 0.);
+                }
+            } else {
+                if (astro_options_global->USE_REIONIZATION_PHOTOHEATING_FEEDBACK) {
+                    filter_box(fg_struct->log10_mturn_acg_grid_filtered, box_dim,
+                               consts->hii_filter, R, 0., 0.);
+                }
+                if (astro_options_global->USE_MCGS) {
+                    filter_box(fg_struct->prev_deltax_filtered, box_dim, consts->hii_filter, R, 0.,
+                               0.);
+                    filter_box(fg_struct->log10_mturn_mcg_grid_filtered, box_dim,
+                               consts->hii_filter, R, 0., 0.);
+                }
             }
         }
     }

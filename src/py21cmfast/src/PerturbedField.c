@@ -421,18 +421,17 @@ int ComputePerturbedField(float redshift, InitialConditions *boxes,
         fftwf_complex *HIRES_density_perturb = NULL;
         fftwf_complex *LOWRES_density_perturb, *density_perturb_saved;
 
+        const size_t lo_bytes = sizeof(fftwf_complex) * (size_t)HII_KSPACE_NUM_PIXELS;
+        const size_t hi_bytes = sizeof(fftwf_complex) * (size_t)KSPACE_NUM_PIXELS;
+
         // allocate memory for the updated density, and initialize
-        LOWRES_density_perturb =
-            (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+        LOWRES_density_perturb = (fftwf_complex *)p21_dft_scratch_acquire(lo_bytes);
 
         if (matter_options_global->PERTURB_ON_HIGH_RES) {
-            HIRES_density_perturb =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * KSPACE_NUM_PIXELS);
-            density_perturb_saved =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * KSPACE_NUM_PIXELS);
+            HIRES_density_perturb = (fftwf_complex *)p21_dft_scratch_acquire(hi_bytes);
+            density_perturb_saved = (fftwf_complex *)p21_dft_scratch_acquire(hi_bytes);
         } else {
-            density_perturb_saved =
-                (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+            density_perturb_saved = (fftwf_complex *)p21_dft_scratch_acquire(lo_bytes);
         }
 
         fftwf_complex *fft_density_grid = matter_options_global->PERTURB_ON_HIGH_RES
@@ -486,10 +485,12 @@ int ComputePerturbedField(float redshift, InitialConditions *boxes,
         }
 
         // deallocate
-        fftwf_free(LOWRES_density_perturb);
-        fftwf_free(density_perturb_saved);
+        p21_dft_scratch_release(LOWRES_density_perturb, lo_bytes);
         if (matter_options_global->PERTURB_ON_HIGH_RES) {
-            fftwf_free(HIRES_density_perturb);
+            p21_dft_scratch_release(density_perturb_saved, hi_bytes);
+            p21_dft_scratch_release(HIRES_density_perturb, hi_bytes);
+        } else {
+            p21_dft_scratch_release(density_perturb_saved, lo_bytes);
         }
         LOG_DEBUG("Done.");
 

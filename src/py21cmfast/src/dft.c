@@ -60,6 +60,121 @@ void p21_dft_clear_plan_cache(void) {
     pthread_mutex_unlock(&g_fftw_cache_mutex);
 }
 
+#define P21_CPU_SCRATCH_POOL_CAP 24
+
+typedef struct {
+    bool valid;
+    void *ptr;
+    size_t n_bytes;
+} P21CpuScratchEntry;
+
+static P21CpuScratchEntry g_cpu_scratch_pool[P21_CPU_SCRATCH_POOL_CAP];
+static size_t g_cpu_scratch_pooled_bytes = 0;
+static uint64_t g_cpu_scratch_hits = 0;
+static uint64_t g_cpu_scratch_misses = 0;
+static pthread_mutex_t g_cpu_scratch_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static bool cpu_scratch_pool_enabled(void) {
+    const char *env = getenv("P21_CPU_SCRATCH_POOL");
+    if (env != NULL && strcmp(env, "0") == 0) {
+        return false;
+    }
+    return true;
+}
+
+static size_t cpu_scratch_max_bytes(void) {
+    const char *env = getenv("P21_CPU_SCRATCH_POOL_MB");
+    if (env != NULL && *env != '\0') {
+        char *endp = NULL;
+        unsigned long long mb = strtoull(env, &endp, 10);
+        if (endp != env && mb > 0) {
+            return (size_t)mb * 1024ULL * 1024ULL;
+        }
+    }
+    return 2048ULL * 1024ULL * 1024ULL;
+}
+
+void *p21_dft_scratch_acquire(size_t n_bytes) {
+    if (!cpu_scratch_pool_enabled()) {
+        return fftwf_malloc(n_bytes);
+    }
+
+    pthread_mutex_lock(&g_cpu_scratch_mutex);
+    for (int i = 0; i < P21_CPU_SCRATCH_POOL_CAP; i++) {
+        if (g_cpu_scratch_pool[i].valid && g_cpu_scratch_pool[i].n_bytes == n_bytes) {
+            void *ptr = g_cpu_scratch_pool[i].ptr;
+            g_cpu_scratch_pool[i].valid = false;
+            g_cpu_scratch_pool[i].ptr = NULL;
+            g_cpu_scratch_pool[i].n_bytes = 0;
+            g_cpu_scratch_pooled_bytes -= n_bytes;
+            g_cpu_scratch_hits++;
+            pthread_mutex_unlock(&g_cpu_scratch_mutex);
+            return ptr;
+        }
+    }
+    g_cpu_scratch_misses++;
+    pthread_mutex_unlock(&g_cpu_scratch_mutex);
+    return fftwf_malloc(n_bytes);
+}
+
+void p21_dft_scratch_release(void *ptr, size_t n_bytes) {
+    if (ptr == NULL) {
+        return;
+    }
+    if (!cpu_scratch_pool_enabled()) {
+        fftwf_free(ptr);
+        return;
+    }
+
+    const size_t max_bytes = cpu_scratch_max_bytes();
+    pthread_mutex_lock(&g_cpu_scratch_mutex);
+    if (g_cpu_scratch_pooled_bytes + n_bytes <= max_bytes) {
+        for (int i = 0; i < P21_CPU_SCRATCH_POOL_CAP; i++) {
+            if (!g_cpu_scratch_pool[i].valid) {
+                g_cpu_scratch_pool[i].valid = true;
+                g_cpu_scratch_pool[i].ptr = ptr;
+                g_cpu_scratch_pool[i].n_bytes = n_bytes;
+                g_cpu_scratch_pooled_bytes += n_bytes;
+                pthread_mutex_unlock(&g_cpu_scratch_mutex);
+                return;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_cpu_scratch_mutex);
+    fftwf_free(ptr);
+}
+
+void p21_dft_clear_scratch_pool(void) {
+    pthread_mutex_lock(&g_cpu_scratch_mutex);
+    for (int i = 0; i < P21_CPU_SCRATCH_POOL_CAP; i++) {
+        if (g_cpu_scratch_pool[i].valid && g_cpu_scratch_pool[i].ptr != NULL) {
+            fftwf_free(g_cpu_scratch_pool[i].ptr);
+        }
+        g_cpu_scratch_pool[i].valid = false;
+        g_cpu_scratch_pool[i].ptr = NULL;
+        g_cpu_scratch_pool[i].n_bytes = 0;
+    }
+    g_cpu_scratch_pooled_bytes = 0;
+    g_cpu_scratch_hits = 0;
+    g_cpu_scratch_misses = 0;
+    pthread_mutex_unlock(&g_cpu_scratch_mutex);
+}
+
+void p21_dft_get_scratch_stats(unsigned long long *hits_out, unsigned long long *misses_out,
+                               int *pooled_out) {
+    pthread_mutex_lock(&g_cpu_scratch_mutex);
+    if (hits_out != NULL) *hits_out = (unsigned long long)g_cpu_scratch_hits;
+    if (misses_out != NULL) *misses_out = (unsigned long long)g_cpu_scratch_misses;
+    if (pooled_out != NULL) {
+        int count = 0;
+        for (int i = 0; i < P21_CPU_SCRATCH_POOL_CAP; i++) {
+            if (g_cpu_scratch_pool[i].valid) count++;
+        }
+        *pooled_out = count;
+    }
+    pthread_mutex_unlock(&g_cpu_scratch_mutex);
+}
+
 void p21_dft_get_cache_stats(unsigned long long *hits_out, unsigned long long *misses_out,
                              int *entries_out) {
     pthread_mutex_lock(&g_fftw_cache_mutex);
@@ -261,6 +376,7 @@ int CreateFFTWWisdoms() {
 // There must not be any FFTW plans alive when this is called.
 void clean_fftw() {
     p21_dft_clear_plan_cache();
+    p21_dft_clear_scratch_pool();
     fftwf_cleanup_threads();
     fftwf_cleanup();
 }

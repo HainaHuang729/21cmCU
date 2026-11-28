@@ -7,6 +7,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "Constants.h"
 #include "InputParameters.h"
@@ -319,8 +320,128 @@ double multiple_scattering_filter(double k, double R_inner, double R_outer,
     return W;
 }
 
+int p21_cpu_filter_fused_enabled(void) {
+    const char *env = getenv("P21_CPU_FILTER_FUSED");
+    if (env != NULL && strcmp(env, "0") == 0) {
+        return 0;
+    }
+    return 1;
+}
+
+#define P21_FILTER_FUSED_LOOP(W_EXPR)                                                       \
+    for (int n_x = 0; n_x < box_dim[0]; n_x++) {                                            \
+        float k_x = (n_x > (box_dim[0] / 2)) ? (n_x - box_dim[0]) * delta_k[0]              \
+                                             : n_x * delta_k[0];                            \
+        for (int n_y = 0; n_y < box_dim[1]; n_y++) {                                        \
+            float k_y = (n_y > (box_dim[1] / 2)) ? (n_y - box_dim[1]) * delta_k[1]          \
+                                                 : n_y * delta_k[1];                        \
+            for (int n_z = 0; n_z <= box_dim[2] / 2; n_z++) {                               \
+                float k_z = n_z * delta_k[2];                                               \
+                float k_mag_sq = k_x * k_x + k_y * k_y + k_z * k_z;                         \
+                index_huge grid_index = grid_index_fftw_c(n_x, n_y, n_z, box_dim);          \
+                double w = (W_EXPR);                                                        \
+                for (int b = 0; b < n_boxes; b++) {                                         \
+                    fftwf_complex val =                                                     \
+                        (srcs != NULL) ? srcs[b][grid_index] : dsts[b][grid_index];         \
+                    if (pre_div != 0.0f) {                                                  \
+                        val /= pre_div;                                                     \
+                    }                                                                       \
+                    dsts[b][grid_index] = val * w;                                          \
+                }                                                                           \
+            }                                                                               \
+        }                                                                                   \
+    }
+
+void p21_filter_boxes_fused(int n_boxes, fftwf_complex **dsts, fftwf_complex *const *srcs,
+                            int box_dim[3], int filter_type, float R, float R_param, float R_star,
+                            float pre_div) {
+    if (n_boxes <= 0 || dsts == NULL) {
+        return;
+    }
+
+    double delta_k[3] = {
+        2.0 * M_PI / simulation_options_global->BOX_LEN,
+        2.0 * M_PI / simulation_options_global->BOX_LEN,
+        2.0 * M_PI /
+            (simulation_options_global->BOX_LEN * simulation_options_global->NON_CUBIC_FACTOR)};
+
+    struct multiple_scattering_params consts_for_ms;
+    double R_const = 0.0;
+    if (filter_type == FILTER_EXP_MFP) {
+        R_const = exp(-R / R_param);
+    } else if (filter_type == FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING) {
+        initialize_alphas_and_betas_for_multiple_scattering(R, R_param, R_star, &consts_for_ms);
+    } else if (filter_type < 0 || filter_type > FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING) {
+        LOG_WARNING("Filter type %i is undefined. Box is unfiltered.", filter_type);
+        if (srcs != NULL || pre_div != 0.0f) {
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+            {
+#pragma omp for collapse(2)
+                for (int n_x = 0; n_x < box_dim[0]; n_x++) {
+                    for (int n_y = 0; n_y < box_dim[1]; n_y++) {
+                        for (int n_z = 0; n_z <= box_dim[2] / 2; n_z++) {
+                            index_huge grid_index = grid_index_fftw_c(n_x, n_y, n_z, box_dim);
+                            for (int b = 0; b < n_boxes; b++) {
+                                fftwf_complex val =
+                                    (srcs != NULL) ? srcs[b][grid_index] : dsts[b][grid_index];
+                                if (pre_div != 0.0f) val /= pre_div;
+                                dsts[b][grid_index] = val;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+#pragma omp parallel num_threads(simulation_options_global->N_THREADS)
+    {
+        switch (filter_type) {
+            case FILTER_TOPHAT: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(real_tophat_filter((float)(sqrt(k_mag_sq) * R)));
+                break;
+            }
+            case FILTER_SHARP_K: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(sharp_k_filter((float)(sqrt(k_mag_sq) * R)));
+                break;
+            }
+            case FILTER_GAUSSIAN: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(gaussian_filter((float)(k_mag_sq * R * R)));
+                break;
+            }
+            case FILTER_EXP_MFP: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(exp_mfp_filter(sqrt(k_mag_sq), R, R_param, R_const));
+                break;
+            }
+            case FILTER_SPHERICAL_SHELL_STRAIGHT_LINE: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(spherical_shell_filter(sqrt(k_mag_sq), R, R_param));
+                break;
+            }
+            case FILTER_SPHERICAL_SHELL_MULTIPLE_SCATTERING: {
+#pragma omp for
+                P21_FILTER_FUSED_LOOP(
+                    multiple_scattering_filter(sqrt(k_mag_sq), R, R_param, &consts_for_ms));
+                break;
+            }
+            default:
+                break;
+        }
+    }
+}
+
 void filter_box(fftwf_complex *box, int box_dim[3], int filter_type, float R, float R_param,
                 float R_star) {
+    if (p21_cpu_filter_fused_enabled()) {
+        p21_filter_boxes_fused(1, &box, NULL, box_dim, filter_type, R, R_param, R_star, 0.0f);
+        return;
+    }
+
     double delta_k[3] = {
         2.0 * M_PI / simulation_options_global->BOX_LEN,
         2.0 * M_PI / simulation_options_global->BOX_LEN,

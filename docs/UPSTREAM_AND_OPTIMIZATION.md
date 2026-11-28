@@ -39,7 +39,7 @@ The table below lists every remaining path that stays on CPU or triggers an auto
 
 ## 3. CPU Backend (`C / OpenMP / FFTW3f`) Optimization Roadmap
 
-Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling identifies **5 high-leverage CPU improvements** (items #1 and #2 are now **implemented & bit-exact verified**):
+Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling identifies **5 high-leverage CPU improvements** (**all 5 optimization tracks are now implemented & bit-exact verified (`max_abs = 0.0`)** aside from the intentionally separate host RNG alternative):
 
 1. **FFTW Plan LRU Cache (`src/py21cmfast/src/dft.c`) — Implemented (`max_abs = 0.0`)**
    - Previously, every call to `dft_r2c_cube` and `dft_c2r_cube` invoked `fftwf_plan_dft_*` → `fftwf_execute` → `fftwf_destroy_plan`. Because `IonisationBox.c` filters across ~20–40 excursion-set radii per redshift, hundreds of identical-shape plans were repeatedly constructed and torn down.
@@ -49,12 +49,21 @@ Even without a GPU (e.g., laptops, macOS, or CPU-only CI/login nodes), profiling
    - At `128 × 128 × 512`, Python `RegularGridInterpolator` + `cosmotile` CIC dominated CPU lightcone runtime (`38.2230 s`).
    - **Implementation (`P21_CPU_RSDS_NATIVE=1`, default)**: Added column-parallel OpenMP kernels `p21_cpu_rsds_shift_f32` and `p21_cpu_rsds_shift_f64` compiled with strict FP guards (`#pragma STDC FP_CONTRACT OFF` and `no-fast-math` / `fp-contract=off`) to match `float32`/`float64` SciPy linear interpolation + CIC summation order bit-for-bit across `periodic=False/True` and arbitrary `nz` / `n_rsd_subcells >= 1`.
    - **Verified on 16-Core CPU (`128 × 128 × 512`, `float32`, `n_rsd_subcells=4`, `periodic=False`)**: **`38.2230 s → 0.0967 s` (`395.26×` speedup, `max_abs = 0.0`)**, eliminating the CPU lightcone RSD bottleneck (`0.0967 s` 16T CPU vs `0.0764 s` `1× RTX 4090`).
-3. **Architecture-Specific SIMD & OpenMP Region Fusion (`build_cffi.py`, `IonisationBox.c`, `EmissivityFields.c`)**
-   - `build_cffi.py` compiles with `-Ofast`; adding opt-in `-march=native` (`P21_CPU_NATIVE=1`) unlocks AVX2 / AVX-512 / Apple NEON vectorization, while fusing back-to-back short `#pragma omp parallel` loops and applying NUMA first-touch initialization improves 16–64 core scaling.
-4. **Fast Counter-Based Host RNG & `k^2 R^2` Filter Simplification (`rng.c`, `filtering.c`)**
-   - `rng.c` notes per-snapshot `seed_rng_threads` overhead; an optional host Philox/`xoshiro256++` path speeds up IC/stochastic draws, while `filtering.c` can evaluate $k^2 R^2$ instead of repeated `sqrtf(k^2) * R` evaluations inside inner 3D spectral loops.
-5. **Context-Level Scratch Pool (`IonisationBox.c`, `PerturbedField.c`)**
-   - Reusing persistent `fftwf_malloc` scratch arrays across filter radii avoids repeated `mmap`/`munmap` kernel page faults on `512³–1024³` CPU runs.
+3. **Architecture-Specific SIMD (`P21_CPU_NATIVE=1`) & OpenMP Multi-Box Loop Fusion (`build_cffi.py`, `IonisationBox.c`, `RadiationFields.c`) — Implemented (`max_abs = 0.0`)**
+   - `build_cffi.py` now supports opt-in `-march=native` via `P21_CPU_NATIVE=1` alongside default portable `-Ofast` wheels.
+   - `IonisationBox.c` (`copy_filter_transform`, including parallel `R_index == 0` copying) and `RadiationFields.c` (`multi_shell_filter` grouping `sfrd_acg`/`xray_emissivity`/`sfrd_mcg` + fused `1/N_tot` scaling) fuse per-radius/per-shell passes over shared coordinates.
+4. **Hoisted-Switch & Multi-Box Fused `k`-Space Filtering (`src/py21cmfast/src/filtering.c`, `P21_CPU_FILTER_FUSED=1`) — Implemented (`max_abs = 0.0`)**
+   - Added `p21_filter_boxes_fused()`, hoisting `switch (filter_type)` outside the `#pragma omp parallel` 3D loop across all 6 filter kernels and evaluating window weights once per `(n_x, n_y, n_z)` mode for up to 8 simultaneous boxes (`filter_box` & `test_filter` dispatch through it bit-identically). *(Replacing GSL CPU RNG with a host Philox RNG remains optional/unimplemented because it would alter random draws vs upstream CPU.)*
+5. **Reusable `fftwf_malloc` Scratch Pool (`src/py21cmfast/src/dft.c`, `IonisationBox.c`, `RadiationFields.c`, `PerturbedField.c`) — Implemented (`max_abs = 0.0`)**
+   - Implemented a 24-slot mutex-guarded scratch pool (`P21_CPU_SCRATCH_POOL=1`, cap `P21_CPU_SCRATCH_POOL_MB=2048` MiB; `p21_dft_scratch_acquire`, `p21_dft_scratch_release`, cleaned in `clean_fftw()`), eliminating repeated `fftwf_malloc`/`fftwf_free` `mmap`/`munmap` churn across filter radii and redshift steps.
+
+**Combined 16-Core CPU End-to-End A/B Verification (`P21_FFTW_PLAN_CACHE + P21_CPU_SCRATCH_POOL + P21_CPU_FILTER_FUSED`: all `0` vs all `1`, `Z_HEAT_MAX=12`, `node=(13,10,8)`):**
+
+| Workload (16T CPU) | All `=0` [s] | All `=1` [s] | Speedup | Plan Cache `(hits, misses, entries)` | Scratch Pool `(hits, misses, pooled)` | Checked Arrays (`max_abs`) |
+| --- | ---: | ---: | ---: | --- | --- | ---: |
+| `256/128` `E-INTEGRAL + TS + RECOMB` | `9.0989` | **`7.4172`** | **`1.227×`** | `(494, 6, 6)` | `(172, 4, 4)` | `28` (**`0.0`**) |
+| `256/128` `L-INTEGRAL + TS + MCGS + EXP` | `11.6838` | **`9.6985`** | **`1.205×`** | `(814, 8, 8)` | `(259, 8, 8)` | `30` (**`0.0`**) |
+| `512/256` `E-INTEGRAL + TS + RECOMB` | `63.2424` | **`56.7649`** | **`1.114×`** | `(496, 4, 4)` | `(172, 4, 4)` | `28` (**`0.0`**) |
 
 ---
 

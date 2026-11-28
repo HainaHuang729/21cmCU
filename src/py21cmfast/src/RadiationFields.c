@@ -221,11 +221,11 @@ void one_shell_filter(float *input_box, float *output_box, double R_inner, doubl
     double filtered_avg = 0;
     int box_dim[3] = {simulation_options_global->HII_DIM, simulation_options_global->HII_DIM,
                       HII_D_PARA};
+    const size_t grid_bytes = sizeof(fftwf_complex) * (size_t)HII_KSPACE_NUM_PIXELS;
 
     // This dummy box is used to store both filtered and unfiltered boxes, since we don't need to
     // keep both at the same time
-    fftwf_complex *dummy_box =
-        (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * HII_KSPACE_NUM_PIXELS);
+    fftwf_complex *dummy_box = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
 
 #pragma omp parallel private(i, j, k) num_threads(simulation_options_global -> N_THREADS) \
     reduction(+ : unfiltered_avg)
@@ -253,18 +253,23 @@ void one_shell_filter(float *input_box, float *output_box, double R_inner, doubl
         dft_r2c_cube(matter_options_global->USE_FFTW_WISDOM, simulation_options_global->HII_DIM,
                      HII_D_PARA, simulation_options_global->N_THREADS, dummy_box);
 
+        if (p21_cpu_filter_fused_enabled()) {
+            p21_filter_boxes_fused(1, &dummy_box, NULL, box_dim, filter_type, R_inner, R_outer,
+                                   R_star, (float)HII_TOT_NUM_PIXELS);
+        } else {
 // remember to add the factor of VOLUME/TOT_NUM_PIXELS when converting from real space to k-space
 // Note: we will leave off factor of VOLUME, in anticipation of the inverse FFT below
 #pragma omp parallel num_threads(simulation_options_global->N_THREADS)
-        {
+            {
 #pragma omp for
-            for (ct = 0; ct < HII_KSPACE_NUM_PIXELS; ct++) {
-                dummy_box[ct] /= (float)HII_TOT_NUM_PIXELS;
+                for (ct = 0; ct < HII_KSPACE_NUM_PIXELS; ct++) {
+                    dummy_box[ct] /= (float)HII_TOT_NUM_PIXELS;
+                }
             }
-        }
 
-        // Don't filter on the cell scale
-        filter_box(dummy_box, box_dim, filter_type, R_inner, R_outer, R_star);
+            // Don't filter on the cell scale
+            filter_box(dummy_box, box_dim, filter_type, R_inner, R_outer, R_star);
+        }
 
         // now fft back to real space
         dft_c2r_cube(matter_options_global->USE_FFTW_WISDOM, simulation_options_global->HII_DIM,
@@ -299,7 +304,80 @@ void one_shell_filter(float *input_box, float *output_box, double R_inner, doubl
     *u_avg = unfiltered_avg;
     *f_avg = filtered_avg;
 
-    fftwf_free(dummy_box);
+    p21_dft_scratch_release(dummy_box, grid_bytes);
+}
+
+static void multi_shell_filter(int n_fields, float *const *inputs, float **outputs, double R_inner,
+                               double R_outer, double R_star, int filter_type, double *u_avgs,
+                               double *f_avgs) {
+    int box_dim[3] = {simulation_options_global->HII_DIM, simulation_options_global->HII_DIM,
+                      HII_D_PARA};
+    const size_t grid_bytes = sizeof(fftwf_complex) * (size_t)HII_KSPACE_NUM_PIXELS;
+    fftwf_complex *dummy_boxes[4] = {NULL, NULL, NULL, NULL};
+
+    for (int b = 0; b < n_fields; b++) {
+        dummy_boxes[b] = (fftwf_complex *)p21_dft_scratch_acquire(grid_bytes);
+        double unfiltered_avg = 0;
+        const float *input_box = inputs[b];
+        fftwf_complex *dummy_box = dummy_boxes[b];
+
+#pragma omp parallel num_threads(simulation_options_global -> N_THREADS) \
+    reduction(+ : unfiltered_avg)
+        {
+#pragma omp for
+            for (int i = 0; i < box_dim[0]; i++) {
+                for (int j = 0; j < box_dim[1]; j++) {
+                    for (int k = 0; k < box_dim[2]; k++) {
+                        index_huge index_r = grid_index_general(i, j, k, box_dim);
+                        index_huge index_f = grid_index_fftw_r(i, j, k, box_dim);
+                        float curr_val = input_box[index_r];
+                        *((float *)dummy_box + index_f) = curr_val;
+                        unfiltered_avg += curr_val;
+                    }
+                }
+            }
+        }
+        u_avgs[b] = unfiltered_avg / HII_TOT_NUM_PIXELS;
+
+        if (simulation_options_global->HII_DIM > 1 && R_inner > 0) {
+            dft_r2c_cube(matter_options_global->USE_FFTW_WISDOM, simulation_options_global->HII_DIM,
+                         HII_D_PARA, simulation_options_global->N_THREADS, dummy_box);
+        }
+    }
+
+    if (simulation_options_global->HII_DIM > 1 && R_inner > 0) {
+        p21_filter_boxes_fused(n_fields, dummy_boxes, NULL, box_dim, filter_type, R_inner, R_outer,
+                               R_star, (float)HII_TOT_NUM_PIXELS);
+    }
+
+    for (int b = 0; b < n_fields; b++) {
+        fftwf_complex *dummy_box = dummy_boxes[b];
+        float *output_box = outputs[b];
+        if (simulation_options_global->HII_DIM > 1 && R_inner > 0) {
+            dft_c2r_cube(matter_options_global->USE_FFTW_WISDOM, simulation_options_global->HII_DIM,
+                         HII_D_PARA, simulation_options_global->N_THREADS, dummy_box);
+        }
+
+        double filtered_avg = 0;
+#pragma omp parallel num_threads(simulation_options_global -> N_THREADS) reduction(+ : filtered_avg)
+        {
+#pragma omp for
+            for (int i = 0; i < box_dim[0]; i++) {
+                for (int j = 0; j < box_dim[1]; j++) {
+                    for (int k = 0; k < box_dim[2]; k++) {
+                        index_huge index_r = grid_index_general(i, j, k, box_dim);
+                        index_huge index_f = grid_index_fftw_r(i, j, k, box_dim);
+                        float curr_val = *((float *)dummy_box + index_f);
+                        if (curr_val < 0.) curr_val = 0.;
+                        output_box[index_r] = curr_val;
+                        filtered_avg += curr_val;
+                    }
+                }
+            }
+        }
+        f_avgs[b] = filtered_avg / HII_TOT_NUM_PIXELS;
+        p21_dft_scratch_release(dummy_box, grid_bytes);
+    }
 }
 
 int UpdateRadiationFields(float redshift, EmissivityFields *emissivity_fields, int R_ct,
@@ -332,25 +410,93 @@ int UpdateRadiationFields(float redshift, EmissivityFields *emissivity_fields, i
         double R_inner = R_ct == 0 ? 0 : rad_setup->R_values[R_ct - 1];
         double R_outer = rad_setup->R_values[R_ct];
 
-        one_shell_filter(emissivity_fields->sfrd_acg, rad_setup->filtered_sfrd_acg_for_lya, R_inner,
-                         R_outer, R_star, lya_filter_type, &sfrd_avg_acg, &filtered_sfrd_avg_acg);
-        one_shell_filter(emissivity_fields->xray_emissivity, rad_setup->filtered_xray_emissivity,
-                         R_inner, R_outer, R_star, FILTER_SPHERICAL_SHELL_STRAIGHT_LINE,
-                         &xray_emissivity_avg, &filtered_xray_emissivity_avg);
-        if (astro_options_global->USE_MCGS) {
-            one_shell_filter(emissivity_fields->sfrd_mcg, rad_setup->filtered_sfrd_mcg_for_lya,
-                             R_inner, R_outer, R_star, lya_filter_type, &sfrd_avg_mcg,
-                             &filtered_sfrd_avg_mcg);
-            // In case of multiple scattering and mini-halos, we need to filter the SFRD
-            // fields again for the the LW feedback, as these photons travel in straight
-            // lines
-            if (astro_options_global->LYA_MULTIPLE_SCATTERING) {
-                one_shell_filter(emissivity_fields->sfrd_acg, rad_setup->filtered_sfrd_acg_for_lw,
-                                 R_inner, R_outer, R_star, FILTER_SPHERICAL_SHELL_STRAIGHT_LINE,
-                                 &sfrd_avg_acg, &filtered_sfrd_avg_acg);
-                one_shell_filter(emissivity_fields->sfrd_mcg, rad_setup->filtered_sfrd_mcg_for_lw,
-                                 R_inner, R_outer, R_star, FILTER_SPHERICAL_SHELL_STRAIGHT_LINE,
-                                 &sfrd_avg_mcg, &filtered_sfrd_avg_mcg);
+        if (p21_cpu_filter_fused_enabled() && simulation_options_global->HII_DIM > 1 &&
+            R_inner > 0) {
+            if (astro_options_global->USE_MCGS) {
+                if (astro_options_global->LYA_MULTIPLE_SCATTERING) {
+                    float *ms_in[2] = {emissivity_fields->sfrd_acg, emissivity_fields->sfrd_mcg};
+                    float *ms_out[2] = {rad_setup->filtered_sfrd_acg_for_lya,
+                                        rad_setup->filtered_sfrd_mcg_for_lya};
+                    double ms_u[2], ms_f[2];
+                    multi_shell_filter(2, ms_in, ms_out, R_inner, R_outer, R_star, lya_filter_type,
+                                       ms_u, ms_f);
+                    float *sl_in[3] = {emissivity_fields->xray_emissivity,
+                                       emissivity_fields->sfrd_acg, emissivity_fields->sfrd_mcg};
+                    float *sl_out[3] = {rad_setup->filtered_xray_emissivity,
+                                        rad_setup->filtered_sfrd_acg_for_lw,
+                                        rad_setup->filtered_sfrd_mcg_for_lw};
+                    double sl_u[3], sl_f[3];
+                    multi_shell_filter(3, sl_in, sl_out, R_inner, R_outer, R_star,
+                                       FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, sl_u, sl_f);
+                    xray_emissivity_avg = sl_u[0];
+                    filtered_xray_emissivity_avg = sl_f[0];
+                    sfrd_avg_acg = sl_u[1];
+                    filtered_sfrd_avg_acg = sl_f[1];
+                    sfrd_avg_mcg = sl_u[2];
+                    filtered_sfrd_avg_mcg = sl_f[2];
+                } else {
+                    float *sl_in[3] = {emissivity_fields->sfrd_acg,
+                                       emissivity_fields->xray_emissivity,
+                                       emissivity_fields->sfrd_mcg};
+                    float *sl_out[3] = {rad_setup->filtered_sfrd_acg_for_lya,
+                                        rad_setup->filtered_xray_emissivity,
+                                        rad_setup->filtered_sfrd_mcg_for_lya};
+                    double sl_u[3], sl_f[3];
+                    multi_shell_filter(3, sl_in, sl_out, R_inner, R_outer, R_star,
+                                       FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, sl_u, sl_f);
+                    sfrd_avg_acg = sl_u[0];
+                    filtered_sfrd_avg_acg = sl_f[0];
+                    xray_emissivity_avg = sl_u[1];
+                    filtered_xray_emissivity_avg = sl_f[1];
+                    sfrd_avg_mcg = sl_u[2];
+                    filtered_sfrd_avg_mcg = sl_f[2];
+                }
+            } else if (!astro_options_global->LYA_MULTIPLE_SCATTERING) {
+                float *sl_in[2] = {emissivity_fields->sfrd_acg,
+                                   emissivity_fields->xray_emissivity};
+                float *sl_out[2] = {rad_setup->filtered_sfrd_acg_for_lya,
+                                    rad_setup->filtered_xray_emissivity};
+                double sl_u[2], sl_f[2];
+                multi_shell_filter(2, sl_in, sl_out, R_inner, R_outer, R_star,
+                                   FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, sl_u, sl_f);
+                sfrd_avg_acg = sl_u[0];
+                filtered_sfrd_avg_acg = sl_f[0];
+                xray_emissivity_avg = sl_u[1];
+                filtered_xray_emissivity_avg = sl_f[1];
+            } else {
+                one_shell_filter(emissivity_fields->sfrd_acg, rad_setup->filtered_sfrd_acg_for_lya,
+                                 R_inner, R_outer, R_star, lya_filter_type, &sfrd_avg_acg,
+                                 &filtered_sfrd_avg_acg);
+                one_shell_filter(emissivity_fields->xray_emissivity,
+                                 rad_setup->filtered_xray_emissivity, R_inner, R_outer, R_star,
+                                 FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, &xray_emissivity_avg,
+                                 &filtered_xray_emissivity_avg);
+            }
+        } else {
+            one_shell_filter(emissivity_fields->sfrd_acg, rad_setup->filtered_sfrd_acg_for_lya,
+                             R_inner, R_outer, R_star, lya_filter_type, &sfrd_avg_acg,
+                             &filtered_sfrd_avg_acg);
+            one_shell_filter(emissivity_fields->xray_emissivity,
+                             rad_setup->filtered_xray_emissivity, R_inner, R_outer, R_star,
+                             FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, &xray_emissivity_avg,
+                             &filtered_xray_emissivity_avg);
+            if (astro_options_global->USE_MCGS) {
+                one_shell_filter(emissivity_fields->sfrd_mcg, rad_setup->filtered_sfrd_mcg_for_lya,
+                                 R_inner, R_outer, R_star, lya_filter_type, &sfrd_avg_mcg,
+                                 &filtered_sfrd_avg_mcg);
+                // In case of multiple scattering and mini-halos, we need to filter the SFRD
+                // fields again for the the LW feedback, as these photons travel in straight
+                // lines
+                if (astro_options_global->LYA_MULTIPLE_SCATTERING) {
+                    one_shell_filter(emissivity_fields->sfrd_acg,
+                                     rad_setup->filtered_sfrd_acg_for_lw, R_inner, R_outer, R_star,
+                                     FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, &sfrd_avg_acg,
+                                     &filtered_sfrd_avg_acg);
+                    one_shell_filter(emissivity_fields->sfrd_mcg,
+                                     rad_setup->filtered_sfrd_mcg_for_lw, R_inner, R_outer, R_star,
+                                     FILTER_SPHERICAL_SHELL_STRAIGHT_LINE, &sfrd_avg_mcg,
+                                     &filtered_sfrd_avg_mcg);
+                }
             }
         }
 
