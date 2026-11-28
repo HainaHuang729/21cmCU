@@ -45,6 +45,7 @@ from .observables import (
     horizon_wedge_mask,
 )
 from .shortcuts import quick_coeval, quick_lightcone
+from .topology import bispectrum_3d, bubble_size_distribution_mfp, minkowski_functionals_3d
 from .viz import (
     export_lightcone_3d_html,
     export_volume_3d_html,
@@ -157,6 +158,8 @@ __all__ = [
     "add_thermal_noise_3d",
     "apply_wedge_filter_3d",
     "baseline_density_uv",
+    "bispectrum_3d",
+    "bubble_size_distribution_mfp",
     "cleanup_cuda",
     "clear_class_cache",
     "cuda_available",
@@ -178,6 +181,7 @@ __all__ = [
     "lightcone_chunk_power_spectra",
     "lightcone_chunk_power_spectra_2d",
     "lightcone_to_cuda_views",
+    "minkowski_functionals_3d",
     "mock_observation_3d",
     "plot_coeval_slices",
     "plot_lightcone_summary",

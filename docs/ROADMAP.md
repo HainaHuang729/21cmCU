@@ -157,6 +157,19 @@
   - **`81 passed, 53 skipped (GPU)`** across `tests/native/test_21cmcu_phase11_batchpool_sbi.py` and 9 existing native suites (`phase0`, `phase3_d`, `phase3_e`, `phase5_g`, `phase6_lm`, `phase7_oq`, `phase8_instrument`, `phase9_lightcone_viz`, `phase10_cpu_opt`) + [`examples/07_online_sbi_zero_disk.py`](../examples/07_online_sbi_zero_disk.py). *(Note: cluster GPUs on `phy-gpus` `debug` were 100% allocated during this verification run, so CUDA-only test cases were skipped.)*
   - 4-round × 4-task `128/64` `E-INTEGRAL` + `SKA1-Low` + moments CPU benchmark (`workers_per_gpu=4`, `threads_per_worker=4`): cold `run_batch` **`20.439 s`** (`16` worker PIDs, `[5.479, 5.332, 5.647, 3.982] s`) vs warm `BatchPool` **`7.733 s`** (`4` persistent worker PIDs, `[3.660, 1.228, 1.227, 1.343] s`) — **`2.643×` overall speedup** (**`~4.3×`** on warm rounds).
 
+## Completed Phase 10 (`v0.9.0-dev`) — Higher-Order Non-Gaussian & Morphological Topology
+
+- **Native CUDA APIs (`#83–#85`) in `cuda_analysis.cu` (`cuda_api.h`, `_functionprototypes_wrapper.h`, `cuda_stubs.c`) & [`src/py21cmcu/topology.py`](../src/py21cmcu/topology.py)**:
+  - **`bispectrum_3d` (`p21_cuda_bispectrum_3d`)**: Fast 3D FFT shell-product bispectrum $B(k_1, k_2, k_3)$ & reduced bispectrum $Q$ supporting `equilateral`, `squeezed`, `folded`, `isosceles`, and custom triangle lists with 3-slot shell reuse across identical/adjacent $k$-shells.
+  - **`bubble_size_distribution_mfp` (`p21_cuda_mfp_bsd`)**: Parallel Philox isotropic ray-traced Mean-Free-Path Bubble Size Distribution (MFP BSD) with warp-aggregated ionized-voxel compaction (`__ballot_sync`) and periodic boundary wrapping (plus vectorized active-ray NumPy CPU fallback).
+  - **`minkowski_functionals_3d` (`p21_cuda_minkowski_3d`)**: Warp-reduced exact cubical-complex 3D Minkowski Functionals ($V_0, V_1, V_2, V_3$ and integer Euler characteristic $\chi$) with `kMkChunk=8` multi-threshold evaluation and Schmalzing & Buchert (1997) Crofton normalization.
+- **Non-Gaussian SBI Integration (`src/py21cmcu/inference.py`, `src/py21cmcu/__init__.py`)**:
+  - Added `SBISimulator(..., summary="nongaussian")` combining global/1-point moments (`5`), 1D $\Delta^2(k)$, equilateral $Q(k)$ (`6`), and standardized Minkowski functionals $V_1, V_2, V_3$ (`3 × 5`), exported top-level APIs (`bispectrum_3d`, `bubble_size_distribution_mfp`, `minkowski_functionals_3d`), and added [`examples/08_nongaussian_topology_sbi.py`](../examples/08_nongaussian_topology_sbi.py).
+- **Verification (`b1` `USE_CUDA=1` CUDA 12.6 build + 16-core CPU)**:
+  - `USE_CUDA=1 CUDA_ARCHS="86;89"` wheel compiled cleanly (`CUDA: True`, all 85 native CUDA symbols verified).
+  - **`85 passed, 54 skipped (GPU)`** across [`tests/native/test_21cmcu_phase12_topology.py`](../tests/native/test_21cmcu_phase12_topology.py) and all 10 prior native suites: verified Gaussian $Q \approx 0$, local quadratic $Q \approx 2\lambda = 0.50$ (`equilateral`/`squeezed`/`folded` within `<15%`), isolated sphere MFP $\langle R \rangle \approx \frac{3}{4} R_0$ (`<5%`), exact cubical Euler numbers ($\chi = 1$ ball, $2$ shell, $0$ torus), `<2%` sphere $V_0,V_1,V_2$, resolved GRF parity, and EoR `SBISimulator(summary="nongaussian")` `(2, 34)` output.
+  - `128³` 16-core CPU timings: `bispectrum_3d` (equilateral, 8 bins) `0.523 s`, `bubble_size_distribution_mfp` (50k rays) `0.037 s`, `minkowski_functionals_3d` (15 thresholds) `0.173 s`. *(Live GPU parity/speedup benchmark at `256³` remains to be run once cluster GPU nodes are free.)*
+
 ---
 
 ## Future Roadmap
@@ -168,10 +181,7 @@
   - **Acceptance Criteria**: Numerical parity vs single-GPU/CPU at `256³` and `512³`, plus verified native `1024³` EoR & `2048³` 2LPT execution within 24 GB-per-GPU VRAM.
 
 ### Release `v0.9.0` — Higher-Order Non-Gaussian Science & Multi-Probe Inference (Phases 10 & 11)
-- **Phase 10 — Higher-Order Non-Gaussian & Morphological Topology**:
-  - **Targets**: `src/py21cmfast/src/cuda_analysis.cu`, `src/py21cmcu/observables.py`, `src/py21cmcu/analysis.py`.
-  - **Scope**: Implement GPU FFT fast 3D Bispectrum $B(k_1, k_2, k_3)$ (`equilateral`/`squeezed`/`folded` templates), GPU ray-traced Mean-Free-Path ionized Bubble Size Distribution (MFP BSD), and 3D Minkowski Functionals ($V_0, V_1, V_2, V_3$).
-  - **Acceptance Criteria**: Exact numerical agreement with reference CPU estimators and `≥20×` speedup at `256³`.
+- **Phase 10 GPU Verification Addendum**: Run live GPU parity & `≥20×` `256³` speedup benchmarks for `p21_cuda_bispectrum_3d`, `p21_cuda_mfp_bsd`, and `p21_cuda_minkowski_3d` on an uncontended GPU node.
 - **Phase 11 — CRN Fisher Matrix Forecaster & Multi-Probe Cross-Correlations**:
   - **Targets**: `src/py21cmcu/inference.py`, `src/py21cmcu/observables.py`, `src/py21cmcu/viz.py`.
   - **Scope**: Common-Random-Number (CRN) low-variance Fisher matrix forecaster (`21cm` 1D/2D PS + interferometer mocks + `viz` sensitivity contour plots) and GPU CIC halo/galaxy gridding for `21cm × galaxy` cross-power $r(k)$ & kSZ proxy cross-correlations.

@@ -802,6 +802,86 @@ int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out)
     return -1;
 }
 
+int p21_cuda_bispectrum_3d(const float *h_field, int nx, int ny, int nz, double lx, double ly,
+                           double lz, int remove_mean, int n_triangles, const double *h_k1_lo,
+                           const double *h_k1_hi, const double *h_k2_lo, const double *h_k2_hi,
+                           const double *h_k3_lo, const double *h_k3_hi, double *h_b_out,
+                           double *h_q_out, double *h_pk1_out, double *h_pk2_out, double *h_pk3_out,
+                           double *h_ntri_out) {
+    (void)h_field;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)lx;
+    (void)ly;
+    (void)lz;
+    (void)remove_mean;
+    (void)n_triangles;
+    (void)h_k1_lo;
+    (void)h_k1_hi;
+    (void)h_k2_lo;
+    (void)h_k2_hi;
+    (void)h_k3_lo;
+    (void)h_k3_hi;
+    (void)h_b_out;
+    (void)h_q_out;
+    (void)h_pk1_out;
+    (void)h_pk2_out;
+    (void)h_pk3_out;
+    (void)h_ntri_out;
+    return -1;
+}
+
+int p21_cuda_mfp_bsd(const float *h_field, int nx, int ny, int nz, double lx, double ly, double lz,
+                     float threshold, int below_threshold, unsigned long long n_rays,
+                     double step_cells, double max_dist, int n_bins, double r_min, double r_max,
+                     int log_bins, unsigned long long seed, unsigned long long *h_hist_out,
+                     double *mean_r_out, double *std_r_out, unsigned long long *n_ion_out) {
+    (void)h_field;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)lx;
+    (void)ly;
+    (void)lz;
+    (void)threshold;
+    (void)below_threshold;
+    (void)n_rays;
+    (void)step_cells;
+    (void)max_dist;
+    (void)n_bins;
+    (void)r_min;
+    (void)r_max;
+    (void)log_bins;
+    (void)seed;
+    (void)h_hist_out;
+    (void)mean_r_out;
+    (void)std_r_out;
+    (void)n_ion_out;
+    return -1;
+}
+
+int p21_cuda_minkowski_3d(const float *h_field, int nx, int ny, int nz, double lx, double ly,
+                          double lz, int n_thresholds, const double *h_thresholds,
+                          double *h_v0_out, double *h_v1_out, double *h_v2_out, double *h_v3_out,
+                          long long *h_euler_out) {
+    (void)h_field;
+    (void)nx;
+    (void)ny;
+    (void)nz;
+    (void)lx;
+    (void)ly;
+    (void)lz;
+    (void)n_thresholds;
+    (void)h_thresholds;
+    (void)h_v0_out;
+    (void)h_v1_out;
+    (void)h_v2_out;
+    (void)h_v3_out;
+    (void)h_euler_out;
+    return -1;
+}
+
 #else
 
 typedef int p21_cuda_stubs_unused_translation_unit_t;

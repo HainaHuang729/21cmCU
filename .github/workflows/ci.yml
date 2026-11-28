@@ -42,4 +42,5 @@ jobs:
             tests/native/test_21cmcu_phase8_instrument.py \
             tests/native/test_21cmcu_phase9_lightcone_viz.py \
             tests/native/test_21cmcu_phase10_cpu_opt.py \
-            tests/native/test_21cmcu_phase11_batchpool_sbi.py
+            tests/native/test_21cmcu_phase11_batchpool_sbi.py \
+            tests/native/test_21cmcu_phase12_topology.py

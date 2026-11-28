@@ -252,6 +252,21 @@ int p21_cuda_mock_observation_3d(const float *h_in, float *h_out, int nx, int ny
                                  int add_noise, int n_noise_table, double noise_kperp_max,
                                  const float *h_sigma_re_table, unsigned long long seed);
 int p21_cuda_field_mean_f32(const float *h_in, size_t n_elems, double *mean_out);
+int p21_cuda_bispectrum_3d(const float *h_field, int nx, int ny, int nz, double lx, double ly,
+                           double lz, int remove_mean, int n_triangles, const double *h_k1_lo,
+                           const double *h_k1_hi, const double *h_k2_lo, const double *h_k2_hi,
+                           const double *h_k3_lo, const double *h_k3_hi, double *h_b_out,
+                           double *h_q_out, double *h_pk1_out, double *h_pk2_out, double *h_pk3_out,
+                           double *h_ntri_out);
+int p21_cuda_mfp_bsd(const float *h_field, int nx, int ny, int nz, double lx, double ly, double lz,
+                     float threshold, int below_threshold, unsigned long long n_rays,
+                     double step_cells, double max_dist, int n_bins, double r_min, double r_max,
+                     int log_bins, unsigned long long seed, unsigned long long *h_hist_out,
+                     double *mean_r_out, double *std_r_out, unsigned long long *n_ion_out);
+int p21_cuda_minkowski_3d(const float *h_field, int nx, int ny, int nz, double lx, double ly,
+                          double lz, int n_thresholds, const double *h_thresholds,
+                          double *h_v0_out, double *h_v1_out, double *h_v2_out, double *h_v3_out,
+                          long long *h_euler_out);
 void p21_dft_clear_plan_cache(void);
 void p21_dft_get_cache_stats(unsigned long long *hits_out, unsigned long long *misses_out,
                              int *entries_out);

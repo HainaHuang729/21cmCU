@@ -14,6 +14,7 @@ from .batch import BatchPool, BatchTask, run_batch
 from .instrument import mock_observation_3d
 from .interop import to_cuda_view, to_torch
 from .observables import add_thermal_noise_3d, apply_wedge_filter_3d, field_moments_and_pdf
+from .topology import bispectrum_3d, minkowski_functionals_3d
 
 try:
     from torch.utils.data import IterableDataset as _IterableDatasetBase
@@ -207,7 +208,7 @@ class SBISimulator:
         out_redshift: float | None = None,
         min_redshift: float | None = None,
         max_redshift: float | None = None,
-        summary: Literal["stats", "ps1d", "field"] = "stats",
+        summary: Literal["stats", "ps1d", "field", "nongaussian"] = "stats",
         ps_n_bins: int = 12,
         wedge_filter: bool = True,
         wedge_buffer: float = 0.05,
@@ -353,7 +354,7 @@ class SBISimulator:
             if self.summary == "ps1d":
                 return delta2
             mom = field_moments_and_pdf(arr, n_bins=16, use_cuda=self.use_cuda)
-            return np.concatenate(
+            base_vec = np.concatenate(
                 [
                     np.array(
                         [mean_xh, mean_tb, mom["std"], mom["skewness"], mom["kurtosis"]],
@@ -362,6 +363,34 @@ class SBISimulator:
                     delta2,
                 ]
             )
+            if self.summary == "stats":
+                return base_vec
+            if self.summary == "nongaussian":
+                bi = bispectrum_3d(
+                    arr,
+                    box_eval,
+                    config="equilateral",
+                    n_bins=6,
+                    remove_mean=True,
+                    use_cuda=self.use_cuda,
+                )
+                mk = minkowski_functionals_3d(
+                    arr,
+                    box_eval,
+                    thresholds=[-2.0, -1.0, 0.0, 1.0, 2.0],
+                    standardize=True,
+                    use_cuda=self.use_cuda,
+                )
+                return np.concatenate(
+                    [
+                        base_vec,
+                        np.nan_to_num(bi["Q"], nan=0.0).astype(np.float32),
+                        mk["V1"].astype(np.float32),
+                        mk["V2"].astype(np.float32),
+                        mk["V3"].astype(np.float32),
+                    ]
+                )
+            raise ValueError(f"Unsupported SBISimulator summary mode: {self.summary!r}")
 
     def _run_summary_batch(self, arr: np.ndarray) -> np.ndarray:
         z_out_tuple = (

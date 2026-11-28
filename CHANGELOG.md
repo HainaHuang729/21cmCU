@@ -4,6 +4,10 @@ All notable milestones in **21cmCU** are documented in this file.
 
 ## [Unreleased]
 ### Added & Improved
+- **Phase 10 (`v0.9.0-dev`) — Higher-Order Non-Gaussian & Morphological Topology**:
+  - Added native CUDA APIs `#83–#85` (`p21_cuda_bispectrum_3d`, `p21_cuda_mfp_bsd`, `p21_cuda_minkowski_3d`) in [`src/py21cmfast/src/cuda/cuda_analysis.cu`](src/py21cmfast/src/cuda/cuda_analysis.cu), `cuda_api.h`, `_functionprototypes_wrapper.h`, and `cuda_stubs.c`.
+  - Added [`src/py21cmcu/topology.py`](src/py21cmcu/topology.py) exporting `bispectrum_3d` (`equilateral`/`squeezed`/`folded`/`isosceles`/custom triangles with 3-slot shell caching), `bubble_size_distribution_mfp` (warp-compacted Philox ray-traced MFP BSD + vectorized CPU fallback), and `minkowski_functionals_3d` (exact cubical-complex $V_0, V_1, V_2, V_3$ & Euler $\chi$).
+  - Added `SBISimulator(..., summary="nongaussian")` in [`src/py21cmcu/inference.py`](src/py21cmcu/inference.py), [`examples/08_nongaussian_topology_sbi.py`](examples/08_nongaussian_topology_sbi.py), and [`tests/native/test_21cmcu_phase12_topology.py`](tests/native/test_21cmcu_phase12_topology.py) (**`85 passed, 54 skipped (GPU)`** across 11 native suites on cluster `b1`; `128³` CPU timings `0.523 s` Bispectrum / `0.037 s` 50k-ray MFP BSD / `0.173 s` 15-threshold Minkowski).
 - **Direction R (`v0.8.0-dev`) — Persistent Multi-GPU cuFFT Plan Cache, Warm `BatchPool` & Zero-Disk Online SBI Pipeline**:
   - Added a 64-entry concurrency-safe per-device cuFFT LRU cache across Y-slab 2D R2C/C2R and 1D C2C transforms in [`src/py21cmfast/src/cuda/cuda_mgpu.cu`](src/py21cmfast/src/cuda/cuda_mgpu.cu) (`p21_mgpu_fft_clear_cache()` wired into `p21_cuda_cleanup()`).
   - Added warm persistent [`BatchPool`](src/py21cmcu/batch.py) (`map`, `imap(ordered=...)`, context manager, periodic registry clearing) and extended `BatchTask` / `BatchResult` (`instrument`, `lazy_d2h`, `compute_moments`, `oblique_lightcone`, `worker_pid`, HDF5 moments persistence). Measured **`2.643×`** speedup across 4 repeated 4-task `128/64` `SKA1-Low` rounds (`20.439 s` cold / 16 PIDs → **`7.733 s`** warm / 4 PIDs; warm rounds `1.227–1.343 s` vs `5.332–5.647 s`).

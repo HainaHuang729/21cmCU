@@ -26,7 +26,11 @@ Back to [Home](Home.md) · Previous: [Residency & I/O](Residency-and-IO.md) · N
    - `apply_wedge_filter_3d(field, box_length, redshift, los_axis=2, buffer_h_mpc=0.0)`: GPU-accelerated (`23.86×` at `256³`) 3D Fourier wedge filter.
    - `add_thermal_noise_3d(field, box_length, sigma_mk=None, redshift=8.0, t_int_hours=1000.0, n_ant=350, seed=0)`: GPU Philox (`10.71×` at `256³`) deterministic Gaussian thermal noise.
    - `field_moments_and_pdf(field, n_bins=32)`: GPU-accelerated (`26.43×` at `256³`) mean, std, variance, skewness, excess kurtosis, and 1-point PDF.
-   - `SBISimulator`, `OnlineSBIDataset` & `Likelihood21cm`: high-level wrappers for zero-disk PyTorch/NumPy streaming (`"stats"`, `"ps1d"`, `"field"`, finite Sobol or infinite Uniform, optional `SKA1-Low`/`HERA-350` interferometer mocks) and `21CMMC` Gaussian likelihoods.
+   - **Non-Gaussian & Morphological Topology (`py21cmcu.topology`, `v0.9.0-dev`)**:
+     - `bispectrum_3d(field, box_length, config="equilateral|squeezed|folded|isosceles")`: 3D FFT bispectrum $B(k_1, k_2, k_3)$ & reduced bispectrum $Q$ (`p21_cuda_bispectrum_3d`).
+     - `bubble_size_distribution_mfp(field, box_length, threshold=0.5, n_rays=100_000)`: Philox ray-traced Mean-Free-Path Bubble Size Distribution (`p21_cuda_mfp_bsd`).
+     - `minkowski_functionals_3d(field, box_length, thresholds=..., standardize=True)`: exact cubical-complex $V_0, V_1, V_2, V_3$ and Euler characteristic $\chi$ (`p21_cuda_minkowski_3d`).
+   - `SBISimulator`, `OnlineSBIDataset` & `Likelihood21cm`: high-level wrappers for zero-disk PyTorch/NumPy streaming (`"stats"`, `"ps1d"`, `"field"`, `"nongaussian"`, finite Sobol or infinite Uniform, optional `SKA1-Low`/`HERA-350` interferometer mocks) and `21CMMC` Gaussian likelihoods.
 
 3. **Warm Persistent Worker Pool (`BatchPool`) & Resumable `run_batch`**:
    ```python

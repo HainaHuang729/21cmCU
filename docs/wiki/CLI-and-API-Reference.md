@@ -53,8 +53,8 @@ Besides re-exporting `py21cmfast.*` (`InputParameters`, `RectilinearLightconer`,
 
 - **Runtime & Device Control**:
   `cuda_compiled()`, `cuda_available()`, `cuda_device_count()`, `get_cuda_devices()`, `set_cuda_devices()`, `get_cuda_mode()`, `set_cuda_mode()`, `use_mode(...)`, `cuda_stats()`, `reset_cuda_stats()`, `cleanup_cuda()`, `clear_class_cache()`, `doctor()`
-- **Analysis & Power Spectra**:
-  `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`, `lightcone_chunk_power_spectra_2d()`, `field_moments_and_pdf()`
+- **Analysis, Power Spectra & Non-Gaussian Topology**:
+  `power_spectrum_1d()`, `power_spectrum_2d()`, `lightcone_chunk_power_spectra()`, `lightcone_chunk_power_spectra_2d()`, `field_moments_and_pdf()`, `bispectrum_3d()`, `bubble_size_distribution_mfp()`, `minkowski_functionals_3d()`
 - **I/O Compression**:
   `save_lightcone()` (`compression="device-lzf" | "lzf" | "none"`)
 - **Observables, Interferometers & Forecasts**:
